@@ -27,6 +27,13 @@ __DOMAIN__ {
     handle @backend {
         reverse_proxy __PREFIX__-api-a:8080 __PREFIX__-api-b:8080 {
             header_up -Authorization
+            # A session 401 must not invalidate the browser's outer Basic Auth cache.
+            # The frontend restores the API status from this explicit marker.
+            @session_missing status 401
+            handle_response @session_missing {
+                header X-Maxim-Auth-Status "401"
+                copy_response 403
+            }
             lb_policy first
             lb_try_duration 10s
             lb_try_interval 250ms
