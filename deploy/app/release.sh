@@ -237,6 +237,9 @@ step_done
 
 # 3. База и резервное копирование (без пересоздания, если ничего не поменялось).
 step_start base
+if [[ -f $APP_DIR/storage.env ]]; then
+  bash "$APP_DIR/storage-release.sh"
+fi
 base_services=(postgres backup)
 if [[ $(value_of "$APP_ENV_FILE" SMTP_HOST) == mailpit ]]; then
   base_services+=(mailpit)

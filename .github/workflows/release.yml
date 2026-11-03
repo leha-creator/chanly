@@ -145,6 +145,7 @@ jobs:
       USER_NAME: ${{ vars.DEPLOY_USER }}
       DOMAIN: ${{ vars.DEPLOY_DOMAIN }}
       APP_DIR: /opt/maxim-${{ inputs.environment }}
+      ENVIRONMENT: ${{ inputs.environment }}
       TAG: ${{ needs.image.outputs.tag }}
       ROLLBACK: ${{ inputs.rollback }}
       EXPECTED_SHA: ${{ needs.resolve.outputs.sha }}
@@ -187,6 +188,9 @@ jobs:
           ssh target "test -f ${APP_DIR}/app.env && test -f ${APP_DIR}/stack.env" \
             || { echo "::error::${APP_DIR}/app.env and stack.env must be prepared on the server (deploy/app/README.md)"; exit 1; }
           scp deploy/app/compose.yml deploy/app/maxim-app.caddy deploy/app/release.sh deploy/scripts/lib.sh "target:${APP_DIR}/"
+          if [ "${ENVIRONMENT}" = "production" ]; then
+            scp deploy/app/compose.storage.yml deploy/app/storage-init.sh deploy/app/storage-release.sh "target:${APP_DIR}/"
+          fi
           # shellcheck disable=SC2029
           ssh target "chmod 755 ${APP_DIR}/release.sh"
           echo "::endgroup::"

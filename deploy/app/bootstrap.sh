@@ -26,7 +26,7 @@ if ! docker network inspect edge >/dev/null 2>&1; then
   docker network create edge >/dev/null
   log info network_created network=edge
 fi
-for file in compose.yml maxim-app.caddy release.sh; do
+for file in compose.yml maxim-app.caddy release.sh compose.storage.yml storage-init.sh storage-release.sh; do
   install -m 640 -o deploy -g deploy "$SCRIPT_DIR/$file" "/opt/maxim-production/$file"
 done
 install -m 640 -o deploy -g deploy "$SCRIPT_DIR/../scripts/lib.sh" /opt/maxim-production/lib.sh
