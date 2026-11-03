@@ -30,7 +30,7 @@ on:
       environment:
         description: "Окружение"
         type: choice
-        options: [staging, production]
+        options: [dev, staging, production]
         required: true
       ref:
         description: "Ветка, тег или коммит (пусто — выбранная ветка запуска)"
@@ -65,7 +65,7 @@ jobs:
         env:
           ENVIRONMENT: ${{ inputs.environment }}
         run: |
-          case "$ENVIRONMENT" in staging|production) ;; *) exit 1 ;; esac
+          case "$ENVIRONMENT" in dev|staging|production) ;; *) exit 1 ;; esac
           echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
   backend:
@@ -157,9 +157,10 @@ jobs:
       - name: Reject stale automatic release
         if: inputs.automatic
         run: |
-          latest=$(git ls-remote origin refs/heads/master | cut -f1)
+          case "$ENVIRONMENT" in production) branch=master ;; dev) branch=dev ;; *) exit 1 ;; esac
+          latest=$(git ls-remote origin "refs/heads/$branch" | cut -f1)
           if [ "$latest" != "$EXPECTED_SHA" ]; then
-            echo "::error::master advanced; refusing stale deployment of $EXPECTED_SHA"
+            echo "::error::$branch advanced; refusing stale deployment of $EXPECTED_SHA"
             exit 1
           fi
 
@@ -191,6 +192,9 @@ jobs:
           if [ "${ENVIRONMENT}" = "production" ]; then
             scp deploy/app/compose.storage.yml deploy/app/storage-init.sh deploy/app/storage-release.sh "target:${APP_DIR}/"
           fi
+          if [ "${ENVIRONMENT}" = "dev" ]; then
+            scp deploy/app/compose.dev.yml "target:${APP_DIR}/compose.override.yml"
+          fi
           # shellcheck disable=SC2029
           ssh target "chmod 755 ${APP_DIR}/release.sh"
           echo "::endgroup::"
@@ -205,12 +209,13 @@ jobs:
           if [ "${ROLLBACK}" = "true" ]; then args="--rollback"; else args="--tag ${TAG} --reapply"; fi
           # Временный токен GHCR только на время выпуска; после — logout.
           # shellcheck disable=SC2029
-          printf '%s' "${GHCR_TOKEN}" | ssh target "docker login ghcr.io -u ${GHCR_USER} --password-stdin >/dev/null"
+          printf '%s' "${GHCR_TOKEN}" | ssh target "DOCKER_CONFIG=${APP_DIR}/.docker-ci docker login ghcr.io -u ${GHCR_USER} --password-stdin >/dev/null"
           set +e
           # shellcheck disable=SC2029
-          ssh target "${APP_DIR}/release.sh ${args} --dir ${APP_DIR} --expected-domain ${DOMAIN} --edge-dir /opt/edge"
+          ssh target "DOCKER_CONFIG=${APP_DIR}/.docker-ci flock -w 900 /opt/edge/.release.lock ${APP_DIR}/release.sh ${args} --dir ${APP_DIR} --expected-domain ${DOMAIN} --edge-dir /opt/edge"
           rc=$?
-          ssh target "docker logout ghcr.io >/dev/null" || true
+          # shellcheck disable=SC2029
+          ssh target "DOCKER_CONFIG=${APP_DIR}/.docker-ci docker logout ghcr.io >/dev/null" || true
           set -e
           # shellcheck disable=SC2029
           ssh target "cat ${APP_DIR}/slots.env" | tee -a "$GITHUB_STEP_SUMMARY" || true
@@ -230,7 +235,9 @@ jobs:
 
       - name: Clean up registry credentials
         if: always()
-        run: ssh target 'docker logout ghcr.io >/dev/null' || true
+        run: |
+          # shellcheck disable=SC2029
+          ssh target "DOCKER_CONFIG=${APP_DIR}/.docker-ci docker logout ghcr.io >/dev/null" || true
 
       - name: Diagnostics on failure
         if: failure()

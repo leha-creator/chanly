@@ -42,18 +42,24 @@ jobs:
           BEFORE_SHA: ${{ github.event.before }}
         run: |
           if [[ "$BEFORE_SHA" =~ ^0+$ ]]; then
-            echo "::error::No previous master revision to validate migration compatibility"
-            exit 1
+            # New dev branch starts from master; it has no previous branch revision.
+            bash deploy/scripts/check-migrations.sh origin/master
+            exit 0
           fi
           bash deploy/scripts/check-migrations.sh "$BEFORE_SHA"
       - name: docker compose config
         run: |
-          for env in staging production; do
+          for env in dev staging production; do
             dir="$PWD/deploy/app/env/$env"
             APP_ENV_FILE="$dir/app.env.example" docker compose -f deploy/app/compose.yml \
               --env-file "$dir/stack.env.example" \
               --profile slot-a --profile slot-b --profile tools --profile mailpit config --quiet
             echo "compose config ok: $env"
+            if [ "$env" = dev ]; then
+              APP_ENV_FILE="$dir/app.env.example" docker compose -f deploy/app/compose.yml \
+                -f deploy/app/compose.dev.yml --env-file "$dir/stack.env.example" \
+                --profile slot-a --profile slot-b --profile tools --profile mailpit config --quiet
+            fi
           done
           APP_ENV_FILE="$PWD/deploy/local/rehearsal.app.env" docker compose -f deploy/app/compose.yml \
             -f deploy/local/compose.rehearsal.yml --env-file deploy/local/rehearsal.stack.env \
@@ -93,7 +99,7 @@ jobs:
       # на сервере его проверит config check в release.sh.
       - name: maxim config check
         run: |
-          for env in staging production; do
+          for env in dev staging production; do
             f="$RUNNER_TEMP/$env.app.env"
             {
               sed -e 's/CHANGE_ME_BASE64_32B/ZGV2LW9ubHktc2VjcmV0cy1rZXktMzItYnl0ZXMhISE=/' \

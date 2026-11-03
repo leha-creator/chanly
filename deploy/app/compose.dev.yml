@@ -1,0 +1,27 @@
+# Automatically loaded as compose.override.yml by release.sh on the dev server.
+services:
+  postgres:
+    mem_limit: 384m
+    cpus: 0.5
+  backup:
+    mem_limit: 192m
+    cpus: 0.25
+  api-a:
+    mem_limit: 192m
+    cpus: 0.5
+  api-b:
+    mem_limit: 192m
+    cpus: 0.5
+  worker-a:
+    mem_limit: 256m
+    cpus: 0.5
+  worker-b:
+    mem_limit: 256m
+    cpus: 0.5
+  migrate:
+    mem_limit: 192m
+    cpus: 0.5
+  mailpit:
+    mem_limit: 64m
+    cpus: 0.25
+    ports: !override ['127.0.0.1:8026:8025']

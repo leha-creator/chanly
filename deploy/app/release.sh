@@ -114,6 +114,9 @@ TAG_B=$(value_of "$SLOTS_ENV" MAXIM_TAG_B)
 
 dc() {
   local args=(compose --project-directory "$APP_DIR" -f "$COMPOSE_FILE_MAIN")
+  if [[ -f $APP_DIR/compose.override.yml ]]; then
+    args+=(-f "$APP_DIR/compose.override.yml")
+  fi
   local f
   for f in "${EXTRA_FILES[@]}"; do
     args+=(-f "$f")
