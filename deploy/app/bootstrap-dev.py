@@ -56,11 +56,11 @@ def main():
         save_env(paths[0], app, owner)
         save_env(paths[1], stack, owner)
     app, stack = map(read_env, paths)
-    for name in ['compose.yml', 'maxim-app.caddy', 'release.sh']:
+    for name in ['compose.yml', 'maxim-app.caddy', 'maxim-dev.caddy', 'release.sh']:
         shutil.copyfile(source / name, dest / name)
     shutil.copyfile(source / 'compose.dev.yml', dest / 'compose.override.yml')
     shutil.copyfile(source.parent / 'scripts/lib.sh', dest / 'lib.sh')
-    for name in ['compose.yml', 'maxim-app.caddy', 'release.sh', 'compose.override.yml', 'lib.sh']:
+    for name in ['compose.yml', 'maxim-app.caddy', 'maxim-dev.caddy', 'release.sh', 'compose.override.yml', 'lib.sh']:
         path = dest / name
         path.write_bytes(path.read_bytes().replace(b'\r\n', b'\n'))
         os.chown(path, owner.pw_uid, owner.pw_gid)

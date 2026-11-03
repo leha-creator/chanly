@@ -278,7 +278,11 @@ if ((NO_EDGE == 0)); then
   if [[ -n $EDGE_DIR ]]; then
     step_start edge
     site="$EDGE_DIR/sites/$PREFIX.caddy"
-    rendered=$(sed -e "s/__DOMAIN__/$DOMAIN/" -e "s/__PREFIX__/$PREFIX/g" -e "s|__ADMIN_ALLOW__|$ADMIN_ALLOW|g" "$APP_DIR/maxim-app.caddy")
+    template="$APP_DIR/maxim-app.caddy"
+    if [[ $PROJECT == maxim-dev ]]; then
+      template="$APP_DIR/maxim-dev.caddy"
+    fi
+    rendered=$(sed -e "s/__DOMAIN__/$DOMAIN/" -e "s/__PREFIX__/$PREFIX/g" -e "s|__ADMIN_ALLOW__|$ADMIN_ALLOW|g" "$template")
     if [[ ! -f $site || $(cat "$site") != "$rendered" ]]; then
       [[ -f $site ]] && cp "$site" "$site.prev"
       printf '%s\n' "$rendered" > "$site"

@@ -1,0 +1,53 @@
+# Dev SPA from maxim-frontend; API stays on the real backend.
+__DOMAIN__ {
+    encode zstd gzip
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains"
+        X-Content-Type-Options "nosniff"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        -Server
+    }
+    log {
+        output stdout
+        format json
+    }
+    request_body {
+        max_size 52MB
+    }
+    @admin_denied {
+        path /api/v1/admin /api/v1/admin/*
+        not remote_ip __ADMIN_ALLOW__
+    }
+    handle @admin_denied {
+        header Content-Type "application/json"
+        respond `{"error":{"code":"forbidden","message":"admin api is not available from this address"}}` 403
+    }
+    @backend path /api /api/* /docs /docs/* /openapi.json /readyz /healthz /livez
+    handle @backend {
+        reverse_proxy __PREFIX__-api-a:8080 __PREFIX__-api-b:8080 {
+            lb_policy first
+            lb_try_duration 10s
+            lb_try_interval 250ms
+            fail_duration 10s
+            health_uri /readyz
+            health_interval 2s
+            health_timeout 1s
+            health_status 200
+        }
+    }
+    handle /assets/* {
+        root * /srv/maxim-dev/current
+        header Cache-Control "public, max-age=31536000, immutable"
+        file_server
+    }
+    handle {
+        root * /srv/maxim-dev/current
+        header Cache-Control "no-cache"
+        try_files {path} /index.html
+        file_server
+    }
+    handle_errors 502 503 504 {
+        header Content-Type "application/json"
+        respond `{"error":{"code":"unavailable","message":"service is temporarily unavailable"}}` 503
+    }
+}

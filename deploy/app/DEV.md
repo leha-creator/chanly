@@ -35,4 +35,13 @@ API, worker, PostgreSQL и backup. API/worker обновляются двумя 
 Dev-копии хранятся в `maxim-dev-backups` общего MinIO и не защищают от потери сервера.
 Production по-прежнему требует внешнее резервное хранилище.
 Проверка выпуска: `https://dev.chanly.ru/readyz` (200), здоровье worker и состояние
-`/opt/maxim-dev/slots.env`. Это адрес API; отдельный фронтенд данным workflow не собирается.
+`/opt/maxim-dev/slots.env`.
+
+React-фронтенд находится в `leha-creator/maxim-frontend`: push в его ветку `dev`
+запускает проверки, сборку и атомарную смену каталога `frontend/current`.
+Caddy отдаёт `/` и маршруты кабинетов из `/opt/maxim-dev/frontend`, а `/api/*`,
+`/docs`, `/openapi.json` и проверки здоровья направляет в бэкенд. Запросы API идут
+на тот же домен, cookie/CSRF работают без междоменных исключений.
+Выпуски двух репозиториев независимы: push бэкенда не меняет версию фронтенда.
+После добавления mount frontend в `deploy/edge/compose.yml` общий Caddy нужно один
+раз пересоздать через `docker compose up -d` в `/opt/edge`.
