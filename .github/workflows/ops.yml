@@ -74,6 +74,14 @@ jobs:
             deploy/app/maxim-app.caddy > "$RUNNER_TEMP/caddy/Caddyfile"
           docker run --rm -v "$RUNNER_TEMP/caddy:/etc/caddy:ro" caddy:2.11.7 \
             caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+          mkdir -p "$RUNNER_TEMP/caddy/auth"
+          hash=$(docker run --rm caddy:2.11.7 caddy hash-password --plaintext ci-only-test-password)
+          printf 'basic_auth {\n dev %s\n}\n' "$hash" > "$RUNNER_TEMP/caddy/auth/dev.caddy"
+          sed -e 's/__DOMAIN__/dev.example.test/' -e 's/__PREFIX__/maxim-dev/g' \
+            -e 's|__ADMIN_ALLOW__|203.0.113.10/32|g' \
+            deploy/app/maxim-dev.caddy > "$RUNNER_TEMP/caddy/Caddyfile"
+          docker run --rm -v "$RUNNER_TEMP/caddy:/etc/caddy:ro" caddy:2.11.7 \
+            caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
       - name: hadolint
         run: docker run --rm -i hadolint/hadolint:v2.12.0 < deploy/postgres/Dockerfile
 

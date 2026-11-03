@@ -226,7 +226,13 @@ jobs:
       - name: Readiness check
         run: |
           for i in $(seq 1 10); do
-            code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "https://${DOMAIN}/readyz" || true)
+            if [ "$ENVIRONMENT" = dev ]; then
+              # Credentials remain on the server, outside workflow logs and GitHub secrets.
+              # shellcheck disable=SC2029
+              code=$(ssh target "curl --config /opt/maxim-dev/basic-auth.curl -s -o /dev/null -w '%{http_code}' --max-time 10 https://${DOMAIN}/readyz" || true)
+            else
+              code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "https://${DOMAIN}/readyz" || true)
+            fi
             echo "attempt ${i}: ${code}"
             [ "${code}" = "200" ] && exit 0
             sleep 3

@@ -56,6 +56,7 @@ def main():
         save_env(paths[0], app, owner)
         save_env(paths[1], stack, owner)
     app, stack = map(read_env, paths)
+    subprocess.run([sys.executable, str(source / 'setup-dev-auth.py')], check=True)
     for name in ['compose.yml', 'maxim-app.caddy', 'maxim-dev.caddy', 'release.sh']:
         shutil.copyfile(source / name, dest / name)
     shutil.copyfile(source / 'compose.dev.yml', dest / 'compose.override.yml')

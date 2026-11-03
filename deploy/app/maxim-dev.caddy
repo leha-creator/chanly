@@ -1,5 +1,6 @@
 # Dev SPA from maxim-frontend; API stays on the real backend.
 __DOMAIN__ {
+    import /etc/caddy/auth/dev.caddy
     encode zstd gzip
     header {
         Strict-Transport-Security "max-age=31536000; includeSubDomains"
@@ -25,6 +26,7 @@ __DOMAIN__ {
     @backend path /api /api/* /docs /docs/* /openapi.json /readyz /healthz /livez
     handle @backend {
         reverse_proxy __PREFIX__-api-a:8080 __PREFIX__-api-b:8080 {
+            header_up -Authorization
             lb_policy first
             lb_try_duration 10s
             lb_try_interval 250ms
@@ -49,5 +51,17 @@ __DOMAIN__ {
     handle_errors 502 503 504 {
         header Content-Type "application/json"
         respond `{"error":{"code":"unavailable","message":"service is temporarily unavailable"}}` 503
+    }
+}
+
+mail.__DOMAIN__ {
+    import /etc/caddy/auth/dev.caddy
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains"
+        X-Content-Type-Options "nosniff"
+        -Server
+    }
+    reverse_proxy __PREFIX__-mailpit:8025 {
+        header_up -Authorization
     }
 }

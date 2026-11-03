@@ -22,6 +22,16 @@ services:
     mem_limit: 192m
     cpus: 0.5
   mailpit:
+    environment:
+      MP_DATABASE: /data/mailpit.db
+    volumes: [mailpit-data:/data]
     mem_limit: 64m
     cpus: 0.25
     ports: !override ['127.0.0.1:8026:8025']
+    networks:
+      backend: {}
+      edge:
+        aliases: [maxim-dev-mailpit]
+
+volumes:
+  mailpit-data: {}
