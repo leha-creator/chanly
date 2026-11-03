@@ -12,6 +12,8 @@
 #   --skip-pull           не скачивать образ (локальная сборка, откат)
 #   --edge-dir DIR        каталог edge-Caddy (по умолчанию /opt/edge, если есть); --no-edge — не трогать
 #   --dry-run             показать план и выйти
+#   --reapply             повторно выпустить активный тег с новой конфигурацией
+#   --expected-domain D   сверить домен workflow с DOMAIN до любых изменений
 #
 # Порядок: образ → проверка конфигурации новым образом → postgres и backup → миграции новым
 # образом → запуск новой ячейки api+worker и ожидание готовности → сайт edge-прокси → плавная
@@ -38,6 +40,8 @@ SKIP_PULL=0
 EDGE_DIR=""
 NO_EDGE=0
 DRY_RUN=0
+REAPPLY=0
+EXPECTED_DOMAIN=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -50,6 +54,8 @@ while [[ $# -gt 0 ]]; do
     --edge-dir) EDGE_DIR=${2:-}; shift 2 ;;
     --no-edge) NO_EDGE=1; shift ;;
     --dry-run) DRY_RUN=1; shift ;;
+    --reapply) REAPPLY=1; shift ;;
+    --expected-domain) EXPECTED_DOMAIN=${2:?--expected-domain requires a value}; shift 2 ;;
     -h|--help) sed -n '2,20p' "$0"; exit 0 ;;
     *) log error invalid_argument arg="$1"; exit 2 ;;
   esac
@@ -84,6 +90,17 @@ IMAGE=$(value_of "$STACK_ENV" MAXIM_IMAGE)
 PROJECT=$(value_of "$STACK_ENV" COMPOSE_PROJECT_NAME)
 PREFIX=$(value_of "$STACK_ENV" EDGE_ALIAS_PREFIX)
 DOMAIN=$(value_of "$STACK_ENV" DOMAIN)
+[[ $DOMAIN =~ ^([a-zA-Z0-9][a-zA-Z0-9.-]*|:[0-9]+)$ && $PREFIX =~ ^[a-zA-Z0-9][a-zA-Z0-9_-]*$ ]] || {
+  log error invalid_config hint="DOMAIN and EDGE_ALIAS_PREFIX must be safe DNS names"; exit 1;
+}
+if [[ -n $EXPECTED_DOMAIN && $DOMAIN != "$EXPECTED_DOMAIN" ]]; then
+  log error domain_mismatch expected="$EXPECTED_DOMAIN" actual="$DOMAIN"
+  exit 1
+fi
+if [[ -n $EXPECTED_DOMAIN && $NO_EDGE == 0 && ! -d ${EDGE_DIR:-/opt/edge}/sites ]]; then
+  log error edge_missing hint="run production bootstrap before release"
+  exit 1
+fi
 # Адреса команды для API администратора (сайт edge): CIDR через пробел или private_ranges.
 ADMIN_ALLOW=$(value_of "$STACK_ENV" EDGE_ADMIN_ALLOW)
 admin_allow_re='^[0-9A-Za-z_.:/ ]+$'
@@ -161,7 +178,7 @@ if ! mkdir "$LOCK" 2>/dev/null; then
   exit 1
 fi
 trap 'rmdir "$LOCK" 2>/dev/null || true' EXIT
-trap 'log error release_failed line="${LINENO}" command="${BASH_COMMAND}"' ERR
+trap 'log error release_failed line="${LINENO}"' ERR
 
 started=$(now_ms)
 if ((ROLLBACK)); then
@@ -178,7 +195,7 @@ if ((ROLLBACK)); then
   MODE=rollback
 else
   MODE=release
-  if [[ -n $ACTIVE && $(tag_of "$ACTIVE") == "$TAG" && $(container_state "api-$ACTIVE") == "healthy|running" ]]; then
+  if [[ $REAPPLY == 0 && -n $ACTIVE && $(tag_of "$ACTIVE") == "$TAG" && $(container_state "api-$ACTIVE") == "healthy|running" && $(container_state "worker-$ACTIVE") == "healthy|running" ]]; then
     log info release_noop slot="$ACTIVE" tag="$TAG" reason="tag is already active"
     exit 0
   fi

@@ -1,6 +1,6 @@
 # Эксплуатация бэкенда: тестовое окружение и продакшен
 
-Руководство для дежурного и того, кто готовит сервер. Требования, по которым всё сделано, — [07 §8](../../docs/07-non-functional.md#8-размещение-и-эксплуатация). Стенд заглушки API устроен отдельно — [deploy/README.md](../README.md).
+Руководство для дежурного и того, кто готовит сервер. Требования, по которым всё сделано, — [07 §8](../../docs/07-non-functional.md#8-размещение-и-эксплуатация). Заглушка снята с автодеплоя; её историческое устройство — [deploy/README.md](../README.md).
 
 Пометка **«действие человека»** — шаг, который нельзя сделать из репозитория: доступы, договоры, решения, подписи.
 
@@ -52,14 +52,14 @@
 
 ## Первый запуск сервера
 
-1. **Действие человека.** Сервер в России (A-24), Docker и edge-Caddy как у стенда заглушки: `deploy/bootstrap.sh` готовит пользователя `deploy`, swap, `ufw`, журналы Docker; edge-прокси — `/opt/edge` по `deploy/edge/README.md` репозитория `leha-creator/tracker`. Домен окружения — A-запись на сервер.
+1. **Действие человека.** Сервер в России (A-24), Production `chanly.ru` — `194.58.120.196`, Ubuntu 26.04 LTS, чистая установка. Первичный доступ: `ssh root@194.58.120.196` (порт 22, пароль вводится интерактивно). Из полного checkout запустить `bash deploy/app/bootstrap.sh --deploy-pubkey "ssh-ed25519 ... CI" --admin-pubkey "ssh-ed25519 ... admin"`. Скрипт готовит Docker, deploy-пользователя, `/opt/maxim-production`, `/opt/edge` и постоянные тома TLS из `deploy/edge/`. Существующие конфигурации edge не перезаписываются; SSH-пароль не отключается без явного `--harden-ssh` после проверки ключей. Домен окружения — A-запись на сервер.
 2. **Действие человека.** Корзины S3 приложения (закрытая, публичная с анонимным чтением объектов) и **отдельная** корзина копий у другого хостера или в другом регионе; ключ приложения — только к корзинам приложения, ключ копий — только к корзине копий. Хранилище секретов (пароли, ключи, токены).
 3. `install -d -o deploy -g deploy -m 750 /opt/maxim-<env>`; положить `app.env` и `stack.env` из шаблонов, заменить `CHANGE_ME` (секрет — из хранилища, `CHANGE_ME_BASE64_32B` — `openssl rand -base64 32`), `chmod 600`. Пароль `POSTGRES_APP_PASSWORD` в `stack.env` совпадает с паролем в `DATABASE_URL` в `app.env`, пароль `POSTGRES_PASSWORD` — с паролем в `MIGRATE_DATABASE_URL`.
-4. **Действие человека.** GitHub Environment `staging` или `production`: переменные `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_DOMAIN`, секреты `DEPLOY_SSH_KEY`, `DEPLOY_KNOWN_HOSTS`; у `production` — обязательные проверяющие. В `stack.env` — `MAXIM_POSTGRES_IMAGE=ghcr.io/leha-creator/maxim-postgres:sha-<7>` из первого запуска `release.yml`.
-5. Первый выпуск: Actions → **release** → Run workflow (окружение, ref). Роли базы создаются при первом запуске PostgreSQL (`deploy/postgres/initdb/10-roles.sh`), миграции применяет `release.sh`.
+4. **Действие человека.** GitHub Environment `staging` или `production`: переменные `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_DOMAIN`, секреты `DEPLOY_SSH_KEY`, `DEPLOY_KNOWN_HOSTS`; для автоматического production-выпуска разрешить ветку `master` без обязательного ручного подтверждения. Значения: `DEPLOY_HOST=194.58.120.196`, `DEPLOY_USER=deploy`, `DEPLOY_DOMAIN=chanly.ru`. Ключ CI — отдельный, не root; known_hosts сверить с отпечатком из консоли провайдера. В `stack.env` — `MAXIM_POSTGRES_IMAGE=ghcr.io/leha-creator/maxim-postgres:sha-<full-commit-sha>` из первого запуска `release.yml`.
+5. Первый выпуск и каждый последующий: push/merge в `master` запускает **deploy** → **release** после backend/ops-проверок. Пока конфигурация сервера не готова, выпуск завершится ошибкой; после настройки повторить workflow. Ручной **release** остаётся для staging, повторного выпуска и отката. Роли базы создаются при первом запуске PostgreSQL (`deploy/postgres/initdb/10-roles.sh`), миграции применяет `release.sh`.
 6. **Действие человека.** Юридические документы: `docker compose --env-file stack.env --env-file slots.env run --rm migrate legal publish …` (тексты — [docs/launch/legal-documents.md](../../docs/launch/legal-documents.md)); роль администратора — `… run --rm migrate admin grant --email <адрес> --role senior`. Сервис `migrate` запускается образом из `MAXIM_TAG_NEW`: перед командой `export MAXIM_TAG_NEW=<активный тег>` (`grep MAXIM_TAG slots.env`).
 7. Для продакшена — сертификат Минцифры в образе (`deploy/certs/README.md`, **действие человека**: скачать, сверить отпечаток, закоммитить) и `MAX_CA_CERT_FILE` в `app.env`; в тестовом окружении — только вместе с токеном тестового бота.
-8. **Действие человека.** Рокет Ворк (при `ROCKETWORK_MODE=live`): в кабинете Рокет Ворк указать адрес вебхука `<PUBLIC_BASE_URL>/api/v1/webhooks/rocketwork` (например `https://api.maxim-ads.ru/api/v1/webhooks/rocketwork`) и ключ подписи — тот же, что `ROCKETWORK_WEBHOOK_SECRET` в `app.env` (не короче 16 символов). Запрос идёт через тот же сайт edge-Caddy, что и API, отдельного маршрута не нужно; подпись проверяет `api`, отказы — журнал `rocketwork webhook rejected` и оповещение после пяти отказов за 10 минут. Без вебхука исходы выплат узнаёт опрос `worker` (`PAYOUT_POLL_FAST`, `PAYOUT_POLL_SLOW`). Перед первой выплатой — пополнить депозит: перевод в Рокет Ворк и `… run --rm migrate admin money deposit-topup --amount … --reason … --email …`.
+8. **Действие человека.** Рокет Ворк (при `ROCKETWORK_MODE=live`): в кабинете Рокет Ворк указать адрес вебхука `<PUBLIC_BASE_URL>/api/v1/webhooks/rocketwork` (например `https://chanly.ru/api/v1/webhooks/rocketwork`) и ключ подписи — тот же, что `ROCKETWORK_WEBHOOK_SECRET` в `app.env` (не короче 16 символов). Запрос идёт через тот же сайт edge-Caddy, что и API, отдельного маршрута не нужно; подпись проверяет `api`, отказы — журнал `rocketwork webhook rejected` и оповещение после пяти отказов за 10 минут. Без вебхука исходы выплат узнаёт опрос `worker` (`PAYOUT_POLL_FAST`, `PAYOUT_POLL_SLOW`). Перед первой выплатой — пополнить депозит: перевод в Рокет Ворк и `… run --rm migrate admin money deposit-topup --amount … --reason … --email …`.
 
 Команды compose на сервере всегда с обоими файлами переменных:
 
@@ -70,9 +70,20 @@ dc ps
 dc logs --tail=100 backup
 ```
 
+
+### Проверки перед открытием production
+
+- Дождаться A-записи `chanly.ru → 194.58.120.196` у публичных DNS; проверить AAAA и делегацию, если менялись NS. Подготовку сервера можно делать заранее. Ошибка TLS или `/readyz` — неуспешный выпуск.
+- Заполнить оба env-файла без `CHANGE_ME`; согласовать DOMAIN, PUBLIC_BASE_URL и MAX_WEBHOOK_URL. Адрес кабинета, CDN и отправителя почты задаются отдельно, примеры не являются готовыми production-настройками.
+- Указать реальный `EDGE_ADMIN_ALLOW` и CIDR сети edge в `TRUSTED_PROXY_CIDRS`. Не публиковать порт PostgreSQL или административный порт Caddy.
+- Для новой БД создать новые пароли и APP_SECRETS_KEY, не импортировать dev seed. Включить отдельное хранилище копий и проверить восстановление в изолированную БД. Проверить роли администратора и опубликованные юридические документы до пользовательского запуска.
+- Убедиться, что боевой бот MAX не используется dev-worker, проверить входящие webhook, SMTP, ссылки на объекты и кабинет; проверить `/readyz`, heartbeat worker, резервные копии и запуск после reboot.
+- При первом выпуске предыдущей ячейки ещё нет: исправить причину и повторить выпуск. Откат проверяется после второго успешного выпуска; он не откатывает миграции и не восстанавливает старые значения env-файлов. Конфигурацию перед правками сохранять отдельно с правами 600.
+- Исторический mockAPI можно остановить после подтверждения его compose-проекта; не удалять тома и чужие сервисы. Автоматика больше не собирает и не публикует `maxim-mockapi`.
+
 ## Выпуск и откат
 
-Выпуск — только вручную: Actions → **release** (`.github/workflows/release.yml`): собирает `ghcr.io/leha-creator/maxim:sha-<7>` и `maxim-postgres:sha-<7>`, копирует файлы стека и запускает на сервере `release.sh --tag sha-<7>`. Выпуски в одно окружение идут по очереди.
+Production выпускается автоматически на каждый push/merge в `master` через **deploy**; PR выполняет только проверки. Workflow **release** также доступен вручную и сначала фиксирует полный SHA, проверяет его через backend/ops, затем собирает `ghcr.io/leha-creator/maxim:sha-<full-commit-sha>` и `maxim-postgres:sha-<full-commit-sha>`, копирует файлы стека и запускает на сервере `release.sh --tag sha-<full-commit-sha>`. Выпуски в одно окружение идут по очереди.
 
 Что делает [release.sh](release.sh):
 
@@ -87,7 +98,7 @@ dc logs --tail=100 backup
 | `stop_old` | пауза 3 с, затем плавная остановка старой ячейки: `api` отвечает `503` на `/readyz` ещё `HTTP_SHUTDOWN_DRAIN` (5 с), прокси уводит запросы; `worker` дорабатывает задания до 30 с или возвращает их в очередь | — |
 | `slots` | запись `slots.env` | — |
 
-Старая ячейка остаётся остановленной (контейнеры не удаляются). **Откат** — Actions → release с флажком `rollback` или на сервере `./release.sh --rollback`: запускает предыдущую ячейку её образом без миграций и останавливает текущую. Повторный выпуск активного тега ничего не делает. Одновременно выпуск не запустится (каталог-замок `.release.lock`; если остался после аварии — удалить вручную).
+Старая ячейка остаётся остановленной (контейнеры не удаляются). **Откат** — Actions → release с флажком `rollback` или на сервере `./release.sh --rollback`: запускает предыдущую ячейку её образом без миграций и останавливает текущую. Повторный выпуск активного тега без `--reapply` ничего не делает, если API и worker здоровы. CI передаёт `--reapply`: обновлённая конфигурация применяется через новую ячейку даже при том же образе. `--expected-domain` сверяет GitHub DEPLOY_DOMAIN с DOMAIN на сервере до изменений. Одновременно выпуск не запустится (каталог-замок `.release.lock`; если остался после аварии — удалить вручную).
 
 Ключи: `--dry-run` — план без действий, `--skip-pull` — образ уже на сервере, `--no-edge` — не трогать edge-прокси, `--health-timeout SEC`.
 

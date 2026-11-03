@@ -1,248 +1,31 @@
-# CI/CD заглушки API: проверки на PR и пуше, сборка образа в GHCR и деплой
-# на тестовый сервер при пуше в master. Подробности — deploy/README.md.
+# Real backend: checks on PR; production release on every push/merge to master.
 name: deploy
-
 on:
   push:
     branches: [master]
   pull_request:
     branches: [master]
-  workflow_dispatch:
-    inputs:
-      tag:
-        description: "Тег образа для отката без сборки (например sha-1a2b3c4). Пусто — собрать текущий коммит"
-        required: false
-        default: ""
-
-concurrency:
-  group: ${{ github.event_name == 'pull_request' && format('pr-{0}', github.ref) || 'deploy-dev' }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
-
 permissions:
   contents: read
-
-env:
-  IMAGE: ghcr.io/leha-creator/maxim-mockapi
-
 jobs:
-  detect:
-    runs-on: ubuntu-latest
-    outputs:
-      has_mockapi: ${{ steps.detect.outputs.has_mockapi }}
-    steps:
-      - uses: actions/checkout@v5
-      - id: detect
-        run: |
-          if [ -f mockapi/go.mod ]; then has=true; else has=false; fi
-          echo "has_mockapi=${has}" >> "$GITHUB_OUTPUT"
-          echo "mockapi/go.mod present: ${has}"
-
-  check:
-    needs: detect
-    if: needs.detect.outputs.has_mockapi == 'true'
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: mockapi
-    steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-go@v6
-        with:
-          # Не go-version-file: в go.mod минимальная версия (1.25), а api.gen.go
-          # генерируется на 1.27 — gzip встроенной спецификации у них даёт разные байты.
-          # Держать в одной ветке с версией в mockapi/Dockerfile.
-          go-version: "1.27"
-          cache-dependency-path: mockapi/go.sum
-      - name: Generated code is up to date
-        run: |
-          go generate ./...
-          git diff --exit-code -- . || { echo "::error::go generate changed files: commit regenerated code"; exit 1; }
-      - name: go vet
-        run: go vet ./...
-      - name: go test
-        run: go test -race ./...
-
-  build:
-    needs: [detect, check]
-    if: >-
-      needs.detect.outputs.has_mockapi == 'true'
-      && github.event_name != 'pull_request'
-      && (github.event_name != 'workflow_dispatch' || inputs.tag == '')
-    runs-on: ubuntu-latest
+  backend:
+    if: github.event_name == 'pull_request'
+    uses: ./.github/workflows/backend.yml
+    with:
+      ref: ${{ github.sha }}
+  ops:
+    if: github.event_name == 'pull_request'
+    uses: ./.github/workflows/ops.yml
+    with:
+      ref: ${{ github.sha }}
+  production:
+    if: github.event_name == 'push'
     permissions:
       contents: read
       packages: write
-    outputs:
-      tag: ${{ steps.tag.outputs.tag }}
-      digest: ${{ steps.push.outputs.digest }}
-    steps:
-      - uses: actions/checkout@v5
-      - id: tag
-        run: echo "tag=sha-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
-      - uses: docker/setup-buildx-action@v3
-      - uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      - id: push
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: mockapi/Dockerfile
-          push: true
-          provenance: false
-          build-args: VERSION=${{ github.sha }}
-          tags: |
-            ${{ env.IMAGE }}:${{ steps.tag.outputs.tag }}
-            ${{ env.IMAGE }}:master
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-  deploy:
-    needs: [detect, check, build]
-    if: >-
-      always()
-      && github.event_name != 'pull_request'
-      && github.ref == 'refs/heads/master'
-      && needs.detect.result == 'success'
-      && contains(fromJSON('["success","skipped"]'), needs.check.result)
-      && contains(fromJSON('["success","skipped"]'), needs.build.result)
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: read
-    environment:
-      name: dev
-      url: https://${{ vars.DEPLOY_DOMAIN }}/docs
-    env:
-      HOST: ${{ vars.DEPLOY_HOST }}
-      USER_NAME: ${{ vars.DEPLOY_USER }}
-      DOMAIN: ${{ vars.DEPLOY_DOMAIN }}
-      SMOKE_PATH: ${{ vars.SMOKE_PATH || '/openapi.json' }}
-      APP_DIR: /opt/maxim
-      EDGE_DIR: /opt/edge
-    steps:
-      - uses: actions/checkout@v5
-
-      - name: Resolve image tag
-        id: tag
-        env:
-          INPUT_TAG: ${{ inputs.tag }}
-          BUILT_TAG: ${{ needs.build.outputs.tag }}
-          HAS_MOCKAPI: ${{ needs.detect.outputs.has_mockapi }}
-        run: |
-          if [ -n "${INPUT_TAG}" ]; then tag="${INPUT_TAG}"; mode=rollback
-          elif [ "${HAS_MOCKAPI}" = "true" ]; then tag="${BUILT_TAG}"; mode=full
-          else tag=""; mode=proxy-only
-          fi
-          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
-          echo "mode=${mode}" >> "$GITHUB_OUTPUT"
-          echo "deploy mode=${mode} tag=${tag:-none} host=${HOST} domain=${DOMAIN}"
-
-      - name: Configure SSH
-        env:
-          SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
-          KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
-        run: |
-          set +x
-          if [ -z "${HOST}" ] || [ -z "${USER_NAME}" ] || [ -z "${DOMAIN}" ]; then
-            echo "::error::vars DEPLOY_HOST, DEPLOY_USER, DEPLOY_DOMAIN must be set"; exit 1
-          fi
-          install -d -m 700 ~/.ssh
-          printf '%s\n' "${SSH_KEY}" > ~/.ssh/id_ed25519
-          chmod 600 ~/.ssh/id_ed25519
-          printf '%s\n' "${KNOWN_HOSTS}" > ~/.ssh/known_hosts
-          printf 'Host target\n  HostName %s\n  User %s\n  IdentityFile ~/.ssh/id_ed25519\n  IdentitiesOnly yes\n  StrictHostKeyChecking yes\n  BatchMode yes\n' "${HOST}" "${USER_NAME}" > ~/.ssh/config
-          ssh target 'echo "connected to $(hostname) as $(whoami)"'
-
-      - name: Upload compose files
-        env:
-          TAG: ${{ steps.tag.outputs.tag }}
-        run: |
-          echo "::group::copy compose.yml to ${APP_DIR} and site file to ${EDGE_DIR}/sites"
-          scp deploy/compose.yml "target:${APP_DIR}/"
-          # Edge-прокси не видит переменных окружения стенда — домен подставляется в файл сайта.
-          sed "s/__DOMAIN__/${DOMAIN}/" deploy/maxim.caddy | ssh target "cat > ${EDGE_DIR}/sites/maxim.caddy"
-          printf 'DOMAIN=%s\nMOCKAPI_TAG=%s\nLOG_LEVEL=debug\n' "${DOMAIN}" "${TAG:-master}" | ssh target "cat > ${APP_DIR}/.env"
-          ssh target "cat ${APP_DIR}/.env"
-          echo "::endgroup::"
-
-      - name: Pull and start containers
-        env:
-          MODE: ${{ steps.tag.outputs.mode }}
-          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GHCR_USER: ${{ github.actor }}
-        run: |
-          set +x
-          if [ "${MODE}" = "proxy-only" ]; then
-            echo "::group::mockapi is not in the repository yet: only the site file is published"
-          else
-            echo "::group::pull ${IMAGE} and start all services"
-            printf '%s' "${GHCR_TOKEN}" | ssh target "docker login ghcr.io -u '${GHCR_USER}' --password-stdin"
-            status=0
-            ssh target "cd ${APP_DIR} && docker compose pull && docker compose up -d --remove-orphans" || status=$?
-            ssh target "docker logout ghcr.io" || true
-            [ "${status}" -eq 0 ] || exit "${status}"
-          fi
-          # Edge-прокси (/opt/edge) общий для проектов сервера: validate до reload, чтобы
-          # ошибка в файле сайта не задела остальные сайты (при ошибке reload и так откатывается).
-          ssh target "cd ${EDGE_DIR} && docker compose exec -T caddy caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile"
-          ssh target "cd ${EDGE_DIR} && docker compose exec -T caddy caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile"
-          ssh target "cd ${APP_DIR} && docker compose ps"
-          echo "::endgroup::"
-
-      - name: Smoke check
-        id: smoke
-        env:
-          MODE: ${{ steps.tag.outputs.mode }}
-        run: |
-          if [ "${MODE}" = "proxy-only" ]; then path=/; expect=503; else path="${SMOKE_PATH}"; expect=200; fi
-          url="https://${DOMAIN}${path}"
-          for i in $(seq 1 12); do
-            code=$(curl -sS -L -o /dev/null -w '%{http_code}' --max-time 10 "${url}") && rc=0 || rc=$?
-            echo "attempt ${i}: ${url} -> http=${code} curl_exit=${rc}"
-            if [ "${rc}" -eq 0 ] && [ "${code}" = "${expect}" ]; then
-              echo "result=ok ${url} ${code}" >> "$GITHUB_OUTPUT"; exit 0
-            fi
-            # 35/60 — TLS ещё не готов (например, DNS только обновился и сертификата нет).
-            if [ "${rc}" -eq 35 ] || [ "${rc}" -eq 60 ]; then tls_issue=1; fi
-            sleep 5
-          done
-          if [ "${tls_issue:-0}" = "1" ]; then
-            echo "::warning::TLS not ready for ${DOMAIN}; Caddy keeps retrying certificate issuance"
-            echo "result=tls-not-ready" >> "$GITHUB_OUTPUT"; exit 0
-          fi
-          echo "::error::smoke check failed: expected ${expect} from ${url}"
-          exit 1
-
-      - name: Diagnostics on failure
-        if: failure()
-        run: |
-          # shellcheck disable=SC2029
-          ssh target "cd ${APP_DIR} && docker compose ps && docker compose logs --tail=100" || true
-          ssh target "cd ${EDGE_DIR} && docker compose ps && docker compose logs --tail=50 caddy" || true
-
-      - name: Prune old images
-        if: success()
-        run: ssh target "docker image prune -af --filter until=72h"
-
-      - name: Summary
-        if: always()
-        env:
-          MODE: ${{ steps.tag.outputs.mode }}
-          TAG: ${{ steps.tag.outputs.tag }}
-          DIGEST: ${{ needs.build.outputs.digest }}
-          SMOKE: ${{ steps.smoke.outputs.result }}
-        run: |
-          {
-            echo "### Deploy to ${DOMAIN}"
-            echo "| | |"
-            echo "|---|---|"
-            echo "| commit | \`${GITHUB_SHA::7}\` |"
-            echo "| mode | ${MODE} |"
-            echo "| image | \`${IMAGE}:${TAG:-none}\` |"
-            echo "| digest | \`${DIGEST:-n/a}\` |"
-            echo "| smoke | ${SMOKE:-failed} |"
-            echo "| docs | https://${DOMAIN}/docs |"
-          } >> "$GITHUB_STEP_SUMMARY"
+    uses: ./.github/workflows/release.yml
+    with:
+      environment: production
+      ref: ${{ github.sha }}
+      automatic: true
+    secrets: inherit

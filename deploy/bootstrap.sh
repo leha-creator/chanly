@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Подготовка тестового сервера для заглушки API (см. deploy/README.md).
+# Подготовка сервера; production entry point — deploy/app/bootstrap.sh.
 # Идемпотентен: повторный запуск ничего не ломает и пропускает готовые шаги.
 #
 # Использование (от root):
@@ -33,7 +33,7 @@ die() {
   exit 1
 }
 
-trap 'log "ERROR: line ${LINENO}: command failed: ${BASH_COMMAND}"' ERR
+trap 'log "ERROR: command failed at line ${LINENO}"' ERR
 
 usage() {
   sed -n '2,9p' "$0"
@@ -47,12 +47,14 @@ parse_args() {
       --admin-pubkey) ADMIN_PUBKEY="${2:-}"; shift 2 ;;
       --registry-mirror) REGISTRY_MIRROR="${2:-}"; shift 2 ;;
       --harden-ssh) HARDEN_SSH=1; shift ;;
+      --app-dir) APP_DIR="${2:?--app-dir requires a path}"; shift 2 ;;
       -h|--help) usage ;;
       *) die "unknown argument: $1" ;;
     esac
   done
   [[ -n "$DEPLOY_PUBKEY" ]] || die "--deploy-pubkey is required"
   [[ -n "$ADMIN_PUBKEY" ]] || die "--admin-pubkey is required"
+  [[ "$APP_DIR" =~ ^/opt/[a-zA-Z0-9_-]+$ ]] || die "--app-dir must be a direct directory under /opt"
   [[ "$(id -u)" -eq 0 ]] || die "must run as root"
   log "args: registry_mirror='${REGISTRY_MIRROR:-none}' harden_ssh=${HARDEN_SSH}"
 }
@@ -147,8 +149,8 @@ install_docker() {
   else
     daemon_json=$(printf '{\n  "log-driver": "json-file",\n  "log-opts": {"max-size": "10m", "max-file": "3"}\n}\n')
   fi
-  if [[ -f /etc/docker/daemon.json ]] && [[ "$(cat /etc/docker/daemon.json)" == "$daemon_json" ]]; then
-    log "daemon.json up to date, skip"
+  if [[ -f /etc/docker/daemon.json ]]; then
+    log "preserving existing daemon.json; configure any registry mirror manually"
   else
     printf '%s\n' "$daemon_json" > /etc/docker/daemon.json
     systemctl restart docker

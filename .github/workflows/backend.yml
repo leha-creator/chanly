@@ -1,41 +1,14 @@
 # Проверки бэкенда: генерация кода, vet, тесты с настоящей PostgreSQL, MinIO и
-# Mailpit (testcontainers), сборка образа. Деплой заглушки API — deploy.yml.
+# Mailpit (testcontainers), сборка образа. Автодеплой настоящего бэкенда — deploy.yml.
 name: backend
 
 on:
-  push:
-    branches: [master]
-    paths:
-      - go.mod
-      - go.sum
-      - cmd/**
-      - internal/**
-      - migrations/**
-      - templates/**
-      - api/openapi.yaml
-      - sqlc.yaml
-      - Dockerfile
-      - Dockerfile.dockerignore
-      - .github/workflows/backend.yml
-  pull_request:
-    branches: [master]
-    paths:
-      - go.mod
-      - go.sum
-      - cmd/**
-      - internal/**
-      - migrations/**
-      - templates/**
-      - api/openapi.yaml
-      - sqlc.yaml
-      - Dockerfile
-      - Dockerfile.dockerignore
-      - .github/workflows/backend.yml
+  workflow_call:
+    inputs:
+      ref:
+        type: string
+        required: true
   workflow_dispatch:
-
-concurrency:
-  group: backend-${{ github.ref }}
-  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -47,6 +20,8 @@ jobs:
       CI: "true"
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.ref || github.sha }}
       - uses: actions/setup-go@v6
         with:
           # Как в deploy.yml: встроенная спецификация сжата, байты зависят от версии Go.
@@ -72,6 +47,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.ref || github.sha }}
       - uses: docker/setup-buildx-action@v3
       - name: Build image
         uses: docker/build-push-action@v6
