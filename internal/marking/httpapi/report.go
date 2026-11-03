@@ -6,13 +6,13 @@ import (
 
 	openapi_types "github.com/oapi-codegen/runtime/types"
 
-	"github.com/leha-creator/maxim/internal/apigen"
-	"github.com/leha-creator/maxim/internal/marking/app"
-	"github.com/leha-creator/maxim/internal/marking/domain"
-	"github.com/leha-creator/maxim/internal/platform/adminref"
-	"github.com/leha-creator/maxim/internal/platform/apperr"
-	"github.com/leha-creator/maxim/internal/platform/httpx"
-	"github.com/leha-creator/maxim/internal/platform/logx"
+	"github.com/leha-creator/chanly/internal/apigen"
+	"github.com/leha-creator/chanly/internal/marking/app"
+	"github.com/leha-creator/chanly/internal/marking/domain"
+	"github.com/leha-creator/chanly/internal/platform/adminref"
+	"github.com/leha-creator/chanly/internal/platform/apperr"
+	"github.com/leha-creator/chanly/internal/platform/httpx"
+	"github.com/leha-creator/chanly/internal/platform/logx"
 )
 
 // Ежемесячная отчётность ОРД (S-31, R-21): просмотр — обе роли, формирование и отправка — senior.

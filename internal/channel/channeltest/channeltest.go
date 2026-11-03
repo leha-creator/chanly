@@ -12,7 +12,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/leha-creator/maxim/internal/platform/ids"
+	"github.com/leha-creator/chanly/internal/platform/ids"
 )
 
 // CategoryFood — категория из начального списка миграции 00004.

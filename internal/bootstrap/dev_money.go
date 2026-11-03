@@ -10,12 +10,12 @@ import (
 	"strings"
 	"time"
 
-	accountdomain "github.com/leha-creator/maxim/internal/account/domain"
-	accountpg "github.com/leha-creator/maxim/internal/account/postgres"
-	"github.com/leha-creator/maxim/internal/platform/audit"
-	"github.com/leha-creator/maxim/internal/platform/db"
-	"github.com/leha-creator/maxim/internal/platform/logx"
-	"github.com/leha-creator/maxim/internal/platform/money"
+	accountdomain "github.com/leha-creator/chanly/internal/account/domain"
+	accountpg "github.com/leha-creator/chanly/internal/account/postgres"
+	"github.com/leha-creator/chanly/internal/platform/audit"
+	"github.com/leha-creator/chanly/internal/platform/db"
+	"github.com/leha-creator/chanly/internal/platform/logx"
+	"github.com/leha-creator/chanly/internal/platform/money"
 )
 
 var msk = time.FixedZone("MSK", 3*60*60)

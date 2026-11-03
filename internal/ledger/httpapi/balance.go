@@ -8,11 +8,11 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/leha-creator/maxim/internal/apigen"
-	"github.com/leha-creator/maxim/internal/ledger/app"
-	"github.com/leha-creator/maxim/internal/platform/apperr"
-	"github.com/leha-creator/maxim/internal/platform/httpx"
-	"github.com/leha-creator/maxim/internal/platform/logx"
+	"github.com/leha-creator/chanly/internal/apigen"
+	"github.com/leha-creator/chanly/internal/ledger/app"
+	"github.com/leha-creator/chanly/internal/platform/apperr"
+	"github.com/leha-creator/chanly/internal/platform/httpx"
+	"github.com/leha-creator/chanly/internal/platform/logx"
 )
 
 const cabinetAdvertiser = "advertiser"

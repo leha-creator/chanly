@@ -4,11 +4,11 @@ import (
 	"context"
 	"time"
 
-	"github.com/leha-creator/maxim/internal/payout/domain"
-	"github.com/leha-creator/maxim/internal/platform/alert"
-	"github.com/leha-creator/maxim/internal/platform/logx"
-	"github.com/leha-creator/maxim/internal/platform/money"
-	"github.com/leha-creator/maxim/internal/platform/stuck"
+	"github.com/leha-creator/chanly/internal/payout/domain"
+	"github.com/leha-creator/chanly/internal/platform/alert"
+	"github.com/leha-creator/chanly/internal/platform/logx"
+	"github.com/leha-creator/chanly/internal/platform/money"
+	"github.com/leha-creator/chanly/internal/platform/stuck"
 )
 
 // DepositReport — состояние депозита Рокет Ворк (R-12, 06 §2.4).

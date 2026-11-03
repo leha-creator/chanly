@@ -7,9 +7,9 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/leha-creator/maxim/internal/placement/domain"
-	"github.com/leha-creator/maxim/internal/platform/audit"
-	"github.com/leha-creator/maxim/internal/platform/logx"
+	"github.com/leha-creator/chanly/internal/placement/domain"
+	"github.com/leha-creator/chanly/internal/platform/audit"
+	"github.com/leha-creator/chanly/internal/platform/logx"
 )
 
 // VersionChanged — последствия смены состояния версии поста (R-5): approved — заказ в

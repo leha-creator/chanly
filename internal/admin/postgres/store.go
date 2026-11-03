@@ -14,11 +14,11 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/prometheus/client_golang/prometheus"
 
-	"github.com/leha-creator/maxim/internal/admin/app"
-	"github.com/leha-creator/maxim/internal/admin/domain"
-	"github.com/leha-creator/maxim/internal/admin/postgres/sqlc"
-	"github.com/leha-creator/maxim/internal/platform/db"
-	"github.com/leha-creator/maxim/internal/platform/logx"
+	"github.com/leha-creator/chanly/internal/admin/app"
+	"github.com/leha-creator/chanly/internal/admin/domain"
+	"github.com/leha-creator/chanly/internal/admin/postgres/sqlc"
+	"github.com/leha-creator/chanly/internal/platform/db"
+	"github.com/leha-creator/chanly/internal/platform/logx"
 )
 
 // Store — хранилище модуля.

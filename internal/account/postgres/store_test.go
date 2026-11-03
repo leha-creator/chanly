@@ -11,14 +11,14 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/leha-creator/maxim/internal/account/accounttest"
-	"github.com/leha-creator/maxim/internal/account/domain"
-	"github.com/leha-creator/maxim/internal/account/postgres"
-	"github.com/leha-creator/maxim/internal/platform/apperr"
-	"github.com/leha-creator/maxim/internal/platform/dbtest"
-	"github.com/leha-creator/maxim/internal/platform/ids"
-	"github.com/leha-creator/maxim/internal/platform/logx"
-	"github.com/leha-creator/maxim/internal/platform/tx"
+	"github.com/leha-creator/chanly/internal/account/accounttest"
+	"github.com/leha-creator/chanly/internal/account/domain"
+	"github.com/leha-creator/chanly/internal/account/postgres"
+	"github.com/leha-creator/chanly/internal/platform/apperr"
+	"github.com/leha-creator/chanly/internal/platform/dbtest"
+	"github.com/leha-creator/chanly/internal/platform/ids"
+	"github.com/leha-creator/chanly/internal/platform/logx"
+	"github.com/leha-creator/chanly/internal/platform/tx"
 )
 
 func TestMain(m *testing.M) { os.Exit(dbtest.Main(m)) }

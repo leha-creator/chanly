@@ -9,10 +9,10 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/leha-creator/maxim/internal/placement/domain"
-	"github.com/leha-creator/maxim/internal/platform/apperr"
-	"github.com/leha-creator/maxim/internal/platform/ids"
-	"github.com/leha-creator/maxim/internal/post/posttest"
+	"github.com/leha-creator/chanly/internal/placement/domain"
+	"github.com/leha-creator/chanly/internal/platform/apperr"
+	"github.com/leha-creator/chanly/internal/platform/ids"
+	"github.com/leha-creator/chanly/internal/post/posttest"
 )
 
 // otherAdvertiser — второй рекламодатель.

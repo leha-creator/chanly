@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/leha-creator/maxim/internal/platform/logx"
+	"github.com/leha-creator/chanly/internal/platform/logx"
 )
 
 func TestLegalCommand(t *testing.T) {

@@ -16,9 +16,9 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/leha-creator/maxim/internal/platform/clock"
-	"github.com/leha-creator/maxim/internal/platform/logx"
-	"github.com/leha-creator/maxim/internal/platform/ratelimit/sqlc"
+	"github.com/leha-creator/chanly/internal/platform/clock"
+	"github.com/leha-creator/chanly/internal/platform/logx"
+	"github.com/leha-creator/chanly/internal/platform/ratelimit/sqlc"
 )
 
 // Priority — приоритет запроса по 05 §2.8, от высшего.

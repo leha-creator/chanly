@@ -9,11 +9,11 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/leha-creator/maxim/internal/apigen"
-	"github.com/leha-creator/maxim/internal/notification/app"
-	"github.com/leha-creator/maxim/internal/platform/apperr"
-	"github.com/leha-creator/maxim/internal/platform/httpx"
-	"github.com/leha-creator/maxim/internal/platform/logx"
+	"github.com/leha-creator/chanly/internal/apigen"
+	"github.com/leha-creator/chanly/internal/notification/app"
+	"github.com/leha-creator/chanly/internal/platform/apperr"
+	"github.com/leha-creator/chanly/internal/platform/httpx"
+	"github.com/leha-creator/chanly/internal/platform/logx"
 )
 
 // Handlers — операции OpenAPI уведомлений.

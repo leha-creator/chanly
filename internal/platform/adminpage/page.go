@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/leha-creator/maxim/internal/platform/apperr"
+	"github.com/leha-creator/chanly/internal/platform/apperr"
 )
 
 // Пределы страницы (PageMeta спецификации).

@@ -18,9 +18,9 @@ import (
 	"github.com/disintegration/imaging"
 	_ "golang.org/x/image/webp" // декодер WebP для image.Decode и image.DecodeConfig
 
-	"github.com/leha-creator/maxim/internal/platform/clock"
-	"github.com/leha-creator/maxim/internal/platform/logx"
-	"github.com/leha-creator/maxim/internal/post/domain"
+	"github.com/leha-creator/chanly/internal/platform/clock"
+	"github.com/leha-creator/chanly/internal/platform/logx"
+	"github.com/leha-creator/chanly/internal/post/domain"
 )
 
 // Качество JPEG (R-4).

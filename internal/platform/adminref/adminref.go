@@ -10,7 +10,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/leha-creator/maxim/internal/platform/db"
+	"github.com/leha-creator/chanly/internal/platform/db"
 )
 
 // Org — организация в ссылке.

@@ -6,8 +6,8 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/leha-creator/maxim/internal/marking/domain"
-	"github.com/leha-creator/maxim/internal/marking/postgres/sqlc"
+	"github.com/leha-creator/chanly/internal/marking/domain"
+	"github.com/leha-creator/chanly/internal/marking/postgres/sqlc"
 )
 
 // Reports — ежемесячная отчётность ОРД: снимки, статистика, акты, состояние месяца (R-18 … R-24).

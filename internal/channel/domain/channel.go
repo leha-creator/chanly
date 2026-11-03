@@ -191,12 +191,21 @@ func (c *Channel) Approved() bool {
 	return c.ModeratedAt != nil && c.Status != StatusRejected
 }
 
+// VisibilityPolicy controls eligibility without changing the observed IsPublic
+// fact. The default is strict; bootstrap enables private channels only in dev.
+type VisibilityPolicy int
+
+const (
+	PublicChannelsOnly VisibilityPolicy = iota
+	AllowPrivateChannels
+)
+
 // problem — почему канал не может принимать размещения: нет прав или канал закрытый.
-func (c *Channel) problem() string {
+func (c *Channel) problem(visibility ...VisibilityPolicy) string {
 	if len(c.MissingPermissions()) > 0 {
 		return ReasonMissingRights
 	}
-	if !c.IsPublic {
+	if !c.IsPublic && (len(visibility) == 0 || visibility[0] != AllowPrivateChannels) {
 		return ReasonNotPublic
 	}
 	return ""
@@ -211,14 +220,14 @@ func (c *Channel) RknRequired(rknThreshold int) bool {
 // target — состояние, которое следует из фактов канала (R-8 этапа «Подключение
 // каналов», R-16): права и публичность, затем номер РКН. rknThreshold — порог
 // подписчиков RKN_SUBSCRIBERS_THRESHOLD.
-func (c *Channel) target(rknThreshold int) (Status, string) {
+func (c *Channel) target(rknThreshold int, visibility ...VisibilityPolicy) (Status, string) {
 	switch c.Status {
 	case StatusBlocked, StatusDisconnected, StatusRejected:
 		return c.Status, c.StatusReason
 	case StatusUnclaimed:
 		return StatusUnclaimed, ""
 	}
-	if reason := c.problem(); reason != "" {
+	if reason := c.problem(visibility...); reason != "" {
 		if c.Status == StatusActive || c.Status == StatusSuspended {
 			return StatusSuspended, reason
 		}
@@ -242,9 +251,9 @@ func (c *Channel) target(rknThreshold int) (Status, string) {
 }
 
 // resolve приводит состояние к фактам и отмечает изменение.
-func (c *Channel) resolve(rknThreshold int, now time.Time) StatusChange {
+func (c *Channel) resolve(rknThreshold int, now time.Time, visibility ...VisibilityPolicy) StatusChange {
 	change := StatusChange{ChannelID: c.ID, From: c.Status}
-	c.Status, c.StatusReason = c.target(rknThreshold)
+	c.Status, c.StatusReason = c.target(rknThreshold, visibility...)
 	change.To, change.Reason = c.Status, c.StatusReason
 	c.touch(now)
 	return change
@@ -300,7 +309,7 @@ func (c *Channel) BotRemoved(now time.Time) StatusChange {
 
 // RightsRefreshed — прочитаны сведения о канале и права бота (05 §2.4 шаги 4–6).
 // Число подписчиков применяет правило РКН (R-16).
-func (c *Channel) RightsRefreshed(info ChatInfo, m Membership, rknThreshold int, now time.Time) StatusChange {
+func (c *Channel) RightsRefreshed(info ChatInfo, m Membership, rknThreshold int, now time.Time, visibility ...VisibilityPolicy) StatusChange {
 	c.applyChatInfo(info, rknThreshold)
 	c.BotIsAdmin = m.IsAdmin
 	c.BotPermissions = slices.Clone(m.Permissions)
@@ -308,14 +317,14 @@ func (c *Channel) RightsRefreshed(info ChatInfo, m Membership, rknThreshold int,
 		c.BotPermissions = []string{}
 	}
 	c.BotPermissionsCheckedAt = &now
-	return c.resolve(rknThreshold, now)
+	return c.resolve(rknThreshold, now, visibility...)
 }
 
 // MetricsRefreshed — сведения о канале из суточного задания метрик (S-32): название,
 // описание, публичность и подписчики; затем правило РКН (R-16).
-func (c *Channel) MetricsRefreshed(info ChatInfo, rknThreshold int, now time.Time) StatusChange {
+func (c *Channel) MetricsRefreshed(info ChatInfo, rknThreshold int, now time.Time, visibility ...VisibilityPolicy) StatusChange {
 	c.applyChatInfo(info, rknThreshold)
-	return c.resolve(rknThreshold, now)
+	return c.resolve(rknThreshold, now, visibility...)
 }
 
 // applyChatInfo переносит сведения MAX в канал и пересчитывает, нужен ли номер РКН.
@@ -333,7 +342,7 @@ func (c *Channel) TitleChanged(title string, now time.Time) {
 }
 
 // LinkTo связывает канал с организацией кода подключения (05 §2.4 шаг 3).
-func (c *Channel) LinkTo(orgID uuid.UUID, rknThreshold int, now time.Time) (StatusChange, error) {
+func (c *Channel) LinkTo(orgID uuid.UUID, rknThreshold int, now time.Time, visibility ...VisibilityPolicy) (StatusChange, error) {
 	if c.OrganizationID != nil {
 		if *c.OrganizationID == orgID {
 			return StatusChange{}, ErrAlreadyLinked
@@ -346,7 +355,7 @@ func (c *Channel) LinkTo(orgID uuid.UUID, rknThreshold int, now time.Time) (Stat
 	c.OrganizationID = &orgID
 	c.UnclaimedSince = nil
 	c.Status = StatusPendingRights
-	change := c.resolve(rknThreshold, now)
+	change := c.resolve(rknThreshold, now, visibility...)
 	change.From = StatusUnclaimed
 	return change, nil
 }
@@ -373,7 +382,7 @@ type ProfileUpdate struct {
 
 // UpdateProfile применяет правку блогера. rknThreshold — порог подписчиков, с
 // которого нужен номер в реестре РКН (D-11, 07 §8).
-func (c *Channel) UpdateProfile(p ProfileUpdate, rknThreshold int, now time.Time) (StatusChange, error) {
+func (c *Channel) UpdateProfile(p ProfileUpdate, rknThreshold int, now time.Time, visibility ...VisibilityPolicy) (StatusChange, error) {
 	switch c.Status {
 	case StatusUnclaimed, StatusDisconnected, StatusBlocked:
 		return StatusChange{}, ErrNotEditable
@@ -399,7 +408,7 @@ func (c *Channel) UpdateProfile(p ProfileUpdate, rknThreshold int, now time.Time
 	if c.Status == StatusRejected {
 		c.Status, c.StatusReason = StatusPendingRights, ""
 	}
-	change := c.resolve(rknThreshold, now)
+	change := c.resolve(rknThreshold, now, visibility...)
 	change.From = from
 	return change, nil
 }

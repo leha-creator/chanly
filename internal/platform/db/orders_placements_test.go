@@ -5,9 +5,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/leha-creator/maxim/internal/platform/db"
-	"github.com/leha-creator/maxim/internal/platform/dbtest"
-	"github.com/leha-creator/maxim/internal/platform/ids"
+	"github.com/leha-creator/chanly/internal/platform/db"
+	"github.com/leha-creator/chanly/internal/platform/dbtest"
+	"github.com/leha-creator/chanly/internal/platform/ids"
 )
 
 // orderFixture записывает рекламодателя с кампанией, постом и версией, канал блогера,

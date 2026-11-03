@@ -4,9 +4,9 @@ import (
 	"context"
 	"errors"
 
-	"github.com/leha-creator/maxim/internal/placement/domain"
-	"github.com/leha-creator/maxim/internal/platform/ids"
-	"github.com/leha-creator/maxim/internal/platform/logx"
+	"github.com/leha-creator/chanly/internal/placement/domain"
+	"github.com/leha-creator/chanly/internal/platform/ids"
+	"github.com/leha-creator/chanly/internal/platform/logx"
 )
 
 // reportViolation — найденное нарушение (R-10, R-11): запись нарушения, для removed_early — снятие

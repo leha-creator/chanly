@@ -8,9 +8,9 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/prometheus/client_golang/prometheus"
 
-	"github.com/leha-creator/maxim/internal/platform/clock"
-	"github.com/leha-creator/maxim/internal/platform/job/sqlc"
-	"github.com/leha-creator/maxim/internal/platform/logx"
+	"github.com/leha-creator/chanly/internal/platform/clock"
+	"github.com/leha-creator/chanly/internal/platform/job/sqlc"
+	"github.com/leha-creator/chanly/internal/platform/logx"
 )
 
 // overdueAfter — задание в pending, чьё время прошло больше чем на минуту, считается просроченным.

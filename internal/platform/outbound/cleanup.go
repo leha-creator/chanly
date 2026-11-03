@@ -6,7 +6,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/leha-creator/maxim/internal/platform/outbound/sqlc"
+	"github.com/leha-creator/chanly/internal/platform/outbound/sqlc"
 )
 
 // DeleteRequests удаляет записи outbound_request старше before (04 §8: 180 суток).

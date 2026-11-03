@@ -3,7 +3,7 @@ package domain
 import (
 	"testing"
 
-	"github.com/leha-creator/maxim/internal/platform/money"
+	"github.com/leha-creator/chanly/internal/platform/money"
 )
 
 // Формулы 03 §7 на граничных долях и суммах с остатком при округлении (07 §9).

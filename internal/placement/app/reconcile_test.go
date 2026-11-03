@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/leha-creator/maxim/internal/placement/domain"
+	"github.com/leha-creator/chanly/internal/placement/domain"
 )
 
 // reconcile запускает сверку и проверки публикаций, сдвигая часы на интервал сверки.

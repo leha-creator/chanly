@@ -6,7 +6,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/leha-creator/maxim/internal/platform/money"
+	"github.com/leha-creator/chanly/internal/platform/money"
 )
 
 // Entry — проводка по счёту для операций кабинета (R-9): кредит увеличивает пассив.

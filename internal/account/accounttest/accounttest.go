@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"sync/atomic"
 
-	"github.com/leha-creator/maxim/internal/account/domain"
+	"github.com/leha-creator/chanly/internal/account/domain"
 )
 
 var seq atomic.Int64

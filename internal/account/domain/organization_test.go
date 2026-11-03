@@ -8,7 +8,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/leha-creator/maxim/internal/platform/apperr"
+	"github.com/leha-creator/chanly/internal/platform/apperr"
 )
 
 var now = time.Date(2026, 10, 16, 9, 0, 0, 0, time.UTC)

@@ -8,9 +8,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/leha-creator/maxim/internal/apigen"
-	"github.com/leha-creator/maxim/internal/platform/apperr"
-	"github.com/leha-creator/maxim/internal/platform/logx"
+	"github.com/leha-creator/chanly/internal/apigen"
+	"github.com/leha-creator/chanly/internal/platform/apperr"
+	"github.com/leha-creator/chanly/internal/platform/logx"
 )
 
 func (h *Handlers) UploadMedia(ctx context.Context, req apigen.UploadMediaRequestObject) (apigen.UploadMediaResponseObject, error) {

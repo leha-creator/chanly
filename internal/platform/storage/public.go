@@ -4,7 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 
-	"github.com/leha-creator/maxim/internal/platform/ids"
+	"github.com/leha-creator/chanly/internal/platform/ids"
 )
 
 // PublicArea — префикс ключей публичной области.

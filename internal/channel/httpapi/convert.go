@@ -4,9 +4,9 @@ import (
 	"context"
 	openapi_types "github.com/oapi-codegen/runtime/types"
 
-	"github.com/leha-creator/maxim/internal/apigen"
-	"github.com/leha-creator/maxim/internal/channel/domain"
-	"github.com/leha-creator/maxim/internal/platform/money"
+	"github.com/leha-creator/chanly/internal/apigen"
+	"github.com/leha-creator/chanly/internal/channel/domain"
+	"github.com/leha-creator/chanly/internal/platform/money"
 )
 
 // view — канал для кабинета блогера с живыми интервалами недоступности.

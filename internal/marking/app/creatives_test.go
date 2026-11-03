@@ -10,14 +10,14 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/leha-creator/maxim/internal/integration/ord"
-	"github.com/leha-creator/maxim/internal/marking/domain"
-	placementapp "github.com/leha-creator/maxim/internal/placement/app"
-	placementdomain "github.com/leha-creator/maxim/internal/placement/domain"
-	"github.com/leha-creator/maxim/internal/platform/storage/storagefake"
-	postapp "github.com/leha-creator/maxim/internal/post/app"
-	postdomain "github.com/leha-creator/maxim/internal/post/domain"
-	"github.com/leha-creator/maxim/internal/post/imaging/imagingtest"
+	"github.com/leha-creator/chanly/internal/integration/ord"
+	"github.com/leha-creator/chanly/internal/marking/domain"
+	placementapp "github.com/leha-creator/chanly/internal/placement/app"
+	placementdomain "github.com/leha-creator/chanly/internal/placement/domain"
+	"github.com/leha-creator/chanly/internal/platform/storage/storagefake"
+	postapp "github.com/leha-creator/chanly/internal/post/app"
+	postdomain "github.com/leha-creator/chanly/internal/post/domain"
+	"github.com/leha-creator/chanly/internal/post/imaging/imagingtest"
 )
 
 func placementStatus(o placementapp.OrderView) placementdomain.Status {

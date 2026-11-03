@@ -6,7 +6,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/leha-creator/maxim/internal/notification/domain"
+	"github.com/leha-creator/chanly/internal/notification/domain"
 )
 
 // Recipients — адресаты в памяти.

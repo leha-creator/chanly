@@ -3,10 +3,10 @@ package httpapi
 import (
 	openapi_types "github.com/oapi-codegen/runtime/types"
 
-	"github.com/leha-creator/maxim/internal/apigen"
-	"github.com/leha-creator/maxim/internal/platform/apperr"
-	"github.com/leha-creator/maxim/internal/post/app"
-	"github.com/leha-creator/maxim/internal/post/domain"
+	"github.com/leha-creator/chanly/internal/apigen"
+	"github.com/leha-creator/chanly/internal/platform/apperr"
+	"github.com/leha-creator/chanly/internal/post/app"
+	"github.com/leha-creator/chanly/internal/post/domain"
 )
 
 func toMediaFile(v app.MediaView) apigen.MediaFile {

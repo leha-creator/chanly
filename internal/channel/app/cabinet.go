@@ -9,11 +9,11 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/leha-creator/maxim/internal/channel/domain"
-	"github.com/leha-creator/maxim/internal/platform/apperr"
-	"github.com/leha-creator/maxim/internal/platform/audit"
-	"github.com/leha-creator/maxim/internal/platform/ids"
-	"github.com/leha-creator/maxim/internal/platform/logx"
+	"github.com/leha-creator/chanly/internal/channel/domain"
+	"github.com/leha-creator/chanly/internal/platform/apperr"
+	"github.com/leha-creator/chanly/internal/platform/audit"
+	"github.com/leha-creator/chanly/internal/platform/ids"
+	"github.com/leha-creator/chanly/internal/platform/logx"
 )
 
 // IssuedLinkCode — код подключения для кабинета. Код показывается один раз и
@@ -112,7 +112,7 @@ func (s *Service) Update(ctx context.Context, orgID, id uuid.UUID, p domain.Prof
 			return err
 		}
 		before := profile(c)
-		change, err := c.UpdateProfile(p, s.Config.RknThreshold, s.Clock.Now())
+		change, err := c.UpdateProfile(p, s.Config.RknThreshold, s.Clock.Now(), s.Config.Visibility)
 		if errors.Is(err, domain.ErrNotEditable) {
 			s.log.WarnContext(ctx, "channel update rejected", logx.KeyOp, op, KeyChannelID, c.ID, "status", c.Status)
 			return apperr.Conflict("channel cannot be edited in its current status").WithDetail("status", string(c.Status))

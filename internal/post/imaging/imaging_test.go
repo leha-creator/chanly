@@ -15,11 +15,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/leha-creator/maxim/internal/platform/clock"
-	"github.com/leha-creator/maxim/internal/platform/logx"
-	"github.com/leha-creator/maxim/internal/post/domain"
-	"github.com/leha-creator/maxim/internal/post/imaging"
-	"github.com/leha-creator/maxim/internal/post/imaging/imagingtest"
+	"github.com/leha-creator/chanly/internal/platform/clock"
+	"github.com/leha-creator/chanly/internal/platform/logx"
+	"github.com/leha-creator/chanly/internal/post/domain"
+	"github.com/leha-creator/chanly/internal/post/imaging"
+	"github.com/leha-creator/chanly/internal/post/imaging/imagingtest"
 )
 
 var update = flag.Bool("update", false, "rewrite golden images in testdata")

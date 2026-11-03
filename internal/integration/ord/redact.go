@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"unicode/utf8"
 
-	"github.com/leha-creator/maxim/internal/platform/logx"
+	"github.com/leha-creator/chanly/internal/platform/logx"
 )
 
 // recordBody — тело запроса для outbound_request (R-16): ИНН маскирован, вместо текста

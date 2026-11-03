@@ -5,7 +5,7 @@ import (
 	"testing"
 	"unicode/utf8"
 
-	"github.com/leha-creator/maxim/internal/post/domain"
+	"github.com/leha-creator/chanly/internal/post/domain"
 )
 
 // fixedMeasurer — каждый символ шириной в половину кегля.

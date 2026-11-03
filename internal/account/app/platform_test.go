@@ -7,9 +7,9 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/leha-creator/maxim/internal/account/accounttest"
-	"github.com/leha-creator/maxim/internal/account/app"
-	"github.com/leha-creator/maxim/internal/account/domain"
+	"github.com/leha-creator/chanly/internal/account/accounttest"
+	"github.com/leha-creator/chanly/internal/account/app"
+	"github.com/leha-creator/chanly/internal/account/domain"
 )
 
 func TestEnsurePlatformOrganization(t *testing.T) {

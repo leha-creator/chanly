@@ -7,10 +7,10 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/leha-creator/maxim/internal/ledger/domain"
-	"github.com/leha-creator/maxim/internal/platform/ids"
-	"github.com/leha-creator/maxim/internal/platform/logx"
-	"github.com/leha-creator/maxim/internal/platform/money"
+	"github.com/leha-creator/chanly/internal/ledger/domain"
+	"github.com/leha-creator/chanly/internal/platform/ids"
+	"github.com/leha-creator/chanly/internal/platform/logx"
+	"github.com/leha-creator/chanly/internal/platform/money"
 )
 
 // Result — итог проводки: идентификатор транзакции и признак повтора по ключу.

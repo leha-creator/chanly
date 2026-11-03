@@ -9,10 +9,10 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/leha-creator/maxim/internal/integration/ord"
-	"github.com/leha-creator/maxim/internal/integration/ord/ordfake"
-	"github.com/leha-creator/maxim/internal/marking/domain"
-	postdomain "github.com/leha-creator/maxim/internal/post/domain"
+	"github.com/leha-creator/chanly/internal/integration/ord"
+	"github.com/leha-creator/chanly/internal/integration/ord/ordfake"
+	"github.com/leha-creator/chanly/internal/marking/domain"
+	postdomain "github.com/leha-creator/chanly/internal/post/domain"
 )
 
 type recordingListener struct {

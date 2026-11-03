@@ -8,13 +8,13 @@ import (
 	"log/slog"
 	"strconv"
 
-	"github.com/leha-creator/maxim/internal/ledger/domain"
-	"github.com/leha-creator/maxim/internal/platform/alert"
-	"github.com/leha-creator/maxim/internal/platform/audit"
-	"github.com/leha-creator/maxim/internal/platform/clock"
-	"github.com/leha-creator/maxim/internal/platform/logx"
-	"github.com/leha-creator/maxim/internal/platform/money"
-	"github.com/leha-creator/maxim/internal/platform/tx"
+	"github.com/leha-creator/chanly/internal/ledger/domain"
+	"github.com/leha-creator/chanly/internal/platform/alert"
+	"github.com/leha-creator/chanly/internal/platform/audit"
+	"github.com/leha-creator/chanly/internal/platform/clock"
+	"github.com/leha-creator/chanly/internal/platform/logx"
+	"github.com/leha-creator/chanly/internal/platform/money"
+	"github.com/leha-creator/chanly/internal/platform/tx"
 )
 
 // Поля журнала (06 §11, 07 §5.1).

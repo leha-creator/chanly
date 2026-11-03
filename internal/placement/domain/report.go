@@ -10,7 +10,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/leha-creator/maxim/internal/platform/money"
+	"github.com/leha-creator/chanly/internal/platform/money"
 )
 
 // Отчёт по заказу (S-09, R-14 и R-15 этапа «Уведомления и отчёт по кампании»): строки по

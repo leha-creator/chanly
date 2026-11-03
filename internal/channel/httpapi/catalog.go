@@ -5,12 +5,12 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/leha-creator/maxim/internal/apigen"
-	"github.com/leha-creator/maxim/internal/channel/app"
-	"github.com/leha-creator/maxim/internal/channel/domain"
-	"github.com/leha-creator/maxim/internal/platform/apperr"
-	"github.com/leha-creator/maxim/internal/platform/httpx"
-	"github.com/leha-creator/maxim/internal/platform/money"
+	"github.com/leha-creator/chanly/internal/apigen"
+	"github.com/leha-creator/chanly/internal/channel/app"
+	"github.com/leha-creator/chanly/internal/channel/domain"
+	"github.com/leha-creator/chanly/internal/platform/apperr"
+	"github.com/leha-creator/chanly/internal/platform/httpx"
+	"github.com/leha-creator/chanly/internal/platform/money"
 )
 
 // cabinetAdvertiser — каталог видит пользователь с открытым кабинетом рекламодателя (R-12).

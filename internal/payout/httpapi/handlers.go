@@ -7,12 +7,12 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/leha-creator/maxim/internal/apigen"
-	"github.com/leha-creator/maxim/internal/payout/app"
-	"github.com/leha-creator/maxim/internal/payout/domain"
-	"github.com/leha-creator/maxim/internal/platform/apperr"
-	"github.com/leha-creator/maxim/internal/platform/httpx"
-	"github.com/leha-creator/maxim/internal/platform/logx"
+	"github.com/leha-creator/chanly/internal/apigen"
+	"github.com/leha-creator/chanly/internal/payout/app"
+	"github.com/leha-creator/chanly/internal/payout/domain"
+	"github.com/leha-creator/chanly/internal/platform/apperr"
+	"github.com/leha-creator/chanly/internal/platform/httpx"
+	"github.com/leha-creator/chanly/internal/platform/logx"
 )
 
 // cabinetBlogger — операции модуля доступны кабинету блогера своей организации (07 §4).

@@ -10,7 +10,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/leha-creator/maxim/internal/platform/money"
+	"github.com/leha-creator/chanly/internal/platform/money"
 )
 
 var msk = time.FixedZone("MSK", 3*60*60)

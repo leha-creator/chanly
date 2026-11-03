@@ -14,13 +14,13 @@ import (
 
 	"github.com/google/uuid"
 
-	accountdomain "github.com/leha-creator/maxim/internal/account/domain"
-	accountpg "github.com/leha-creator/maxim/internal/account/postgres"
-	placementapp "github.com/leha-creator/maxim/internal/placement/app"
-	placementdomain "github.com/leha-creator/maxim/internal/placement/domain"
-	"github.com/leha-creator/maxim/internal/platform/audit"
-	"github.com/leha-creator/maxim/internal/platform/db"
-	"github.com/leha-creator/maxim/internal/platform/logx"
+	accountdomain "github.com/leha-creator/chanly/internal/account/domain"
+	accountpg "github.com/leha-creator/chanly/internal/account/postgres"
+	placementapp "github.com/leha-creator/chanly/internal/placement/app"
+	placementdomain "github.com/leha-creator/chanly/internal/placement/domain"
+	"github.com/leha-creator/chanly/internal/platform/audit"
+	"github.com/leha-creator/chanly/internal/platform/db"
+	"github.com/leha-creator/chanly/internal/platform/logx"
 )
 
 // errAdminRequired — у пользователя команды нет роли администратора (moderator или senior, 07 §4).

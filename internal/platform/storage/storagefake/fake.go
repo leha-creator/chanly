@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/leha-creator/maxim/internal/platform/storage"
+	"github.com/leha-creator/chanly/internal/platform/storage"
 )
 
 // PublicBaseURL — адрес публичной области поддельного хранилища.

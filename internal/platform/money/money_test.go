@@ -3,7 +3,7 @@ package money_test
 import (
 	"testing"
 
-	"github.com/leha-creator/maxim/internal/platform/money"
+	"github.com/leha-creator/chanly/internal/platform/money"
 )
 
 func TestShareBP(t *testing.T) {

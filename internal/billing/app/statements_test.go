@@ -12,12 +12,12 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 
-	"github.com/leha-creator/maxim/internal/billing/app"
-	"github.com/leha-creator/maxim/internal/billing/domain"
-	"github.com/leha-creator/maxim/internal/billing/postgres"
-	"github.com/leha-creator/maxim/internal/platform/apperr"
-	"github.com/leha-creator/maxim/internal/platform/logx"
-	"github.com/leha-creator/maxim/internal/platform/money"
+	"github.com/leha-creator/chanly/internal/billing/app"
+	"github.com/leha-creator/chanly/internal/billing/domain"
+	"github.com/leha-creator/chanly/internal/billing/postgres"
+	"github.com/leha-creator/chanly/internal/platform/apperr"
+	"github.com/leha-creator/chanly/internal/platform/logx"
+	"github.com/leha-creator/chanly/internal/platform/money"
 )
 
 // payment — поступление в выписке 1С.

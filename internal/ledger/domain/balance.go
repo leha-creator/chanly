@@ -1,6 +1,6 @@
 package domain
 
-import "github.com/leha-creator/maxim/internal/platform/money"
+import "github.com/leha-creator/chanly/internal/platform/money"
 
 // ApplyPostings — остатки счетов после проводок (06 §2.2 п. 2). Исходная карта не меняется.
 // Пассив с отрицательным итогом — *NegativeLiabilityError с наибольшей нехваткой (п. 4);

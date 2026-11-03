@@ -6,8 +6,8 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/leha-creator/maxim/internal/channel/domain"
-	"github.com/leha-creator/maxim/internal/platform/logx"
+	"github.com/leha-creator/chanly/internal/channel/domain"
+	"github.com/leha-creator/chanly/internal/platform/logx"
 )
 
 // SetMarkingPorts подставляет модуль маркировки (этап «Маркировка», R-13; bootstrap).

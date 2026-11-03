@@ -14,10 +14,10 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/leha-creator/maxim/internal/placement/domain"
-	"github.com/leha-creator/maxim/internal/platform/ids"
-	"github.com/leha-creator/maxim/internal/platform/money"
-	"github.com/leha-creator/maxim/internal/platform/tx"
+	"github.com/leha-creator/chanly/internal/placement/domain"
+	"github.com/leha-creator/chanly/internal/platform/ids"
+	"github.com/leha-creator/chanly/internal/platform/money"
+	"github.com/leha-creator/chanly/internal/platform/tx"
 )
 
 // Holds — удержания в памяти. Баланс организации без SetBalance не ограничен.

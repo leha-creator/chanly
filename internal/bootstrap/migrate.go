@@ -5,7 +5,7 @@ import (
 	"errors"
 	"log/slog"
 
-	"github.com/leha-creator/maxim/internal/platform/db"
+	"github.com/leha-creator/chanly/internal/platform/db"
 )
 
 // runMigrate — режим migrate: up, down (одна миграция) или status.

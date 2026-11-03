@@ -7,7 +7,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 
-	"github.com/leha-creator/maxim/internal/placement/domain"
+	"github.com/leha-creator/chanly/internal/placement/domain"
 )
 
 func TestControlMetrics(t *testing.T) {

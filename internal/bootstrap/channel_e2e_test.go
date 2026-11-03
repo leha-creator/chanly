@@ -11,12 +11,12 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/leha-creator/maxim/internal/account/accounttest"
-	"github.com/leha-creator/maxim/internal/account/domain"
-	"github.com/leha-creator/maxim/internal/channel/channeltest"
-	"github.com/leha-creator/maxim/internal/integration/max"
-	"github.com/leha-creator/maxim/internal/integration/max/maxfake"
-	"github.com/leha-creator/maxim/internal/integration/rocketwork/rocketworkfake"
+	"github.com/leha-creator/chanly/internal/account/accounttest"
+	"github.com/leha-creator/chanly/internal/account/domain"
+	"github.com/leha-creator/chanly/internal/channel/channeltest"
+	"github.com/leha-creator/chanly/internal/integration/max"
+	"github.com/leha-creator/chanly/internal/integration/max/maxfake"
+	"github.com/leha-creator/chanly/internal/integration/rocketwork/rocketworkfake"
 )
 
 // bloggerClient — пользователь с организацией-блогером (S-10) и исполнителем Рокет Ворк active.

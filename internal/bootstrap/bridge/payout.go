@@ -8,18 +8,18 @@ import (
 
 	"github.com/google/uuid"
 
-	accountdomain "github.com/leha-creator/maxim/internal/account/domain"
-	accountpg "github.com/leha-creator/maxim/internal/account/postgres"
-	"github.com/leha-creator/maxim/internal/integration/rocketwork"
-	ledgerapp "github.com/leha-creator/maxim/internal/ledger/app"
-	ledgerdomain "github.com/leha-creator/maxim/internal/ledger/domain"
-	payoutapp "github.com/leha-creator/maxim/internal/payout/app"
-	"github.com/leha-creator/maxim/internal/payout/domain"
-	placementapp "github.com/leha-creator/maxim/internal/placement/app"
-	placementdomain "github.com/leha-creator/maxim/internal/placement/domain"
-	placementpg "github.com/leha-creator/maxim/internal/placement/postgres"
-	"github.com/leha-creator/maxim/internal/platform/logx"
-	"github.com/leha-creator/maxim/internal/platform/money"
+	accountdomain "github.com/leha-creator/chanly/internal/account/domain"
+	accountpg "github.com/leha-creator/chanly/internal/account/postgres"
+	"github.com/leha-creator/chanly/internal/integration/rocketwork"
+	ledgerapp "github.com/leha-creator/chanly/internal/ledger/app"
+	ledgerdomain "github.com/leha-creator/chanly/internal/ledger/domain"
+	payoutapp "github.com/leha-creator/chanly/internal/payout/app"
+	"github.com/leha-creator/chanly/internal/payout/domain"
+	placementapp "github.com/leha-creator/chanly/internal/placement/app"
+	placementdomain "github.com/leha-creator/chanly/internal/placement/domain"
+	placementpg "github.com/leha-creator/chanly/internal/placement/postgres"
+	"github.com/leha-creator/chanly/internal/platform/logx"
+	"github.com/leha-creator/chanly/internal/platform/money"
 )
 
 // ---------------------------------------------------------------- payout → Рокет Ворк

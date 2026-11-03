@@ -7,8 +7,8 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/leha-creator/maxim/internal/apigen"
-	"github.com/leha-creator/maxim/internal/placement/domain"
+	"github.com/leha-creator/chanly/internal/apigen"
+	"github.com/leha-creator/chanly/internal/placement/domain"
 )
 
 // GetOrderReport — отчёт по кампании (S-09, R-14 этапа «Уведомления и отчёт по кампании»).

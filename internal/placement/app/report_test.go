@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/leha-creator/maxim/internal/placement/domain"
-	"github.com/leha-creator/maxim/internal/platform/apperr"
+	"github.com/leha-creator/chanly/internal/placement/domain"
+	"github.com/leha-creator/chanly/internal/platform/apperr"
 )
 
 // Отчёт по заказу после публикации и снятия (R-14 этапа уведомлений): просмотры, ссылка на пост,

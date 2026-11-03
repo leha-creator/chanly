@@ -1,4 +1,4 @@
-module github.com/leha-creator/maxim
+module github.com/leha-creator/chanly
 
 go 1.26.0
 

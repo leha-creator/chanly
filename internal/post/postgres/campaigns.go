@@ -7,8 +7,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 
-	"github.com/leha-creator/maxim/internal/post/domain"
-	"github.com/leha-creator/maxim/internal/post/postgres/sqlc"
+	"github.com/leha-creator/chanly/internal/post/domain"
+	"github.com/leha-creator/chanly/internal/post/postgres/sqlc"
 )
 
 // Campaigns — кампании организации.

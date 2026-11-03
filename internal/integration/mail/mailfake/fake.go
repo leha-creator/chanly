@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/leha-creator/maxim/internal/platform/alert"
+	"github.com/leha-creator/chanly/internal/platform/alert"
 )
 
 // LoginCodeMessage — отправленное письмо с кодом входа.

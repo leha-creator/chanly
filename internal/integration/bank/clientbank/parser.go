@@ -18,9 +18,9 @@ import (
 
 	"golang.org/x/text/encoding/charmap"
 
-	"github.com/leha-creator/maxim/internal/billing/domain"
-	"github.com/leha-creator/maxim/internal/platform/logx"
-	"github.com/leha-creator/maxim/internal/platform/money"
+	"github.com/leha-creator/chanly/internal/billing/domain"
+	"github.com/leha-creator/chanly/internal/platform/logx"
+	"github.com/leha-creator/chanly/internal/platform/money"
 )
 
 // DefaultMaxBytes — предел размера файла по умолчанию (STATEMENT_MAX_BYTES).

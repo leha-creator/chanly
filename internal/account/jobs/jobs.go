@@ -4,8 +4,8 @@ package jobs
 import (
 	"context"
 
-	"github.com/leha-creator/maxim/internal/account/app"
-	"github.com/leha-creator/maxim/internal/platform/job"
+	"github.com/leha-creator/chanly/internal/account/app"
+	"github.com/leha-creator/chanly/internal/platform/job"
 )
 
 // Register регистрирует виды заданий модуля.

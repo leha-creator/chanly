@@ -5,8 +5,8 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/leha-creator/maxim/internal/channel/app"
-	"github.com/leha-creator/maxim/internal/channel/domain"
+	"github.com/leha-creator/chanly/internal/channel/app"
+	"github.com/leha-creator/chanly/internal/channel/domain"
 )
 
 type approvals struct {

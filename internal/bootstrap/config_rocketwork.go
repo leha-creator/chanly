@@ -5,8 +5,8 @@ import (
 	"strings"
 	"time"
 
-	payoutapp "github.com/leha-creator/maxim/internal/payout/app"
-	"github.com/leha-creator/maxim/internal/platform/money"
+	payoutapp "github.com/leha-creator/chanly/internal/payout/app"
+	"github.com/leha-creator/chanly/internal/platform/money"
 )
 
 // Режимы адаптера Рокет Ворк (R-1 этапа выплат).

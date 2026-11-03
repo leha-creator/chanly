@@ -14,16 +14,16 @@ import (
 
 	"github.com/google/uuid"
 
-	accountdomain "github.com/leha-creator/maxim/internal/account/domain"
-	accountpg "github.com/leha-creator/maxim/internal/account/postgres"
-	billingdomain "github.com/leha-creator/maxim/internal/billing/domain"
-	ledgerapp "github.com/leha-creator/maxim/internal/ledger/app"
-	ledgerdomain "github.com/leha-creator/maxim/internal/ledger/domain"
-	"github.com/leha-creator/maxim/internal/platform/audit"
-	"github.com/leha-creator/maxim/internal/platform/db"
-	"github.com/leha-creator/maxim/internal/platform/ids"
-	"github.com/leha-creator/maxim/internal/platform/logx"
-	"github.com/leha-creator/maxim/internal/platform/money"
+	accountdomain "github.com/leha-creator/chanly/internal/account/domain"
+	accountpg "github.com/leha-creator/chanly/internal/account/postgres"
+	billingdomain "github.com/leha-creator/chanly/internal/billing/domain"
+	ledgerapp "github.com/leha-creator/chanly/internal/ledger/app"
+	ledgerdomain "github.com/leha-creator/chanly/internal/ledger/domain"
+	"github.com/leha-creator/chanly/internal/platform/audit"
+	"github.com/leha-creator/chanly/internal/platform/db"
+	"github.com/leha-creator/chanly/internal/platform/ids"
+	"github.com/leha-creator/chanly/internal/platform/logx"
+	"github.com/leha-creator/chanly/internal/platform/money"
 )
 
 // modeAdminMoney — инфраструктура служебных команд денег: им нужно хранилище (файл выписки).

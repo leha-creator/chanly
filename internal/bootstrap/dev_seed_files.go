@@ -8,7 +8,7 @@ import (
 	"image/png"
 	"strings"
 
-	accountdomain "github.com/leha-creator/maxim/internal/account/domain"
+	accountdomain "github.com/leha-creator/chanly/internal/account/domain"
 )
 
 // seedINN дополняет prefix контрольными цифрами до корректного ИНН: 9 цифр у юрлица,

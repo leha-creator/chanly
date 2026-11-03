@@ -6,8 +6,8 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 
-	"github.com/leha-creator/maxim/internal/ledger/domain"
-	"github.com/leha-creator/maxim/internal/platform/logx"
+	"github.com/leha-creator/chanly/internal/ledger/domain"
+	"github.com/leha-creator/chanly/internal/platform/logx"
 )
 
 // Collector отдаёт остатки журнала по видам счетов (07 §5.5): maxim_ledger_balance_kopecks{kind}.

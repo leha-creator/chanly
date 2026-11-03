@@ -20,7 +20,7 @@
 
 | Задача | Решение | Почему |
 |---|---|---|
-| Модуль Go | `github.com/leha-creator/maxim` в корне репозитория | `mockapi/` остаётся отдельным модулем и в сборку не входит |
+| Модуль Go | `github.com/leha-creator/chanly` в корне репозитория | `mockapi/` остаётся отдельным модулем и в сборку не входит |
 | HTTP | `net/http` (`ServeMux` Go 1.22+), код из `api/openapi.yaml` через `oapi-codegen` v2: модели + strict server | Как в `mockapi`; сервер и спецификация не расходятся |
 | Проверка запросов | `oapi-codegen/nethttp-middleware` по встроенной спецификации | Схема проверяется до обработчика |
 | PostgreSQL | `jackc/pgx/v5` (пул `pgxpool`) | Нативные типы, `FOR UPDATE SKIP LOCKED`, `LISTEN/NOTIFY` при необходимости |
@@ -63,6 +63,8 @@ maxim/
 │   │   ├── worker.go                #   режим worker, регистрация видов заданий
 │   │   ├── server.go                #   сборка strict server из обработчиков модулей
 │   │   ├── dev.go                   #   maxim dev post-version — только development и test
+│   │   ├── integration_check.go     #   явная диагностика MAX/ОРД, только development, без запуска worker
+│   │   ├── integration_check_state.go # состояние тестового MAX-прогона и проверка срока удаления
 │   │   └── bridge/                  #   переходники портов между модулями (используют bootstrap и сценарные тесты)
 │   │
 │   ├── platform/                    # ── ОБЩЕЕ ЯДРО И ИНФРАСТРУКТУРА (без предметных правил) ──
@@ -261,7 +263,7 @@ package domain
 import (
 	"time"
 
-	"github.com/leha-creator/maxim/internal/platform/apperr"
+	"github.com/leha-creator/chanly/internal/platform/apperr"
 )
 
 type Status string

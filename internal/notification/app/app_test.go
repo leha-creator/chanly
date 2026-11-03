@@ -10,18 +10,18 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/leha-creator/maxim/internal/notification/app"
-	"github.com/leha-creator/maxim/internal/notification/domain"
-	"github.com/leha-creator/maxim/internal/notification/notificationtest"
-	"github.com/leha-creator/maxim/internal/notification/postgres"
-	"github.com/leha-creator/maxim/internal/notification/render"
-	"github.com/leha-creator/maxim/internal/platform/apperr"
-	"github.com/leha-creator/maxim/internal/platform/clock"
-	"github.com/leha-creator/maxim/internal/platform/dbtest"
-	"github.com/leha-creator/maxim/internal/platform/ids"
-	"github.com/leha-creator/maxim/internal/platform/job"
-	"github.com/leha-creator/maxim/internal/platform/logx"
-	"github.com/leha-creator/maxim/internal/platform/tx"
+	"github.com/leha-creator/chanly/internal/notification/app"
+	"github.com/leha-creator/chanly/internal/notification/domain"
+	"github.com/leha-creator/chanly/internal/notification/notificationtest"
+	"github.com/leha-creator/chanly/internal/notification/postgres"
+	"github.com/leha-creator/chanly/internal/notification/render"
+	"github.com/leha-creator/chanly/internal/platform/apperr"
+	"github.com/leha-creator/chanly/internal/platform/clock"
+	"github.com/leha-creator/chanly/internal/platform/dbtest"
+	"github.com/leha-creator/chanly/internal/platform/ids"
+	"github.com/leha-creator/chanly/internal/platform/job"
+	"github.com/leha-creator/chanly/internal/platform/logx"
+	"github.com/leha-creator/chanly/internal/platform/tx"
 )
 
 func TestMain(m *testing.M) { os.Exit(dbtest.Main(m)) }

@@ -6,8 +6,8 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/leha-creator/maxim/internal/marking/domain"
-	"github.com/leha-creator/maxim/internal/platform/ids"
+	"github.com/leha-creator/chanly/internal/marking/domain"
+	"github.com/leha-creator/chanly/internal/platform/ids"
 )
 
 // buildContract — запрос договора (R-7): стороны готовы (R-4), дата — первое принятие оферты.

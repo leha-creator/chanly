@@ -1,7 +1,7 @@
 package pdf
 
 import (
-	"github.com/leha-creator/maxim/internal/billing/domain"
+	"github.com/leha-creator/chanly/internal/billing/domain"
 )
 
 // Act — акт на агентское вознаграждение за месяц (R-16).

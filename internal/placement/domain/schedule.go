@@ -3,7 +3,7 @@ package domain
 import (
 	"time"
 
-	"github.com/leha-creator/maxim/internal/platform/apperr"
+	"github.com/leha-creator/chanly/internal/platform/apperr"
 )
 
 // Interval — полуоткрытый интервал времени [Start, End).

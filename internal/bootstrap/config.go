@@ -18,7 +18,7 @@ import (
 
 	"github.com/caarlos0/env/v11"
 
-	"github.com/leha-creator/maxim/internal/platform/logx"
+	"github.com/leha-creator/chanly/internal/platform/logx"
 )
 
 // Окружения (07 §8).

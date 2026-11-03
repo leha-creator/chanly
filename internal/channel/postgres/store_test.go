@@ -7,12 +7,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/leha-creator/maxim/internal/channel/channeltest"
-	"github.com/leha-creator/maxim/internal/channel/domain"
-	"github.com/leha-creator/maxim/internal/channel/postgres"
-	"github.com/leha-creator/maxim/internal/platform/dbtest"
-	"github.com/leha-creator/maxim/internal/platform/ids"
-	"github.com/leha-creator/maxim/internal/platform/logx"
+	"github.com/leha-creator/chanly/internal/channel/channeltest"
+	"github.com/leha-creator/chanly/internal/channel/domain"
+	"github.com/leha-creator/chanly/internal/channel/postgres"
+	"github.com/leha-creator/chanly/internal/platform/dbtest"
+	"github.com/leha-creator/chanly/internal/platform/ids"
+	"github.com/leha-creator/chanly/internal/platform/logx"
 )
 
 func TestMain(m *testing.M) { os.Exit(dbtest.Main(m)) }

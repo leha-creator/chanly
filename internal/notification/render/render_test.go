@@ -8,7 +8,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/leha-creator/maxim/internal/notification/domain"
+	"github.com/leha-creator/chanly/internal/notification/domain"
 )
 
 func sample() map[string]any {

@@ -6,8 +6,8 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/leha-creator/maxim/internal/post/domain"
-	"github.com/leha-creator/maxim/internal/post/postgres/sqlc"
+	"github.com/leha-creator/chanly/internal/post/domain"
+	"github.com/leha-creator/chanly/internal/post/postgres/sqlc"
 )
 
 // MediaFiles — оригиналы медиатеки.

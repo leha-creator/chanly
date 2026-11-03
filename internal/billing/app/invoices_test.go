@@ -9,10 +9,10 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/leha-creator/maxim/internal/billing/domain"
-	"github.com/leha-creator/maxim/internal/ledger/ledgertest"
-	"github.com/leha-creator/maxim/internal/platform/apperr"
-	"github.com/leha-creator/maxim/internal/platform/money"
+	"github.com/leha-creator/chanly/internal/billing/domain"
+	"github.com/leha-creator/chanly/internal/ledger/ledgertest"
+	"github.com/leha-creator/chanly/internal/platform/apperr"
+	"github.com/leha-creator/chanly/internal/platform/money"
 )
 
 func TestCreateInvoice(t *testing.T) {

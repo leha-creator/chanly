@@ -8,9 +8,9 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/leha-creator/maxim/internal/ledger/domain"
-	"github.com/leha-creator/maxim/internal/ledger/ledgertest"
-	"github.com/leha-creator/maxim/internal/platform/money"
+	"github.com/leha-creator/chanly/internal/ledger/domain"
+	"github.com/leha-creator/chanly/internal/ledger/ledgertest"
+	"github.com/leha-creator/chanly/internal/platform/money"
 )
 
 // Каждая строка 06 §2.3 через Post: остатки и сходимость после неё (07 §9).

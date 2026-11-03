@@ -10,8 +10,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/leha-creator/maxim/internal/integration/max"
-	"github.com/leha-creator/maxim/internal/platform/job"
+	"github.com/leha-creator/chanly/internal/integration/max"
+	"github.com/leha-creator/chanly/internal/platform/job"
 )
 
 // routes — записанные ответы по методу и пути.

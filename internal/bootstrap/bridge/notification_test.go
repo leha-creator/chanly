@@ -7,13 +7,13 @@ import (
 
 	"github.com/google/uuid"
 
-	billingdomain "github.com/leha-creator/maxim/internal/billing/domain"
-	"github.com/leha-creator/maxim/internal/integration/max/maxfake"
-	notificationdomain "github.com/leha-creator/maxim/internal/notification/domain"
-	payoutdomain "github.com/leha-creator/maxim/internal/payout/domain"
-	placementdomain "github.com/leha-creator/maxim/internal/placement/domain"
-	"github.com/leha-creator/maxim/internal/platform/job"
-	"github.com/leha-creator/maxim/internal/platform/logx"
+	billingdomain "github.com/leha-creator/chanly/internal/billing/domain"
+	"github.com/leha-creator/chanly/internal/integration/max/maxfake"
+	notificationdomain "github.com/leha-creator/chanly/internal/notification/domain"
+	payoutdomain "github.com/leha-creator/chanly/internal/payout/domain"
+	placementdomain "github.com/leha-creator/chanly/internal/placement/domain"
+	"github.com/leha-creator/chanly/internal/platform/job"
+	"github.com/leha-creator/chanly/internal/platform/logx"
 )
 
 type recordingNotifier struct{ got []notificationdomain.Notice }

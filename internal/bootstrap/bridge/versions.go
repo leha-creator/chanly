@@ -3,7 +3,7 @@ package bridge
 import (
 	"context"
 
-	postdomain "github.com/leha-creator/maxim/internal/post/domain"
+	postdomain "github.com/leha-creator/chanly/internal/post/domain"
 )
 
 // VersionListeners — несколько слушателей версии поста по порядку в одной транзакции

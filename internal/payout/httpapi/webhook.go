@@ -13,13 +13,13 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 
-	"github.com/leha-creator/maxim/internal/payout/app"
-	"github.com/leha-creator/maxim/internal/payout/domain"
-	"github.com/leha-creator/maxim/internal/platform/alert"
-	"github.com/leha-creator/maxim/internal/platform/clock"
-	"github.com/leha-creator/maxim/internal/platform/httpx"
-	"github.com/leha-creator/maxim/internal/platform/inbound"
-	"github.com/leha-creator/maxim/internal/platform/logx"
+	"github.com/leha-creator/chanly/internal/payout/app"
+	"github.com/leha-creator/chanly/internal/payout/domain"
+	"github.com/leha-creator/chanly/internal/platform/alert"
+	"github.com/leha-creator/chanly/internal/platform/clock"
+	"github.com/leha-creator/chanly/internal/platform/httpx"
+	"github.com/leha-creator/chanly/internal/platform/inbound"
+	"github.com/leha-creator/chanly/internal/platform/logx"
 )
 
 // WebhookBodyLimit — предел тела вебхука (07 §4).

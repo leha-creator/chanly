@@ -9,12 +9,12 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/leha-creator/maxim/internal/billing/app"
-	"github.com/leha-creator/maxim/internal/billing/domain"
-	ledgerapp "github.com/leha-creator/maxim/internal/ledger/app"
-	ledgerdomain "github.com/leha-creator/maxim/internal/ledger/domain"
-	"github.com/leha-creator/maxim/internal/ledger/ledgertest"
-	"github.com/leha-creator/maxim/internal/platform/apperr"
+	"github.com/leha-creator/chanly/internal/billing/app"
+	"github.com/leha-creator/chanly/internal/billing/domain"
+	ledgerapp "github.com/leha-creator/chanly/internal/ledger/app"
+	ledgerdomain "github.com/leha-creator/chanly/internal/ledger/domain"
+	"github.com/leha-creator/chanly/internal/ledger/ledgertest"
+	"github.com/leha-creator/chanly/internal/platform/apperr"
 )
 
 // fakePlacements — сведения о размещениях для отчёта агента.

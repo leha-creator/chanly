@@ -3,7 +3,7 @@ package adminpage_test
 import (
 	"testing"
 
-	"github.com/leha-creator/maxim/internal/platform/adminpage"
+	"github.com/leha-creator/chanly/internal/platform/adminpage"
 )
 
 func TestPage(t *testing.T) {

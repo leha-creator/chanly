@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/leha-creator/maxim/internal/integration/max"
+	"github.com/leha-creator/chanly/internal/integration/max"
 )
 
 // Message — отправленное сообщение.

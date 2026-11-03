@@ -4,10 +4,10 @@ import (
 	"context"
 	"errors"
 
-	"github.com/leha-creator/maxim/internal/account/domain"
-	"github.com/leha-creator/maxim/internal/platform/apperr"
-	"github.com/leha-creator/maxim/internal/platform/ids"
-	"github.com/leha-creator/maxim/internal/platform/logx"
+	"github.com/leha-creator/chanly/internal/account/domain"
+	"github.com/leha-creator/chanly/internal/platform/apperr"
+	"github.com/leha-creator/chanly/internal/platform/ids"
+	"github.com/leha-creator/chanly/internal/platform/logx"
 )
 
 // DevEnsureUser возвращает пользователя с почтой email, создавая его без входа по коду.

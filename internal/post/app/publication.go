@@ -8,9 +8,9 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/leha-creator/maxim/internal/platform/job"
-	"github.com/leha-creator/maxim/internal/platform/logx"
-	"github.com/leha-creator/maxim/internal/post/domain"
+	"github.com/leha-creator/chanly/internal/platform/job"
+	"github.com/leha-creator/chanly/internal/platform/logx"
+	"github.com/leha-creator/chanly/internal/post/domain"
 )
 
 // PublicationMedia — изображение версии для публикации в канал: производная по порядку.

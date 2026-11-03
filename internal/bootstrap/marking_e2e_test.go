@@ -13,8 +13,8 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/leha-creator/maxim/internal/integration/ord"
-	"github.com/leha-creator/maxim/internal/platform/job"
+	"github.com/leha-creator/chanly/internal/integration/ord"
+	"github.com/leha-creator/chanly/internal/platform/job"
 )
 
 // acceptOffers — пользователь принимает все действующие документы своей организации.

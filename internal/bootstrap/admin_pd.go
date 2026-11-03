@@ -11,11 +11,11 @@ import (
 	"net/netip"
 	"time"
 
-	accountapp "github.com/leha-creator/maxim/internal/account/app"
-	accountdomain "github.com/leha-creator/maxim/internal/account/domain"
-	accountpg "github.com/leha-creator/maxim/internal/account/postgres"
-	"github.com/leha-creator/maxim/internal/platform/db"
-	"github.com/leha-creator/maxim/internal/platform/logx"
+	accountapp "github.com/leha-creator/chanly/internal/account/app"
+	accountdomain "github.com/leha-creator/chanly/internal/account/domain"
+	accountpg "github.com/leha-creator/chanly/internal/account/postgres"
+	"github.com/leha-creator/chanly/internal/platform/db"
+	"github.com/leha-creator/chanly/internal/platform/logx"
 )
 
 // runAdminPD — запросы субъекта персональных данных (152-ФЗ; этап «API администратора», R-26),

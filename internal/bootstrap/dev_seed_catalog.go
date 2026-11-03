@@ -7,12 +7,12 @@ import (
 
 	"github.com/google/uuid"
 
-	channelapp "github.com/leha-creator/maxim/internal/channel/app"
-	channeldomain "github.com/leha-creator/maxim/internal/channel/domain"
-	"github.com/leha-creator/maxim/internal/platform/logx"
-	"github.com/leha-creator/maxim/internal/platform/money"
-	postapp "github.com/leha-creator/maxim/internal/post/app"
-	postdomain "github.com/leha-creator/maxim/internal/post/domain"
+	channelapp "github.com/leha-creator/chanly/internal/channel/app"
+	channeldomain "github.com/leha-creator/chanly/internal/channel/domain"
+	"github.com/leha-creator/chanly/internal/platform/logx"
+	"github.com/leha-creator/chanly/internal/platform/money"
+	postapp "github.com/leha-creator/chanly/internal/post/app"
+	postdomain "github.com/leha-creator/chanly/internal/post/domain"
 )
 
 // seedChatBase — зарезервированный диапазон max_chat_id каналов dev seed: -7 700 000 000 - n (R-2).

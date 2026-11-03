@@ -8,10 +8,10 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/leha-creator/maxim/internal/channel/app"
-	"github.com/leha-creator/maxim/internal/integration/max"
-	"github.com/leha-creator/maxim/internal/platform/inbound"
-	"github.com/leha-creator/maxim/internal/platform/job"
+	"github.com/leha-creator/chanly/internal/channel/app"
+	"github.com/leha-creator/chanly/internal/integration/max"
+	"github.com/leha-creator/chanly/internal/platform/inbound"
+	"github.com/leha-creator/chanly/internal/platform/job"
 )
 
 // Register регистрирует обработчики событий MAX в dispatcher и виды заданий модуля (R-16).
@@ -23,7 +23,7 @@ func Register(w *job.Worker, d *inbound.Dispatcher, svc *app.Service) {
 		return svc.BotRemoved(ctx, u.ChatID)
 	}))
 	d.Handle(inbound.SourceMAX, max.UpdateBotAdminPermissionsChanged, handle(func(ctx context.Context, ev app.EventRef, u max.Update) error {
-		return svc.RightsChanged(ctx, ev, u.ChatID)
+		return svc.RightsChanged(ctx, ev, u.ChatID, u.UserID(), u.IsChannel)
 	}))
 	d.Handle(inbound.SourceMAX, max.UpdateChatTitleChanged, handle(func(ctx context.Context, _ app.EventRef, u max.Update) error {
 		return svc.TitleChanged(ctx, u.ChatID, u.Title)

@@ -6,7 +6,7 @@ import (
 	"slices"
 	"time"
 
-	"github.com/leha-creator/maxim/internal/integration/max"
+	"github.com/leha-creator/chanly/internal/integration/max"
 )
 
 // SetChat задаёт сведения о чате, которые вернёт GetChat.

@@ -7,16 +7,16 @@ import (
 
 	"golang.org/x/sync/errgroup"
 
-	billingpg "github.com/leha-creator/maxim/internal/billing/postgres"
-	ledgerpg "github.com/leha-creator/maxim/internal/ledger/postgres"
-	markingpg "github.com/leha-creator/maxim/internal/marking/postgres"
-	notificationpg "github.com/leha-creator/maxim/internal/notification/postgres"
-	placementpg "github.com/leha-creator/maxim/internal/placement/postgres"
-	"github.com/leha-creator/maxim/internal/platform/db"
-	"github.com/leha-creator/maxim/internal/platform/inbound"
-	"github.com/leha-creator/maxim/internal/platform/job"
-	"github.com/leha-creator/maxim/internal/platform/logx"
-	"github.com/leha-creator/maxim/internal/platform/metrics"
+	billingpg "github.com/leha-creator/chanly/internal/billing/postgres"
+	ledgerpg "github.com/leha-creator/chanly/internal/ledger/postgres"
+	markingpg "github.com/leha-creator/chanly/internal/marking/postgres"
+	notificationpg "github.com/leha-creator/chanly/internal/notification/postgres"
+	placementpg "github.com/leha-creator/chanly/internal/placement/postgres"
+	"github.com/leha-creator/chanly/internal/platform/db"
+	"github.com/leha-creator/chanly/internal/platform/inbound"
+	"github.com/leha-creator/chanly/internal/platform/job"
+	"github.com/leha-creator/chanly/internal/platform/logx"
+	"github.com/leha-creator/chanly/internal/platform/metrics"
 )
 
 // runWorker — режим worker: обработчик заданий и метрики очереди.

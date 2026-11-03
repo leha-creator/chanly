@@ -22,10 +22,10 @@ import (
 	"slices"
 	"time"
 
-	"github.com/leha-creator/maxim/internal/platform/alert"
-	"github.com/leha-creator/maxim/internal/platform/clock"
-	"github.com/leha-creator/maxim/internal/platform/job"
-	"github.com/leha-creator/maxim/internal/platform/logx"
+	"github.com/leha-creator/chanly/internal/platform/alert"
+	"github.com/leha-creator/chanly/internal/platform/clock"
+	"github.com/leha-creator/chanly/internal/platform/job"
+	"github.com/leha-creator/chanly/internal/platform/logx"
 )
 
 // KindCheckStuckObjects — периодическое задание проверки (07 §3: раз в час).

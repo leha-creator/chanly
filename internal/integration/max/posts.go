@@ -18,10 +18,10 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/leha-creator/maxim/internal/platform/job"
-	"github.com/leha-creator/maxim/internal/platform/logx"
-	"github.com/leha-creator/maxim/internal/platform/outbound"
-	"github.com/leha-creator/maxim/internal/platform/ratelimit"
+	"github.com/leha-creator/chanly/internal/platform/job"
+	"github.com/leha-creator/chanly/internal/platform/logx"
+	"github.com/leha-creator/chanly/internal/platform/outbound"
+	"github.com/leha-creator/chanly/internal/platform/ratelimit"
 )
 
 // Публикация поста в канал, чтение и поиск сообщений (05 §2.3, §2.6). Текст сообщений

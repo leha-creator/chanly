@@ -8,8 +8,8 @@ import (
 
 	"github.com/google/uuid"
 
-	accountdomain "github.com/leha-creator/maxim/internal/account/domain"
-	"github.com/leha-creator/maxim/internal/apigen"
+	accountdomain "github.com/leha-creator/chanly/internal/account/domain"
+	"github.com/leha-creator/chanly/internal/apigen"
 )
 
 // Этап «API администратора»: матрица ролей R-1 по контракту. Каждая операция /admin/* в

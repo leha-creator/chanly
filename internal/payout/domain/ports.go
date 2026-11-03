@@ -6,7 +6,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/leha-creator/maxim/internal/platform/money"
+	"github.com/leha-creator/chanly/internal/platform/money"
 )
 
 // ContractorRequest — данные исполнителя для Рокет Ворк (06 §8: только ИНН, ФИО, телефон, тип лица).

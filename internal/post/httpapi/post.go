@@ -3,9 +3,9 @@ package httpapi
 import (
 	"context"
 
-	"github.com/leha-creator/maxim/internal/apigen"
-	"github.com/leha-creator/maxim/internal/post/app"
-	"github.com/leha-creator/maxim/internal/post/domain"
+	"github.com/leha-creator/chanly/internal/apigen"
+	"github.com/leha-creator/chanly/internal/post/app"
+	"github.com/leha-creator/chanly/internal/post/domain"
 )
 
 func (h *Handlers) GetCampaignPost(ctx context.Context, req apigen.GetCampaignPostRequestObject) (apigen.GetCampaignPostResponseObject, error) {

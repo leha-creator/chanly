@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/leha-creator/maxim/internal/post/domain"
+	"github.com/leha-creator/chanly/internal/post/domain"
 )
 
 func p(nodes ...domain.Text) domain.Block {

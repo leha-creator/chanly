@@ -6,10 +6,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/leha-creator/maxim/internal/integration/ord"
-	"github.com/leha-creator/maxim/internal/marking/app"
-	"github.com/leha-creator/maxim/internal/marking/domain"
-	"github.com/leha-creator/maxim/internal/platform/apperr"
+	"github.com/leha-creator/chanly/internal/integration/ord"
+	"github.com/leha-creator/chanly/internal/marking/app"
+	"github.com/leha-creator/chanly/internal/marking/domain"
+	"github.com/leha-creator/chanly/internal/platform/apperr"
 )
 
 func TestListErrorsAndRetry(t *testing.T) {

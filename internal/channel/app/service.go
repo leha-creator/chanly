@@ -12,14 +12,14 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/leha-creator/maxim/internal/channel/domain"
-	"github.com/leha-creator/maxim/internal/platform/alert"
-	"github.com/leha-creator/maxim/internal/platform/apperr"
-	"github.com/leha-creator/maxim/internal/platform/audit"
-	"github.com/leha-creator/maxim/internal/platform/clock"
-	"github.com/leha-creator/maxim/internal/platform/job"
-	"github.com/leha-creator/maxim/internal/platform/logx"
-	"github.com/leha-creator/maxim/internal/platform/tx"
+	"github.com/leha-creator/chanly/internal/channel/domain"
+	"github.com/leha-creator/chanly/internal/platform/alert"
+	"github.com/leha-creator/chanly/internal/platform/apperr"
+	"github.com/leha-creator/chanly/internal/platform/audit"
+	"github.com/leha-creator/chanly/internal/platform/clock"
+	"github.com/leha-creator/chanly/internal/platform/job"
+	"github.com/leha-creator/chanly/internal/platform/logx"
+	"github.com/leha-creator/chanly/internal/platform/tx"
 )
 
 // KeyChannelID — поле журнала (07 §5.1).
@@ -27,6 +27,7 @@ const KeyChannelID = "channel_id"
 
 // Config — параметры модуля (07 §8); значения по умолчанию — из документов.
 type Config struct {
+	Visibility domain.VisibilityPolicy
 	// LinkCodeTTL — срок кода подключения (A-41: 60 минут).
 	LinkCodeTTL time.Duration
 	// LinkCodesPerHour — предел кодов организации в час (R-2).

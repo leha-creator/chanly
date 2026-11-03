@@ -9,8 +9,8 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
-	"github.com/leha-creator/maxim/internal/platform/job/sqlc"
-	"github.com/leha-creator/maxim/internal/platform/logx"
+	"github.com/leha-creator/chanly/internal/platform/job/sqlc"
+	"github.com/leha-creator/chanly/internal/platform/logx"
 )
 
 // Параметры правил после простоя (07 §2, R-6).

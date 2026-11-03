@@ -13,10 +13,10 @@ import (
 	"testing"
 	"time"
 
-	accountdomain "github.com/leha-creator/maxim/internal/account/domain"
-	billingdomain "github.com/leha-creator/maxim/internal/billing/domain"
-	ledgerdomain "github.com/leha-creator/maxim/internal/ledger/domain"
-	placementdomain "github.com/leha-creator/maxim/internal/placement/domain"
+	accountdomain "github.com/leha-creator/chanly/internal/account/domain"
+	billingdomain "github.com/leha-creator/chanly/internal/billing/domain"
+	ledgerdomain "github.com/leha-creator/chanly/internal/ledger/domain"
+	placementdomain "github.com/leha-creator/chanly/internal/placement/domain"
 )
 
 // e2eUnmatchedPurpose — назначение постороннего платежа: в журнале его быть не должно.

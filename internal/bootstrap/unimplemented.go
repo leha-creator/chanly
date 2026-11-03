@@ -5,8 +5,8 @@ package bootstrap
 import (
 	"context"
 
-	"github.com/leha-creator/maxim/internal/apigen"
-	"github.com/leha-creator/maxim/internal/platform/apperr"
+	"github.com/leha-creator/chanly/internal/apigen"
+	"github.com/leha-creator/chanly/internal/platform/apperr"
 )
 
 // unimplemented отвечает 501 not_implemented на каждую операцию (R-7).

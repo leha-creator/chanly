@@ -8,7 +8,7 @@ import (
 	"golang.org/x/image/font/gofont/gobold"
 	"golang.org/x/image/font/opentype"
 
-	"github.com/leha-creator/maxim/internal/post/domain"
+	"github.com/leha-creator/chanly/internal/post/domain"
 )
 
 // Шрифт плашки — Go Bold (лицензия BSD, есть кириллица), встроен в бинарник (R-5).

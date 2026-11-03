@@ -6,11 +6,11 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 
-	"github.com/leha-creator/maxim/internal/ledger/app"
-	"github.com/leha-creator/maxim/internal/ledger/ledgertest"
-	"github.com/leha-creator/maxim/internal/ledger/postgres"
-	"github.com/leha-creator/maxim/internal/platform/alert"
-	"github.com/leha-creator/maxim/internal/platform/logx"
+	"github.com/leha-creator/chanly/internal/ledger/app"
+	"github.com/leha-creator/chanly/internal/ledger/ledgertest"
+	"github.com/leha-creator/chanly/internal/ledger/postgres"
+	"github.com/leha-creator/chanly/internal/platform/alert"
+	"github.com/leha-creator/chanly/internal/platform/logx"
 )
 
 // fakeAlerts — открытые оповещения «причина → объекты».

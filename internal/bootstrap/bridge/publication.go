@@ -8,14 +8,14 @@ import (
 
 	"github.com/google/uuid"
 
-	channeldomain "github.com/leha-creator/maxim/internal/channel/domain"
-	"github.com/leha-creator/maxim/internal/integration/max"
-	placementapp "github.com/leha-creator/maxim/internal/placement/app"
-	"github.com/leha-creator/maxim/internal/placement/domain"
-	"github.com/leha-creator/maxim/internal/platform/job"
-	"github.com/leha-creator/maxim/internal/platform/ratelimit"
-	postapp "github.com/leha-creator/maxim/internal/post/app"
-	postdomain "github.com/leha-creator/maxim/internal/post/domain"
+	channeldomain "github.com/leha-creator/chanly/internal/channel/domain"
+	"github.com/leha-creator/chanly/internal/integration/max"
+	placementapp "github.com/leha-creator/chanly/internal/placement/app"
+	"github.com/leha-creator/chanly/internal/placement/domain"
+	"github.com/leha-creator/chanly/internal/platform/job"
+	"github.com/leha-creator/chanly/internal/platform/ratelimit"
+	postapp "github.com/leha-creator/chanly/internal/post/app"
+	postdomain "github.com/leha-creator/chanly/internal/post/domain"
 )
 
 // ---------------------------------------------------------------- placement → MAX

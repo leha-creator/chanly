@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/leha-creator/maxim/internal/integration/rocketwork"
+	"github.com/leha-creator/chanly/internal/integration/rocketwork"
 )
 
 func TestContractorAndPayout(t *testing.T) {

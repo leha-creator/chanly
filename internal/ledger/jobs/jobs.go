@@ -6,8 +6,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/leha-creator/maxim/internal/ledger/app"
-	"github.com/leha-creator/maxim/internal/platform/job"
+	"github.com/leha-creator/chanly/internal/ledger/app"
+	"github.com/leha-creator/chanly/internal/platform/job"
 )
 
 // Register регистрирует проверку сходимости с периодом interval (LEDGER_CHECK_INTERVAL, R-15);

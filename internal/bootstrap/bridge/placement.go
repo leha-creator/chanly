@@ -10,14 +10,14 @@ import (
 
 	"github.com/google/uuid"
 
-	channelapp "github.com/leha-creator/maxim/internal/channel/app"
-	channeldomain "github.com/leha-creator/maxim/internal/channel/domain"
-	placementapp "github.com/leha-creator/maxim/internal/placement/app"
-	"github.com/leha-creator/maxim/internal/placement/domain"
-	"github.com/leha-creator/maxim/internal/platform/apperr"
-	"github.com/leha-creator/maxim/internal/platform/logx"
-	postapp "github.com/leha-creator/maxim/internal/post/app"
-	postdomain "github.com/leha-creator/maxim/internal/post/domain"
+	channelapp "github.com/leha-creator/chanly/internal/channel/app"
+	channeldomain "github.com/leha-creator/chanly/internal/channel/domain"
+	placementapp "github.com/leha-creator/chanly/internal/placement/app"
+	"github.com/leha-creator/chanly/internal/placement/domain"
+	"github.com/leha-creator/chanly/internal/platform/apperr"
+	"github.com/leha-creator/chanly/internal/platform/logx"
+	postapp "github.com/leha-creator/chanly/internal/post/app"
+	postdomain "github.com/leha-creator/chanly/internal/post/domain"
 )
 
 // ---------------------------------------------------------------- placement ← channel

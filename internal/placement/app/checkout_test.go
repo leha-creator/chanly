@@ -8,10 +8,10 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/leha-creator/maxim/internal/placement/domain"
-	"github.com/leha-creator/maxim/internal/placement/placementtest"
-	"github.com/leha-creator/maxim/internal/platform/apperr"
-	postdomain "github.com/leha-creator/maxim/internal/post/domain"
+	"github.com/leha-creator/chanly/internal/placement/domain"
+	"github.com/leha-creator/chanly/internal/placement/placementtest"
+	"github.com/leha-creator/chanly/internal/platform/apperr"
+	postdomain "github.com/leha-creator/chanly/internal/post/domain"
 )
 
 func TestCheckout(t *testing.T) {

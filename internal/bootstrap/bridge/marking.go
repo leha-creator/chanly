@@ -7,16 +7,16 @@ import (
 
 	"github.com/google/uuid"
 
-	accountdomain "github.com/leha-creator/maxim/internal/account/domain"
-	accountpg "github.com/leha-creator/maxim/internal/account/postgres"
-	channeldomain "github.com/leha-creator/maxim/internal/channel/domain"
-	"github.com/leha-creator/maxim/internal/integration/ord"
-	markingapp "github.com/leha-creator/maxim/internal/marking/app"
-	"github.com/leha-creator/maxim/internal/marking/domain"
-	placementpg "github.com/leha-creator/maxim/internal/placement/postgres"
-	"github.com/leha-creator/maxim/internal/platform/apperr"
-	postapp "github.com/leha-creator/maxim/internal/post/app"
-	postdomain "github.com/leha-creator/maxim/internal/post/domain"
+	accountdomain "github.com/leha-creator/chanly/internal/account/domain"
+	accountpg "github.com/leha-creator/chanly/internal/account/postgres"
+	channeldomain "github.com/leha-creator/chanly/internal/channel/domain"
+	"github.com/leha-creator/chanly/internal/integration/ord"
+	markingapp "github.com/leha-creator/chanly/internal/marking/app"
+	"github.com/leha-creator/chanly/internal/marking/domain"
+	placementpg "github.com/leha-creator/chanly/internal/placement/postgres"
+	"github.com/leha-creator/chanly/internal/platform/apperr"
+	postapp "github.com/leha-creator/chanly/internal/post/app"
+	postdomain "github.com/leha-creator/chanly/internal/post/domain"
 )
 
 // ---------------------------------------------------------------- marking ← account

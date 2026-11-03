@@ -15,7 +15,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/leha-creator/maxim/internal/platform/metrics"
+	"github.com/leha-creator/chanly/internal/platform/metrics"
 )
 
 func environ(m map[string]string) []string {

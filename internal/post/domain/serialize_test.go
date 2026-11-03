@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/leha-creator/maxim/internal/post/domain"
+	"github.com/leha-creator/chanly/internal/post/domain"
 )
 
 var update = flag.Bool("update", false, "rewrite golden files in testdata")

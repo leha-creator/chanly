@@ -3,7 +3,7 @@ package httpapi
 import (
 	"context"
 
-	"github.com/leha-creator/maxim/internal/apigen"
+	"github.com/leha-creator/chanly/internal/apigen"
 )
 
 func (h *Handlers) GetCart(ctx context.Context, _ apigen.GetCartRequestObject) (apigen.GetCartResponseObject, error) {

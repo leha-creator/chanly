@@ -7,7 +7,7 @@ import (
 
 	"github.com/google/uuid"
 
-	ledgerdomain "github.com/leha-creator/maxim/internal/ledger/domain"
+	ledgerdomain "github.com/leha-creator/chanly/internal/ledger/domain"
 )
 
 type balanceOperation struct {

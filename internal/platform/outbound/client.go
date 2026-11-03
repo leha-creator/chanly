@@ -23,11 +23,11 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/leha-creator/maxim/internal/platform/clock"
-	"github.com/leha-creator/maxim/internal/platform/ids"
-	"github.com/leha-creator/maxim/internal/platform/job"
-	"github.com/leha-creator/maxim/internal/platform/logx"
-	"github.com/leha-creator/maxim/internal/platform/outbound/sqlc"
+	"github.com/leha-creator/chanly/internal/platform/clock"
+	"github.com/leha-creator/chanly/internal/platform/ids"
+	"github.com/leha-creator/chanly/internal/platform/job"
+	"github.com/leha-creator/chanly/internal/platform/logx"
+	"github.com/leha-creator/chanly/internal/platform/outbound/sqlc"
 )
 
 // Системы (04 §8, outbound_request.system).
@@ -68,6 +68,9 @@ type Options struct {
 	// HTTP — клиент запросов; по умолчанию с таймаутом соединения 5 с.
 	// Таймаут запроса задаётся context каждой попытки.
 	HTTP *http.Client
+	// NoRetry disables inline retries for diagnostic runs. Timeout recovery via
+	// CheckExisting still runs; an unconfirmed outcome never causes a second request.
+	NoRetry bool
 	// Redact — дополнительные поля и параметры, скрываемые в outbound_request.
 	Redact []string
 	// Sleep ждёт между попытками; в тестах подменяется.
@@ -238,6 +241,10 @@ func (c *Client) Do(ctx context.Context, call Call) (Response, error) {
 				"response", c.redactor.text(last.resp.Body, errorTextLimit), logx.KeyError, last.err.Error())
 			c.alert(ctx, call, last.err)
 			return last.resp, job.Permanent(last.err)
+		}
+		if c.opts.NoRetry {
+			log.WarnContext(ctx, "outbound inline retry disabled", "attempt", attempt, "status", last.resp.Status)
+			return last.resp, last.err
 		}
 		if attempt > len(retryDelays) {
 			break

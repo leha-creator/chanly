@@ -9,10 +9,10 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/leha-creator/maxim/internal/channel/domain"
-	"github.com/leha-creator/maxim/internal/platform/ids"
-	"github.com/leha-creator/maxim/internal/platform/job"
-	"github.com/leha-creator/maxim/internal/platform/logx"
+	"github.com/leha-creator/chanly/internal/channel/domain"
+	"github.com/leha-creator/chanly/internal/platform/ids"
+	"github.com/leha-creator/chanly/internal/platform/job"
+	"github.com/leha-creator/chanly/internal/platform/logx"
 )
 
 // Виды заданий модуля (R-16). Внешние вызовы MAX — только в них, вне транзакции (R-7).
@@ -142,14 +142,23 @@ func (s *Service) BotRemoved(ctx context.Context, chatID int64) error {
 
 // RightsChanged — событие bot_admin_permissions_changed (05 §2.4 шаг 7): права
 // перечитываются заданием, одно место расчёта состояния.
-func (s *Service) RightsChanged(ctx context.Context, ev EventRef, chatID int64) error {
+func (s *Service) RightsChanged(ctx context.Context, ev EventRef, chatID, actorID int64, isChannel bool) error {
 	const op = "Channel.RightsChanged"
 	ctx = logx.With(ctx, "max_chat_id", chatID)
 	return s.Tx.InTx(ctx, func(ctx context.Context) error {
 		c, err := s.Channels.GetByMaxChatIDForUpdate(ctx, chatID)
 		if errors.Is(err, domain.ErrNotFound) {
-			s.log.DebugContext(ctx, "rights changed in unknown chat", logx.KeyOp, op)
-			return ErrIgnored
+			if !isChannel {
+				return ErrIgnored
+			}
+			// MAX can grant channel admin rights without sending bot_added.
+			// Discover an unclaimed channel; only a live code can assign its owner.
+			c = domain.NewChannel(ids.New(), chatID, actorID, s.Clock.Now())
+			if err := s.Channels.Create(ctx, c); err != nil {
+				return err
+			}
+			s.log.InfoContext(ctx, "[FIX] channel discovered from rights event", logx.KeyOp, op, KeyChannelID, c.ID)
+			return s.Jobs.Enqueue(ctx, s.refreshJob(c.ID, ev))
 		}
 		if err != nil {
 			return err
@@ -225,7 +234,7 @@ func (s *Service) RefreshChannelInfo(ctx context.Context, channelID uuid.UUID) e
 			s.log.DebugContext(ctx, "channel disconnected during refresh, result dropped", logx.KeyOp, op)
 			return nil
 		}
-		change := c.RightsRefreshed(info, m, s.Config.RknThreshold, s.Clock.Now())
+		change := c.RightsRefreshed(info, m, s.Config.RknThreshold, s.Clock.Now(), s.Config.Visibility)
 		if err := s.save(ctx, op, c, change); err != nil {
 			return err
 		}

@@ -21,9 +21,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/leha-creator/maxim/internal/platform/job"
-	"github.com/leha-creator/maxim/internal/platform/outbound"
-	"github.com/leha-creator/maxim/internal/platform/ratelimit"
+	"github.com/leha-creator/chanly/internal/platform/job"
+	"github.com/leha-creator/chanly/internal/platform/outbound"
+	"github.com/leha-creator/chanly/internal/platform/ratelimit"
 )
 
 // DefaultBaseURL — адрес MAX Bot API (05 §2.1).

@@ -3,9 +3,9 @@ package imaging_test
 import (
 	"testing"
 
-	"github.com/leha-creator/maxim/internal/post/domain"
-	"github.com/leha-creator/maxim/internal/post/imaging"
-	"github.com/leha-creator/maxim/internal/post/imaging/imagingtest"
+	"github.com/leha-creator/chanly/internal/post/domain"
+	"github.com/leha-creator/chanly/internal/post/imaging"
+	"github.com/leha-creator/chanly/internal/post/imaging/imagingtest"
 )
 
 func TestProbe(t *testing.T) {

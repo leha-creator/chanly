@@ -1,7 +1,7 @@
 package pdf
 
 import (
-	"github.com/leha-creator/maxim/internal/billing/domain"
+	"github.com/leha-creator/chanly/internal/billing/domain"
 )
 
 // Invoice — счёт на пополнение баланса (R-10): банковские реквизиты получателя, номер и дата,

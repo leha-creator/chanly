@@ -11,10 +11,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/leha-creator/maxim/internal/platform/job"
-	"github.com/leha-creator/maxim/internal/platform/logx"
-	"github.com/leha-creator/maxim/internal/platform/outbound"
-	"github.com/leha-creator/maxim/internal/platform/ratelimit"
+	"github.com/leha-creator/chanly/internal/platform/job"
+	"github.com/leha-creator/chanly/internal/platform/logx"
+	"github.com/leha-creator/chanly/internal/platform/outbound"
+	"github.com/leha-creator/chanly/internal/platform/ratelimit"
 )
 
 // Адрес и лимит по умолчанию.

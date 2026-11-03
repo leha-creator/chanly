@@ -6,17 +6,17 @@ import (
 
 	"github.com/google/uuid"
 
-	accountdomain "github.com/leha-creator/maxim/internal/account/domain"
-	accountpg "github.com/leha-creator/maxim/internal/account/postgres"
-	"github.com/leha-creator/maxim/internal/platform/audit"
-	"github.com/leha-creator/maxim/internal/platform/job"
-	"github.com/leha-creator/maxim/internal/platform/logx"
-	"github.com/leha-creator/maxim/internal/platform/tx"
-	postapp "github.com/leha-creator/maxim/internal/post/app"
-	postdomain "github.com/leha-creator/maxim/internal/post/domain"
-	posthttp "github.com/leha-creator/maxim/internal/post/httpapi"
-	"github.com/leha-creator/maxim/internal/post/imaging"
-	postpg "github.com/leha-creator/maxim/internal/post/postgres"
+	accountdomain "github.com/leha-creator/chanly/internal/account/domain"
+	accountpg "github.com/leha-creator/chanly/internal/account/postgres"
+	"github.com/leha-creator/chanly/internal/platform/audit"
+	"github.com/leha-creator/chanly/internal/platform/job"
+	"github.com/leha-creator/chanly/internal/platform/logx"
+	"github.com/leha-creator/chanly/internal/platform/tx"
+	postapp "github.com/leha-creator/chanly/internal/post/app"
+	postdomain "github.com/leha-creator/chanly/internal/post/domain"
+	posthttp "github.com/leha-creator/chanly/internal/post/httpapi"
+	"github.com/leha-creator/chanly/internal/post/imaging"
+	postpg "github.com/leha-creator/chanly/internal/post/postgres"
 )
 
 // postHandlers — псевдоним для встраивания в apiImpl рядом с обработчиками других модулей.

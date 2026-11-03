@@ -7,18 +7,23 @@ services:
     mem_limit: 192m
     cpus: 0.25
   api-a:
+    volumes: [./certs:/etc/maxim/dev-certs:ro, ./fake-state:/var/lib/maxim/fake-state]
     mem_limit: 192m
     cpus: 0.5
   api-b:
+    volumes: [./certs:/etc/maxim/dev-certs:ro, ./fake-state:/var/lib/maxim/fake-state]
     mem_limit: 192m
     cpus: 0.5
   worker-a:
+    volumes: [./certs:/etc/maxim/dev-certs:ro, ./fake-state:/var/lib/maxim/fake-state]
     mem_limit: 256m
     cpus: 0.5
   worker-b:
+    volumes: [./certs:/etc/maxim/dev-certs:ro, ./fake-state:/var/lib/maxim/fake-state]
     mem_limit: 256m
     cpus: 0.5
   migrate:
+    volumes: [./certs:/etc/maxim/dev-certs:ro, ./fake-state:/var/lib/maxim/fake-state]
     mem_limit: 192m
     cpus: 0.5
   mailpit:

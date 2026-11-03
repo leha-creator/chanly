@@ -6,11 +6,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/leha-creator/maxim/internal/bootstrap/bridge"
-	"github.com/leha-creator/maxim/internal/integration/max/maxfake"
-	markingapp "github.com/leha-creator/maxim/internal/marking/app"
-	payoutapp "github.com/leha-creator/maxim/internal/payout/app"
-	"github.com/leha-creator/maxim/internal/platform/inbound"
+	"github.com/leha-creator/chanly/internal/bootstrap/bridge"
+	"github.com/leha-creator/chanly/internal/integration/max/maxfake"
+	markingapp "github.com/leha-creator/chanly/internal/marking/app"
+	payoutapp "github.com/leha-creator/chanly/internal/payout/app"
+	"github.com/leha-creator/chanly/internal/platform/inbound"
 )
 
 func TestAssembledApp(t *testing.T) {

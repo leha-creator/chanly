@@ -3,7 +3,7 @@ package app
 import (
 	"context"
 
-	"github.com/leha-creator/maxim/internal/platform/logx"
+	"github.com/leha-creator/chanly/internal/platform/logx"
 )
 
 // PurgeMedia — обработчик purge_media (R-19, раз в сутки): удаляет из хранилища

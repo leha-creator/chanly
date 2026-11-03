@@ -3,7 +3,7 @@ package rocketwork
 import (
 	"encoding/json"
 
-	"github.com/leha-creator/maxim/internal/platform/logx"
+	"github.com/leha-creator/chanly/internal/platform/logx"
 )
 
 // RedactFields — поля, скрываемые outbound в сохранённых запросах и ответах Рокет Ворк (R-18):

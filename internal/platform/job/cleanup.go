@@ -6,7 +6,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/leha-creator/maxim/internal/platform/job/sqlc"
+	"github.com/leha-creator/chanly/internal/platform/job/sqlc"
 )
 
 // DeleteFinished удаляет задания в статусах statuses, завершённые раньше before (R-10).

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Макет экранов — биржа рекламы в каналах MAX</title>
+<title>Chanly — макет экранов</title>
 <!--
   Макет без дизайна: какие экраны есть и какие элементы на каждом.
   Один файл, без сборки и зависимостей — открывается двойным щелчком.
@@ -1094,11 +1094,11 @@ for (const s of screens) {
   // оболочка кабинета вокруг содержимого экрана
   const body = s.innerHTML;
   const shell = menus[role]
-    ? '<div class="top"><b>Биржа MAX</b><span class="sp"></span><span>' + tops[role] + '</span></div>' +
+    ? '<div class="top"><img src="../assets/chanly-logo.png" alt="Chanly" width="144" height="48"><span class="sp"></span><span>' + tops[role] + '</span></div>' +
       '<div class="shell"><div class="menu">' +
       menus[role].map(([id, t]) => '<a href="#' + id + '"' + (id === nav ? ' class="on"' : '') + '>' + t + '</a>').join('') +
       '</div><div class="content">' + body + '</div></div>'
-    : '<div class="top"><b>Биржа MAX</b></div><div class="content">' + body + '</div>';
+    : '<div class="top"><img src="../assets/chanly-logo.png" alt="Chanly" width="144" height="48"></div><div class="content">' + body + '</div>';
   s.innerHTML = '<div class="meta"><b>' + s.dataset.title + '</b> адрес <code>/' + s.id + '</code> · сценарии <code>' + s.dataset.s +
     '</code> · этап: ' + s.dataset.stage + '</div><div class="frame">' + shell + '</div>';
 

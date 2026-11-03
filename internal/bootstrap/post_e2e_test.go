@@ -13,7 +13,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/leha-creator/maxim/internal/post/imaging/imagingtest"
+	"github.com/leha-creator/chanly/internal/post/imaging/imagingtest"
 )
 
 type previewView struct {

@@ -1,6 +1,6 @@
 openapi: 3.0.3
 info:
-  title: Кабинеты биржи рекламы в каналах MAX
+  title: Chanly — биржа рекламы в каналах MAX
   version: 0.1.0-draft
   description: |
     HTTP API кабинетов рекламодателя и блогера. Черновик: составлен по документам

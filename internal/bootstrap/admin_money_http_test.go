@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	accountdomain "github.com/leha-creator/maxim/internal/account/domain"
+	accountdomain "github.com/leha-creator/chanly/internal/account/domain"
 )
 
 // Этап «API администратора»: деньги через HTTP — ручная проводка, пополнение депозита, возврат

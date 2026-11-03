@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/leha-creator/maxim/internal/integration/max"
+	"github.com/leha-creator/chanly/internal/integration/max"
 )
 
 // FakeBotUserID — пользователь MAX поддельного бота (GetMe, BotUserID).

@@ -5,7 +5,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/leha-creator/maxim/internal/placement/domain"
+	"github.com/leha-creator/chanly/internal/placement/domain"
 )
 
 // PlacementView — размещение для кабинета рекламодателя: канал, история, действия (R-22).

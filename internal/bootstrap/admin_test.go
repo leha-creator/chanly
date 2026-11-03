@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	accountdomain "github.com/leha-creator/maxim/internal/account/domain"
-	"github.com/leha-creator/maxim/internal/platform/ids"
+	accountdomain "github.com/leha-creator/chanly/internal/account/domain"
+	"github.com/leha-creator/chanly/internal/platform/ids"
 )
 
 func TestAdminGrant(t *testing.T) {

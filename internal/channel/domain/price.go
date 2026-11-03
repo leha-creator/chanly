@@ -4,7 +4,7 @@ import (
 	"slices"
 	"time"
 
-	"github.com/leha-creator/maxim/internal/platform/money"
+	"github.com/leha-creator/chanly/internal/platform/money"
 )
 
 // RuleError — нарушение правила с машинной причиной: app передаёт её в

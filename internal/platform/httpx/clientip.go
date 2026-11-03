@@ -7,7 +7,7 @@ import (
 	"net/netip"
 	"strings"
 
-	"github.com/leha-creator/maxim/internal/platform/audit"
+	"github.com/leha-creator/chanly/internal/platform/audit"
 )
 
 type clientKey struct{}

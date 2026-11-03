@@ -6,10 +6,10 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/leha-creator/maxim/internal/channel/domain"
-	"github.com/leha-creator/maxim/internal/platform/apperr"
-	"github.com/leha-creator/maxim/internal/platform/ids"
-	"github.com/leha-creator/maxim/internal/platform/logx"
+	"github.com/leha-creator/chanly/internal/channel/domain"
+	"github.com/leha-creator/chanly/internal/platform/apperr"
+	"github.com/leha-creator/chanly/internal/platform/ids"
+	"github.com/leha-creator/chanly/internal/platform/logx"
 )
 
 // DevChannelInput — канал maxim dev seed: сведения, которые обычно приходят из MAX.
@@ -50,13 +50,13 @@ func (s *Service) DevSeedChannel(ctx context.Context, orgID uuid.UUID, in DevCha
 		}
 		now := s.Clock.Now()
 		c = domain.NewChannel(ids.New(), in.MaxChatID, 0, now)
-		if _, err := c.LinkTo(orgID, s.Config.RknThreshold, now); err != nil {
+		if _, err := c.LinkTo(orgID, s.Config.RknThreshold, now, s.Config.Visibility); err != nil {
 			return err
 		}
 		c.RightsRefreshed(domain.ChatInfo{
 			Title: in.Title, Description: in.Description, Link: in.Link,
 			IsPublic: true, IsChannel: true, SubscribersCount: in.Subscribers,
-		}, domain.Membership{IsAdmin: true, Permissions: domain.RequiredPermissions}, s.Config.RknThreshold, now)
+		}, domain.Membership{IsAdmin: true, Permissions: domain.RequiredPermissions}, s.Config.RknThreshold, now, s.Config.Visibility)
 		if c.Status != domain.StatusModeration {
 			return apperr.Validation("subscribers", c.StatusReason)
 		}

@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	accountdomain "github.com/leha-creator/maxim/internal/account/domain"
+	accountdomain "github.com/leha-creator/chanly/internal/account/domain"
 )
 
 // Этап «API администратора и отчётность ОРД»: ежемесячная статистика и акты (R-19 … R-23, S-31).

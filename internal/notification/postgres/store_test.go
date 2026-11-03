@@ -9,12 +9,12 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/leha-creator/maxim/internal/notification/domain"
-	"github.com/leha-creator/maxim/internal/notification/notificationtest"
-	"github.com/leha-creator/maxim/internal/notification/postgres"
-	"github.com/leha-creator/maxim/internal/platform/dbtest"
-	"github.com/leha-creator/maxim/internal/platform/ids"
-	"github.com/leha-creator/maxim/internal/platform/logx"
+	"github.com/leha-creator/chanly/internal/notification/domain"
+	"github.com/leha-creator/chanly/internal/notification/notificationtest"
+	"github.com/leha-creator/chanly/internal/notification/postgres"
+	"github.com/leha-creator/chanly/internal/platform/dbtest"
+	"github.com/leha-creator/chanly/internal/platform/ids"
+	"github.com/leha-creator/chanly/internal/platform/logx"
 )
 
 func TestMain(m *testing.M) { os.Exit(dbtest.Main(m)) }

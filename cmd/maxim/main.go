@@ -24,7 +24,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/leha-creator/maxim/internal/bootstrap"
+	"github.com/leha-creator/chanly/internal/bootstrap"
 )
 
 // version задаётся при сборке: -ldflags "-X main.version=<sha>".
@@ -52,6 +52,8 @@ commands:
   dev seed                 [--wait 5m] [--orders=true]: demo users, catalog, campaigns and orders; needs a running
                            worker (development and test only)
   config check --for <mode>  validate configuration of a mode (api, worker, migrate, legal, admin, dev) and exit
+  integration-check        --system max|ord|rocketwork [--scenario preflight|inspect|publish|observe|recover|remove]
+                           [--chat ID] [--run-dir PATH] [--execute]: isolated integration checks (development only)
   probe <url>              GET the url with a 2 s timeout: exit 0 on 200 (container health check)
 `
 

@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/leha-creator/maxim/internal/platform/money"
+	"github.com/leha-creator/chanly/internal/platform/money"
 )
 
 var (

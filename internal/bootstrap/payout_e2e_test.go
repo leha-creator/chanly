@@ -12,10 +12,10 @@ import (
 	"testing"
 	"time"
 
-	accountdomain "github.com/leha-creator/maxim/internal/account/domain"
-	payoutapp "github.com/leha-creator/maxim/internal/payout/app"
-	"github.com/leha-creator/maxim/internal/platform/job"
-	"github.com/leha-creator/maxim/internal/platform/stuck"
+	accountdomain "github.com/leha-creator/chanly/internal/account/domain"
+	payoutapp "github.com/leha-creator/chanly/internal/payout/app"
+	"github.com/leha-creator/chanly/internal/platform/job"
+	"github.com/leha-creator/chanly/internal/platform/stuck"
 )
 
 // Цена размещения сквозного теста выплат, коп.
@@ -120,6 +120,8 @@ func TestPayoutEndToEnd(t *testing.T) {
 	if st.Status != "none" || !st.Required {
 		t.Fatalf("before invite %+v", st)
 	}
+	dev("rocketwork", "invite", "--org", blgOrg.String())
+	dev("rocketwork", "invite", "--org", blgOrg.String()) // idempotent; normal cabinet remains usable
 	if r := blg.do(http.MethodPost, "/blogger/rocketwork/invite", nil); r.status != http.StatusAccepted {
 		t.Fatalf("invite: %d %s", r.status, r.body)
 	}
@@ -411,7 +413,7 @@ func TestDevPayoutCommands(t *testing.T) {
 	cfg := testConfig()
 	var out bytes.Buffer
 	for _, args := range [][]string{
-		{"rocketwork", "activate"}, {"rocketwork", "deposit"}, {"rocketwork", "complete"}, {"placement", "accept"},
+		{"rocketwork", "invite"}, {"rocketwork", "activate"}, {"rocketwork", "deposit"}, {"rocketwork", "complete"}, {"placement", "accept"},
 		{"rocketwork", "unknown", "--org", "x"}, {"rocketwork"},
 	} {
 		if err := runDevPayout(ctx, cfg, slog.New(slog.DiscardHandler), args, &out); !errors.Is(err, errUsage) {

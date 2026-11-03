@@ -7,12 +7,12 @@ import (
 
 	"github.com/google/uuid"
 
-	payoutdomain "github.com/leha-creator/maxim/internal/payout/domain"
-	placementapp "github.com/leha-creator/maxim/internal/placement/app"
-	placementdomain "github.com/leha-creator/maxim/internal/placement/domain"
-	"github.com/leha-creator/maxim/internal/platform/logx"
-	"github.com/leha-creator/maxim/internal/platform/money"
-	postdomain "github.com/leha-creator/maxim/internal/post/domain"
+	payoutdomain "github.com/leha-creator/chanly/internal/payout/domain"
+	placementapp "github.com/leha-creator/chanly/internal/placement/app"
+	placementdomain "github.com/leha-creator/chanly/internal/placement/domain"
+	"github.com/leha-creator/chanly/internal/platform/logx"
+	"github.com/leha-creator/chanly/internal/platform/money"
+	postdomain "github.com/leha-creator/chanly/internal/post/domain"
 )
 
 // seedCampaignWindow — окно кампаний заказов: сегодня … +2 дня по Москве.

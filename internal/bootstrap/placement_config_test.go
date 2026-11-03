@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/leha-creator/maxim/internal/bootstrap/bridge"
+	"github.com/leha-creator/chanly/internal/bootstrap/bridge"
 )
 
 func TestPlacementConfig(t *testing.T) {

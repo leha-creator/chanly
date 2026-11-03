@@ -6,11 +6,11 @@ import (
 
 	"github.com/google/uuid"
 
-	billingpg "github.com/leha-creator/maxim/internal/billing/postgres"
-	ledgerapp "github.com/leha-creator/maxim/internal/ledger/app"
-	ledgerdomain "github.com/leha-creator/maxim/internal/ledger/domain"
-	"github.com/leha-creator/maxim/internal/placement/domain"
-	placementpg "github.com/leha-creator/maxim/internal/placement/postgres"
+	billingpg "github.com/leha-creator/chanly/internal/billing/postgres"
+	ledgerapp "github.com/leha-creator/chanly/internal/ledger/app"
+	ledgerdomain "github.com/leha-creator/chanly/internal/ledger/domain"
+	"github.com/leha-creator/chanly/internal/placement/domain"
+	placementpg "github.com/leha-creator/chanly/internal/placement/postgres"
 )
 
 // ---------------------------------------------------------------- placement ← ledger

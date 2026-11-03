@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/leha-creator/maxim/internal/channel/app"
-	"github.com/leha-creator/maxim/internal/channel/channeltest"
-	"github.com/leha-creator/maxim/internal/channel/domain"
+	"github.com/leha-creator/chanly/internal/channel/app"
+	"github.com/leha-creator/chanly/internal/channel/channeltest"
+	"github.com/leha-creator/chanly/internal/channel/domain"
 )
 
 func (e *env) eventStatus(eventType string) []string {
@@ -121,6 +121,90 @@ func TestClosedChannelAndNonChannel(t *testing.T) {
 	e.drain()
 	if st := e.eventStatus("bot_removed"); len(st) != 1 || st[0] != "ignored" {
 		t.Fatalf("unknown chat bot_removed: %v", st)
+	}
+}
+
+func TestPrivateChannelDevelopmentPolicy(t *testing.T) {
+	e := newEnv(t)
+	e.svc.Config.Visibility = domain.AllowPrivateChannels
+	closed := publicCh
+	closed.IsPublic = false
+	org := e.org()
+	issued, err := e.svc.CreateLinkCode(e.ctx(), org)
+	if err != nil {
+		t.Fatal(err)
+	}
+	e.max.set(-100, closed, allRights)
+	e.event(botAdded(-100, 1))
+	e.drain()
+	e.event(channelPost(-100, "mid.private", issued.Code))
+	e.drain()
+	c := e.channel(-100)
+	if c.Status != domain.StatusModeration || c.IsPublic {
+		t.Fatalf("private channel eligibility/fact: %s public=%v", c.Status, c.IsPublic)
+	}
+	e.max.set(-100, closed, domain.Membership{IsAdmin: true, Permissions: []string{"write"}})
+	e.event(rightsChanged(-100))
+	e.drain()
+	c = e.channel(-100)
+	if c.Status != domain.StatusPendingRights || c.StatusReason != domain.ReasonMissingRights {
+		t.Fatalf("private policy bypassed bot rights: %s/%s", c.Status, c.StatusReason)
+	}
+}
+
+func TestRightsDiscoverChannelWithoutBotAdded(t *testing.T) {
+	e := newEnv(t)
+	e.svc.Config.Visibility = domain.AllowPrivateChannels
+	closed := publicCh
+	closed.IsPublic = false
+	e.max.set(-100, closed, allRights)
+	org := e.org()
+	issued, err := e.svc.CreateLinkCode(e.ctx(), org)
+	if err != nil {
+		t.Fatal(err)
+	}
+	e.event(channelPost(-100, "mid.early-rights", issued.Code))
+	e.drain()
+	if st := e.eventStatus("message_created"); len(st) != 1 || st[0] != "received" {
+		t.Fatalf("early code: %v", st)
+	}
+	// Real MAX channel rights updates can omit user and bot_added entirely.
+	body := `{"update_type":"bot_admin_permissions_changed","timestamp":1,"chat_id":-100,"is_channel":true}`
+	e.event(body)
+	e.event(body)
+	e.drain()
+	c := e.channel(-100)
+	if c.Status != domain.StatusUnclaimed || c.OrganizationID != nil || c.AddedByMaxUserID != 0 || c.BotPermissionsCheckedAt == nil {
+		t.Fatalf("discovery: %+v", c)
+	}
+	if n := e.count(`SELECT count(*) FROM channel`); n != 1 {
+		t.Fatalf("channels: %d", n)
+	}
+	e.clk.Advance(time.Minute)
+	e.drain()
+	c = e.channel(-100)
+	if c.Status != domain.StatusModeration || c.IsPublic || c.OrganizationID == nil || *c.OrganizationID != org || !contains(e.max.deleted, "mid.early-rights") {
+		t.Fatalf("linked: %+v", c)
+	}
+	if n := e.count(`SELECT count(*) FROM auth_code WHERE purpose = 'channel_link' AND consumed_at IS NULL`); n != 0 {
+		t.Fatalf("live codes: %d", n)
+	}
+	e.event(rightsChanged(-100))
+	e.drain()
+	if c = e.channel(-100); c.AddedByMaxUserID != 0 || *c.OrganizationID != org {
+		t.Fatal("rights update changed ownership")
+	}
+	e.event(botRemoved(-100))
+	e.drain()
+	e.event(rightsChanged(-100))
+	e.drain()
+	if c = e.channel(-100); c.Status != domain.StatusDisconnected {
+		t.Fatalf("stale rights revived removed channel: %s", c.Status)
+	}
+	e.event(`{"update_type":"bot_admin_permissions_changed","timestamp":2,"chat_id":-200,"is_channel":false}`)
+	e.drain()
+	if n := e.count(`SELECT count(*) FROM channel WHERE max_chat_id = -200`); n != 0 {
+		t.Fatal("nonchannel discovered")
 	}
 }
 

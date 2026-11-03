@@ -12,7 +12,7 @@ import (
 
 	"github.com/google/uuid"
 
-	accountdomain "github.com/leha-creator/maxim/internal/account/domain"
+	accountdomain "github.com/leha-creator/chanly/internal/account/domain"
 )
 
 // Этап «API администратора»: запросы субъекта ПДн — выгрузка и обезличивание (R-26).

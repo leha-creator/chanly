@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
-	accountdomain "github.com/leha-creator/maxim/internal/account/domain"
-	"github.com/leha-creator/maxim/internal/channel/channeltest"
-	"github.com/leha-creator/maxim/internal/integration/max"
+	accountdomain "github.com/leha-creator/chanly/internal/account/domain"
+	"github.com/leha-creator/chanly/internal/channel/channeltest"
+	"github.com/leha-creator/chanly/internal/integration/max"
 )
 
 // TestCatalogEndToEnd — этап «Каталог» на собранных api и worker: S-13 → S-16 → S-02,

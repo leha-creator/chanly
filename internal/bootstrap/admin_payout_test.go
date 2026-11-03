@@ -9,12 +9,12 @@ import (
 
 	"github.com/google/uuid"
 
-	accountdomain "github.com/leha-creator/maxim/internal/account/domain"
-	ledgerdomain "github.com/leha-creator/maxim/internal/ledger/domain"
-	"github.com/leha-creator/maxim/internal/ledger/ledgertest"
-	payoutapp "github.com/leha-creator/maxim/internal/payout/app"
-	payoutdomain "github.com/leha-creator/maxim/internal/payout/domain"
-	"github.com/leha-creator/maxim/internal/platform/money"
+	accountdomain "github.com/leha-creator/chanly/internal/account/domain"
+	ledgerdomain "github.com/leha-creator/chanly/internal/ledger/domain"
+	"github.com/leha-creator/chanly/internal/ledger/ledgertest"
+	payoutapp "github.com/leha-creator/chanly/internal/payout/app"
+	payoutdomain "github.com/leha-creator/chanly/internal/payout/domain"
+	"github.com/leha-creator/chanly/internal/platform/money"
 )
 
 // acceptedPayout — размещение в accepted с начислением blogger_payable и выплатой, созданной как

@@ -7,9 +7,9 @@ import (
 	"strings"
 	"time"
 
-	accountdomain "github.com/leha-creator/maxim/internal/account/domain"
-	"github.com/leha-creator/maxim/internal/integration/ord"
-	markingdomain "github.com/leha-creator/maxim/internal/marking/domain"
+	accountdomain "github.com/leha-creator/chanly/internal/account/domain"
+	"github.com/leha-creator/chanly/internal/integration/ord"
+	markingdomain "github.com/leha-creator/chanly/internal/marking/domain"
 )
 
 // ORDConfig — Яндекс ОРД (05 §3, этап «Маркировка через Яндекс ОРД»).

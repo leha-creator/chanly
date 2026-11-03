@@ -8,8 +8,8 @@ import (
 
 	"github.com/google/uuid"
 
-	accountdomain "github.com/leha-creator/maxim/internal/account/domain"
-	notificationdomain "github.com/leha-creator/maxim/internal/notification/domain"
+	accountdomain "github.com/leha-creator/chanly/internal/account/domain"
+	notificationdomain "github.com/leha-creator/chanly/internal/notification/domain"
 )
 
 type notificationView struct {

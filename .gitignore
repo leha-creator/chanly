@@ -12,6 +12,9 @@
 
 # Локальные настройки инструментов
 .claude/settings.local.json
+.codex/
+.playwright-mcp/
+/out/
 
 # ОС
 .DS_Store

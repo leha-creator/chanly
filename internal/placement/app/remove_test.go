@@ -8,7 +8,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/leha-creator/maxim/internal/placement/domain"
+	"github.com/leha-creator/chanly/internal/placement/domain"
 )
 
 // published — опубликованное размещение (20 октября 11:30 МСК) и его сообщение в MAX.

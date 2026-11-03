@@ -7,11 +7,11 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/leha-creator/maxim/internal/channel/domain"
-	"github.com/leha-creator/maxim/internal/platform/alert"
-	"github.com/leha-creator/maxim/internal/platform/audit"
-	"github.com/leha-creator/maxim/internal/platform/job"
-	"github.com/leha-creator/maxim/internal/platform/logx"
+	"github.com/leha-creator/chanly/internal/channel/domain"
+	"github.com/leha-creator/chanly/internal/platform/alert"
+	"github.com/leha-creator/chanly/internal/platform/audit"
+	"github.com/leha-creator/chanly/internal/platform/job"
+	"github.com/leha-creator/chanly/internal/platform/logx"
 )
 
 // ChannelPost — сообщение, опубликованное в канале (событие message_created).
@@ -69,7 +69,7 @@ func (s *Service) ChannelPostCreated(ctx context.Context, ev EventRef, p Channel
 		if err != nil {
 			return err
 		}
-		change, err := c.LinkTo(lc.OrganizationID, s.Config.RknThreshold, now)
+		change, err := c.LinkTo(lc.OrganizationID, s.Config.RknThreshold, now, s.Config.Visibility)
 		switch {
 		case errors.Is(err, domain.ErrAlreadyLinked):
 			lc.Consume(now)

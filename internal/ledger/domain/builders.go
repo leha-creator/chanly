@@ -3,7 +3,7 @@ package domain
 import (
 	"github.com/google/uuid"
 
-	"github.com/leha-creator/maxim/internal/platform/money"
+	"github.com/leha-creator/chanly/internal/platform/money"
 )
 
 // Ключи идемпотентности (06 §2.2 п. 7, R-3): вид и основание.

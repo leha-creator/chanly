@@ -7,7 +7,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/leha-creator/maxim/internal/placement/domain"
+	"github.com/leha-creator/chanly/internal/placement/domain"
 )
 
 // acceptedForPayout — опубликованное размещение, переведённое в accepted строкой (приёмка — следующий этап).

@@ -7,9 +7,9 @@ import (
 	"io"
 	"log/slog"
 
-	"github.com/leha-creator/maxim/internal/account/domain"
-	"github.com/leha-creator/maxim/internal/platform/db"
-	"github.com/leha-creator/maxim/internal/platform/logx"
+	"github.com/leha-creator/chanly/internal/account/domain"
+	"github.com/leha-creator/chanly/internal/platform/db"
+	"github.com/leha-creator/chanly/internal/platform/logx"
 )
 
 // runAdmin — служебная команда ролей администратора до API администратора (R-2 этапа «Каталог»):

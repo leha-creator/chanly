@@ -21,8 +21,8 @@ RUN --mount=type=cache,target=/go/pkg/mod \
     CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -X main.version=${VERSION}" -o /out/maxim ./cmd/maxim
 
 FROM gcr.io/distroless/static-debian12:nonroot
-LABEL org.opencontainers.image.source="https://github.com/leha-creator/maxim" \
-      org.opencontainers.image.description="Maxim backend: api, worker, migrate"
+LABEL org.opencontainers.image.source="https://github.com/leha-creator/chanly" \
+      org.opencontainers.image.description="Chanly backend: api, worker, migrate"
 COPY --from=build /out/maxim /maxim
 # Корневые сертификаты внешних систем (MAX: сертификат Минцифры, 05 §2.1);
 # путь задаётся MAX_CA_CERT_FILE. Как получить и проверить — deploy/certs/README.md.

@@ -12,17 +12,17 @@ import (
 	"testing"
 	"time"
 
-	"github.com/leha-creator/maxim/internal/integration/mail/mailfake"
-	"github.com/leha-creator/maxim/internal/integration/max"
-	"github.com/leha-creator/maxim/internal/integration/max/maxfake"
-	"github.com/leha-creator/maxim/internal/platform/clock"
-	"github.com/leha-creator/maxim/internal/platform/dbtest"
-	"github.com/leha-creator/maxim/internal/platform/inbound"
-	"github.com/leha-creator/maxim/internal/platform/job"
-	"github.com/leha-creator/maxim/internal/platform/logx"
-	"github.com/leha-creator/maxim/internal/platform/outbound"
-	"github.com/leha-creator/maxim/internal/platform/ratelimit"
-	"github.com/leha-creator/maxim/internal/platform/tx"
+	"github.com/leha-creator/chanly/internal/integration/mail/mailfake"
+	"github.com/leha-creator/chanly/internal/integration/max"
+	"github.com/leha-creator/chanly/internal/integration/max/maxfake"
+	"github.com/leha-creator/chanly/internal/platform/clock"
+	"github.com/leha-creator/chanly/internal/platform/dbtest"
+	"github.com/leha-creator/chanly/internal/platform/inbound"
+	"github.com/leha-creator/chanly/internal/platform/job"
+	"github.com/leha-creator/chanly/internal/platform/logx"
+	"github.com/leha-creator/chanly/internal/platform/outbound"
+	"github.com/leha-creator/chanly/internal/platform/ratelimit"
+	"github.com/leha-creator/chanly/internal/platform/tx"
 )
 
 const (

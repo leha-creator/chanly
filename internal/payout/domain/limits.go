@@ -3,7 +3,7 @@ package domain
 import (
 	"time"
 
-	"github.com/leha-creator/maxim/internal/platform/money"
+	"github.com/leha-creator/chanly/internal/platform/money"
 )
 
 // FastPollWindow — первый час опрашиваем часто, затем редко (05 §4.2, R-10).

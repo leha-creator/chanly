@@ -5,11 +5,11 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/leha-creator/maxim/internal/account/app"
-	"github.com/leha-creator/maxim/internal/account/domain"
-	"github.com/leha-creator/maxim/internal/apigen"
-	"github.com/leha-creator/maxim/internal/platform/adminpage"
-	"github.com/leha-creator/maxim/internal/platform/httpx"
+	"github.com/leha-creator/chanly/internal/account/app"
+	"github.com/leha-creator/chanly/internal/account/domain"
+	"github.com/leha-creator/chanly/internal/apigen"
+	"github.com/leha-creator/chanly/internal/platform/adminpage"
+	"github.com/leha-creator/chanly/internal/platform/httpx"
 )
 
 // Операции администратора над организациями и пользователями (этап «API администратора»,

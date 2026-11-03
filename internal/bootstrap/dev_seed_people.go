@@ -8,11 +8,11 @@ import (
 
 	"github.com/google/uuid"
 
-	accountapp "github.com/leha-creator/maxim/internal/account/app"
-	accountdomain "github.com/leha-creator/maxim/internal/account/domain"
-	payoutdomain "github.com/leha-creator/maxim/internal/payout/domain"
-	"github.com/leha-creator/maxim/internal/platform/logx"
-	"github.com/leha-creator/maxim/internal/platform/money"
+	accountapp "github.com/leha-creator/chanly/internal/account/app"
+	accountdomain "github.com/leha-creator/chanly/internal/account/domain"
+	payoutdomain "github.com/leha-creator/chanly/internal/payout/domain"
+	"github.com/leha-creator/chanly/internal/platform/logx"
+	"github.com/leha-creator/chanly/internal/platform/money"
 )
 
 // Учётки dev seed — те же, что у mockapi: фронтенд и тестировщики входят одними почтами.

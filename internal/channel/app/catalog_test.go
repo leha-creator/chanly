@@ -11,14 +11,14 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/leha-creator/maxim/internal/channel/app"
-	"github.com/leha-creator/maxim/internal/channel/channeltest"
-	"github.com/leha-creator/maxim/internal/channel/domain"
-	"github.com/leha-creator/maxim/internal/platform/apperr"
-	"github.com/leha-creator/maxim/internal/platform/audit"
-	"github.com/leha-creator/maxim/internal/platform/ids"
-	"github.com/leha-creator/maxim/internal/platform/job"
-	"github.com/leha-creator/maxim/internal/platform/money"
+	"github.com/leha-creator/chanly/internal/channel/app"
+	"github.com/leha-creator/chanly/internal/channel/channeltest"
+	"github.com/leha-creator/chanly/internal/channel/domain"
+	"github.com/leha-creator/chanly/internal/platform/apperr"
+	"github.com/leha-creator/chanly/internal/platform/audit"
+	"github.com/leha-creator/chanly/internal/platform/ids"
+	"github.com/leha-creator/chanly/internal/platform/job"
+	"github.com/leha-creator/chanly/internal/platform/money"
 )
 
 var f124 = []domain.Price{{FormatID: "f_1_24", Amount: 300000, IsEnabled: true}}
@@ -71,6 +71,31 @@ func reason(t *testing.T, err error) string {
 	}
 	r, _ := ae.Details["reason"].(string)
 	return string(ae.Code) + "/" + r
+}
+
+func TestPrivateChannelApprovalPersistsWithDevelopmentPolicy(t *testing.T) {
+	e := newEnv(t)
+	e.svc.Config.Visibility = domain.AllowPrivateChannels
+	c := e.moderated(-80000000100)
+	closed := publicCh
+	closed.IsPublic = false
+	e.max.set(c.MaxChatID, closed, allRights)
+	e.event(rightsChanged(c.MaxChatID))
+	e.drain()
+	adminID, ctx := e.admin()
+	// The same stored facts must be rejected by the strict production policy.
+	e.svc.Config.Visibility = domain.PublicChannelsOnly
+	if _, err := e.svc.Approve(ctx, adminID, c.ID); !apperr.Is(err, apperr.CodeConflict) {
+		t.Fatalf("strict policy approved private channel: %v", err)
+	}
+	e.svc.Config.Visibility = domain.AllowPrivateChannels
+	if _, err := e.svc.Approve(ctx, adminID, c.ID); err != nil {
+		t.Fatal(err)
+	}
+	c = e.channel(c.MaxChatID)
+	if c.Status != domain.StatusActive || c.IsPublic {
+		t.Fatalf("persisted approval: status=%s public=%v", c.Status, c.IsPublic)
+	}
 }
 
 func TestSetPrices(t *testing.T) {

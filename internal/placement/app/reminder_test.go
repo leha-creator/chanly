@@ -3,7 +3,7 @@ package app_test
 import (
 	"testing"
 
-	"github.com/leha-creator/maxim/internal/placement/domain"
+	"github.com/leha-creator/chanly/internal/placement/domain"
 )
 
 // Напоминание о T-01 (R-8 этапа уведомлений): P-02 ставит его, ответ блогера отменяет.

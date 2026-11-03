@@ -7,11 +7,11 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/leha-creator/maxim/internal/channel/domain"
-	"github.com/leha-creator/maxim/internal/platform/apperr"
-	"github.com/leha-creator/maxim/internal/platform/audit"
-	"github.com/leha-creator/maxim/internal/platform/ids"
-	"github.com/leha-creator/maxim/internal/platform/logx"
+	"github.com/leha-creator/chanly/internal/channel/domain"
+	"github.com/leha-creator/chanly/internal/platform/apperr"
+	"github.com/leha-creator/chanly/internal/platform/audit"
+	"github.com/leha-creator/chanly/internal/platform/ids"
+	"github.com/leha-creator/chanly/internal/platform/logx"
 )
 
 // Блокировка каналов и справочник категорий (R-7, R-8 этапа «API администратора»). Роль senior
@@ -40,7 +40,7 @@ func (s *Service) Unblock(ctx context.Context, adminID, id uuid.UUID, reason str
 		return nil, apperr.Validation("reason", "required")
 	}
 	err := s.blockTx(ctx, op, id, func(c *domain.Channel) (domain.StatusChange, error) {
-		return c.Unblock(s.Config.RknThreshold, s.Clock.Now())
+		return c.Unblock(s.Config.RknThreshold, s.Clock.Now(), s.Config.Visibility)
 	}, "channel.unblocked", reason)
 	if err != nil {
 		return nil, err

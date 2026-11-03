@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/leha-creator/maxim/internal/platform/logx"
+	"github.com/leha-creator/chanly/internal/platform/logx"
 )
 
 // stuckLimit — сколько зависших объектов одного вида берёт одна проверка.

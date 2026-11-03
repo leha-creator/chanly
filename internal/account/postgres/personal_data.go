@@ -6,8 +6,8 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/leha-creator/maxim/internal/account/domain"
-	"github.com/leha-creator/maxim/internal/account/postgres/sqlc"
+	"github.com/leha-creator/chanly/internal/account/domain"
+	"github.com/leha-creator/chanly/internal/account/postgres/sqlc"
 )
 
 // PersonalData — выгрузка и обезличивание данных субъекта (R-26). Почта в журнал не пишется.

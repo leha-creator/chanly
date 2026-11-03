@@ -8,9 +8,9 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/leha-creator/maxim/internal/channel/domain"
-	"github.com/leha-creator/maxim/internal/platform/job"
-	"github.com/leha-creator/maxim/internal/platform/logx"
+	"github.com/leha-creator/chanly/internal/channel/domain"
+	"github.com/leha-creator/chanly/internal/platform/job"
+	"github.com/leha-creator/chanly/internal/platform/logx"
 )
 
 // Виды заданий суточных метрик (07 §2, R-13, R-20).
@@ -136,7 +136,7 @@ func (s *Service) RefreshMetrics(ctx context.Context, p MetricsPayload) error {
 		if err := s.Metrics.Upsert(ctx, c.ID, snap, now); err != nil {
 			return err
 		}
-		change := c.MetricsRefreshed(info, s.Config.RknThreshold, now)
+		change := c.MetricsRefreshed(info, s.Config.RknThreshold, now, s.Config.Visibility)
 		if err := s.save(ctx, op, c, change); err != nil {
 			return err
 		}

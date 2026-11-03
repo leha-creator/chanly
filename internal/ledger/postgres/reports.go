@@ -7,9 +7,9 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/leha-creator/maxim/internal/ledger/domain"
-	"github.com/leha-creator/maxim/internal/ledger/postgres/sqlc"
-	"github.com/leha-creator/maxim/internal/platform/money"
+	"github.com/leha-creator/chanly/internal/ledger/domain"
+	"github.com/leha-creator/chanly/internal/ledger/postgres/sqlc"
+	"github.com/leha-creator/chanly/internal/platform/money"
 )
 
 var _ domain.Reports = (*Store)(nil)

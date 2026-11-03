@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/leha-creator/maxim/internal/integration/max"
+	"github.com/leha-creator/chanly/internal/integration/max"
 )
 
 // Тексты, которых не должно быть в журнале (07 §5.4).

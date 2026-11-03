@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/leha-creator/maxim/internal/account/postgres/sqlc"
+	"github.com/leha-creator/chanly/internal/account/postgres/sqlc"
 )
 
 // DeleteExpiredAuthCodes удаляет коды, истёкшие раньше before (задание cleanup, R-10).

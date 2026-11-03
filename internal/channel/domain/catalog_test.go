@@ -8,7 +8,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/leha-creator/maxim/internal/platform/money"
+	"github.com/leha-creator/chanly/internal/platform/money"
 )
 
 const rkn = 10000
@@ -227,6 +227,32 @@ func TestApprove(t *testing.T) {
 		if _, err := priced(s).Approve(admin, rkn, t0); !errors.Is(err, ErrNotInModeration) {
 			t.Errorf("approve from %s: %v", s, err)
 		}
+	}
+}
+
+func TestPrivateChannelPolicyPreservesFactsAndRights(t *testing.T) {
+	c := priced(StatusModeration)
+	c.IsPublic = false
+	if _, err := c.Approve(admin, rkn, t0, AllowPrivateChannels); err != nil {
+		t.Fatal(err)
+	}
+	private := pub
+	private.IsPublic = false
+	c.MetricsRefreshed(private, rkn, t0, AllowPrivateChannels)
+	if c.Status != StatusActive || c.IsPublic {
+		t.Fatalf("metrics lost private eligibility/fact: %s public=%v", c.Status, c.IsPublic)
+	}
+	c.RightsRefreshed(private, Membership{IsAdmin: true, Permissions: []string{"write"}}, rkn, t0, AllowPrivateChannels)
+	if c.Status != StatusSuspended || c.StatusReason != ReasonMissingRights {
+		t.Fatal("private policy bypassed delete permission")
+	}
+	c.RightsRefreshed(private, allOK, rkn, t0, AllowPrivateChannels)
+	if c.Status != StatusActive {
+		t.Fatal("private channel did not resume with rights")
+	}
+	c.MetricsRefreshed(private, rkn, t0)
+	if c.Status != StatusSuspended || c.StatusReason != ReasonNotPublic {
+		t.Fatal("default policy accepted private channel")
 	}
 }
 

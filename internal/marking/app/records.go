@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/leha-creator/maxim/internal/marking/domain"
+	"github.com/leha-creator/chanly/internal/marking/domain"
 )
 
 // record — объект ОРД любого вида под блокировкой: общий ход отправки и опроса работает

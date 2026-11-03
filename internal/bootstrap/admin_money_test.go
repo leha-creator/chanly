@@ -11,10 +11,10 @@ import (
 	"strings"
 	"testing"
 
-	accountdomain "github.com/leha-creator/maxim/internal/account/domain"
-	billingdomain "github.com/leha-creator/maxim/internal/billing/domain"
-	ledgerapp "github.com/leha-creator/maxim/internal/ledger/app"
-	ledgerdomain "github.com/leha-creator/maxim/internal/ledger/domain"
+	accountdomain "github.com/leha-creator/chanly/internal/account/domain"
+	billingdomain "github.com/leha-creator/chanly/internal/billing/domain"
+	ledgerapp "github.com/leha-creator/chanly/internal/ledger/app"
+	ledgerdomain "github.com/leha-creator/chanly/internal/ledger/domain"
 )
 
 // testStatement — выписка 1С в UTF-8 по счёту платформы разработки: поступления «сумма в копейках,

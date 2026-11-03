@@ -1,0 +1,15 @@
+{
+    "recipient":  {
+                      "chat_type":  "channel",
+                      "chat_id":  -70000000001
+                  },
+    "timestamp":  1793719053103,
+    "body":  {
+                 "mid":  "mid.check.senderless",
+                 "seq":  117553171864176354,
+                 "text":  "Technical check maxim-check:00000000-0000-4000-8000-000000000001"
+             },
+    "stat":  {
+                 "views":  1
+             }
+}

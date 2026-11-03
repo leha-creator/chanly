@@ -8,14 +8,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/leha-creator/maxim/internal/integration/mail/mailfake"
-	"github.com/leha-creator/maxim/internal/integration/max/maxfake"
-	"github.com/leha-creator/maxim/internal/platform/alert"
-	"github.com/leha-creator/maxim/internal/platform/clock"
-	"github.com/leha-creator/maxim/internal/platform/dbtest"
-	"github.com/leha-creator/maxim/internal/platform/job"
-	"github.com/leha-creator/maxim/internal/platform/logx"
-	"github.com/leha-creator/maxim/internal/platform/tx"
+	"github.com/leha-creator/chanly/internal/integration/mail/mailfake"
+	"github.com/leha-creator/chanly/internal/integration/max/maxfake"
+	"github.com/leha-creator/chanly/internal/platform/alert"
+	"github.com/leha-creator/chanly/internal/platform/clock"
+	"github.com/leha-creator/chanly/internal/platform/dbtest"
+	"github.com/leha-creator/chanly/internal/platform/job"
+	"github.com/leha-creator/chanly/internal/platform/logx"
+	"github.com/leha-creator/chanly/internal/platform/tx"
 )
 
 func TestMain(m *testing.M) { os.Exit(dbtest.Main(m)) }

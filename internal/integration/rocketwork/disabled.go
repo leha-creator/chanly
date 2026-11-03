@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/leha-creator/maxim/internal/platform/logx"
+	"github.com/leha-creator/chanly/internal/platform/logx"
 )
 
 // Disabled — режим ROCKETWORK_MODE=disabled (R-1): все вызовы возвращают ErrDisabled.

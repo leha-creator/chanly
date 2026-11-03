@@ -7,8 +7,8 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/leha-creator/maxim/internal/admin/domain"
-	"github.com/leha-creator/maxim/internal/platform/logx"
+	"github.com/leha-creator/chanly/internal/admin/domain"
+	"github.com/leha-creator/chanly/internal/platform/logx"
 )
 
 // AuditFilter — отбор журнала действий (R-15). ManualOnly — только действия администраторов.

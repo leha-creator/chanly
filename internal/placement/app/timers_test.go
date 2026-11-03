@@ -8,8 +8,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
 
-	"github.com/leha-creator/maxim/internal/placement/domain"
-	placementpg "github.com/leha-creator/maxim/internal/placement/postgres"
+	"github.com/leha-creator/chanly/internal/placement/domain"
+	placementpg "github.com/leha-creator/chanly/internal/placement/postgres"
 )
 
 func TestAcceptTimeout(t *testing.T) {

@@ -1,13 +1,13 @@
 package bootstrap
 
 import (
-	ledgerapp "github.com/leha-creator/maxim/internal/ledger/app"
-	ledgerhttp "github.com/leha-creator/maxim/internal/ledger/httpapi"
-	ledgerpg "github.com/leha-creator/maxim/internal/ledger/postgres"
-	"github.com/leha-creator/maxim/internal/platform/audit"
-	"github.com/leha-creator/maxim/internal/platform/logx"
-	"github.com/leha-creator/maxim/internal/platform/money"
-	"github.com/leha-creator/maxim/internal/platform/tx"
+	ledgerapp "github.com/leha-creator/chanly/internal/ledger/app"
+	ledgerhttp "github.com/leha-creator/chanly/internal/ledger/httpapi"
+	ledgerpg "github.com/leha-creator/chanly/internal/ledger/postgres"
+	"github.com/leha-creator/chanly/internal/platform/audit"
+	"github.com/leha-creator/chanly/internal/platform/logx"
+	"github.com/leha-creator/chanly/internal/platform/money"
+	"github.com/leha-creator/chanly/internal/platform/tx"
 )
 
 // newLedgerService собирает журнал проводок (06 §2): единственный писатель ledger_* и hold.

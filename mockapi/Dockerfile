@@ -16,8 +16,8 @@ RUN --mount=type=cache,target=/go/pkg/mod \
     CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -X main.version=${VERSION}" -o /out/mockapi ./cmd/mockapi
 
 FROM gcr.io/distroless/static-debian12:nonroot
-LABEL org.opencontainers.image.source="https://github.com/leha-creator/maxim" \
-      org.opencontainers.image.description="Maxim mock API (in-memory demo data)"
+LABEL org.opencontainers.image.source="https://github.com/leha-creator/chanly" \
+      org.opencontainers.image.description="Chanly mock API (in-memory demo data)"
 COPY --from=build /out/mockapi /mockapi
 # 65532 — пользователь nonroot в distroless.
 USER 65532:65532

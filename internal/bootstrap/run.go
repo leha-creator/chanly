@@ -11,7 +11,7 @@ import (
 
 	"github.com/caarlos0/env/v11"
 
-	"github.com/leha-creator/maxim/internal/platform/logx"
+	"github.com/leha-creator/chanly/internal/platform/logx"
 )
 
 // RunParams — всё, что режиму нужно от процесса.
@@ -31,6 +31,8 @@ var errUsage = errors.New("usage")
 func Run(ctx context.Context, p RunParams) int {
 	mode := p.Command
 	switch mode {
+	case "integration-check":
+		return runIntegrationCheck(ctx, p)
 	case ModeProbe:
 		// До загрузки конфигурации: проверка здоровья не зависит от переменных окружения.
 		return runProbe(ctx, p.Args, p.Stderr)

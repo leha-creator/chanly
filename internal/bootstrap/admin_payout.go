@@ -12,13 +12,13 @@ import (
 
 	"github.com/google/uuid"
 
-	accountpg "github.com/leha-creator/maxim/internal/account/postgres"
-	ledgerapp "github.com/leha-creator/maxim/internal/ledger/app"
-	payoutdomain "github.com/leha-creator/maxim/internal/payout/domain"
-	"github.com/leha-creator/maxim/internal/platform/audit"
-	"github.com/leha-creator/maxim/internal/platform/db"
-	"github.com/leha-creator/maxim/internal/platform/logx"
-	"github.com/leha-creator/maxim/internal/platform/money"
+	accountpg "github.com/leha-creator/chanly/internal/account/postgres"
+	ledgerapp "github.com/leha-creator/chanly/internal/ledger/app"
+	payoutdomain "github.com/leha-creator/chanly/internal/payout/domain"
+	"github.com/leha-creator/chanly/internal/platform/audit"
+	"github.com/leha-creator/chanly/internal/platform/db"
+	"github.com/leha-creator/chanly/internal/platform/logx"
+	"github.com/leha-creator/chanly/internal/platform/money"
 )
 
 // runAdminPayout — выплаты до API администратора (S-19, R-3, R-9 этапа выплат):

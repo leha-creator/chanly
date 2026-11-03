@@ -6,9 +6,9 @@ import (
 	"context"
 	"time"
 
-	"github.com/leha-creator/maxim/internal/billing/app"
-	"github.com/leha-creator/maxim/internal/billing/domain"
-	"github.com/leha-creator/maxim/internal/platform/job"
+	"github.com/leha-creator/chanly/internal/billing/app"
+	"github.com/leha-creator/chanly/internal/billing/domain"
+	"github.com/leha-creator/chanly/internal/platform/job"
 )
 
 // Options — расписание заданий.

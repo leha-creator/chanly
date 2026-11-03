@@ -13,8 +13,8 @@ import (
 	"text/template"
 	"unicode/utf8"
 
-	"github.com/leha-creator/maxim/internal/notification/domain"
-	"github.com/leha-creator/maxim/templates"
+	"github.com/leha-creator/chanly/internal/notification/domain"
+	"github.com/leha-creator/chanly/templates"
 )
 
 // MaxTextLength — предел личного сообщения бота.

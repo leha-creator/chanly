@@ -5,7 +5,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/leha-creator/maxim/internal/channel/domain"
+	"github.com/leha-creator/chanly/internal/channel/domain"
 )
 
 // ListByIDs — каналы с ценами по идентификаторам, без блокировки (корзина, этап «Заказ и

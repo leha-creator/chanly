@@ -14,12 +14,12 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/leha-creator/maxim/internal/integration/rocketwork"
-	"github.com/leha-creator/maxim/internal/integration/rocketwork/rocketworkfake"
-	"github.com/leha-creator/maxim/internal/platform/audit"
-	"github.com/leha-creator/maxim/internal/platform/db"
-	"github.com/leha-creator/maxim/internal/platform/logx"
-	"github.com/leha-creator/maxim/internal/platform/money"
+	"github.com/leha-creator/chanly/internal/integration/rocketwork"
+	"github.com/leha-creator/chanly/internal/integration/rocketwork/rocketworkfake"
+	"github.com/leha-creator/chanly/internal/platform/audit"
+	"github.com/leha-creator/chanly/internal/platform/db"
+	"github.com/leha-creator/chanly/internal/platform/logx"
+	"github.com/leha-creator/chanly/internal/platform/money"
 )
 
 // errDevRocketWorkFake — команды подделки Рокет Ворк без ROCKETWORK_MODE=fake.
@@ -27,6 +27,7 @@ var errDevRocketWorkFake = errors.New("dev rocketwork commands require ROCKETWOR
 
 // runDevPayout — команды разработчика этапа выплат (R-4, только development и test):
 //
+//	maxim dev rocketwork invite --org <id|ИНН>
 //	maxim dev rocketwork activate --org <id|ИНН> [--webhook <url>]
 //	maxim dev rocketwork block --org <id|ИНН> [--reason blocked|tax_status_lost] [--webhook <url>]
 //	maxim dev rocketwork deposit --amount <руб.коп>
@@ -58,7 +59,7 @@ func runDevPayout(ctx context.Context, cfg Config, log *slog.Logger, args []stri
 		return errUsage
 	}
 	switch group + " " + cmd {
-	case "rocketwork activate", "rocketwork block":
+	case "rocketwork invite", "rocketwork activate", "rocketwork block":
 		if *org == "" {
 			return errUsage
 		}
@@ -113,6 +114,16 @@ func runDevPayout(ctx context.Context, cfg Config, log *slog.Logger, args []stri
 	}
 	mc := &moneyCmd{m: m, log: log, out: out}
 	switch cmd {
+	case "invite":
+		orgID, err := mc.orgID(ctx, *org)
+		if err != nil {
+			return err
+		}
+		if _, err := m.payout.Invite(ctx, orgID); err != nil {
+			return err
+		}
+		fmt.Fprintln(out, "test contractor invited; worker will register it")
+		return nil
 	case "deposit":
 		v, err := money.Parse(*amount)
 		if err != nil || v < 0 {

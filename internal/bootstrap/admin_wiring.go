@@ -1,19 +1,19 @@
 package bootstrap
 
 import (
-	adminapp "github.com/leha-creator/maxim/internal/admin/app"
-	admindomain "github.com/leha-creator/maxim/internal/admin/domain"
-	adminhttp "github.com/leha-creator/maxim/internal/admin/httpapi"
-	adminpg "github.com/leha-creator/maxim/internal/admin/postgres"
-	billinghttp "github.com/leha-creator/maxim/internal/billing/httpapi"
-	"github.com/leha-creator/maxim/internal/bootstrap/bridge"
-	ledgerhttp "github.com/leha-creator/maxim/internal/ledger/httpapi"
-	markinghttp "github.com/leha-creator/maxim/internal/marking/httpapi"
-	payouthttp "github.com/leha-creator/maxim/internal/payout/httpapi"
-	placementhttp "github.com/leha-creator/maxim/internal/placement/httpapi"
-	"github.com/leha-creator/maxim/internal/platform/adminref"
-	"github.com/leha-creator/maxim/internal/platform/audit"
-	"github.com/leha-creator/maxim/internal/platform/logx"
+	adminapp "github.com/leha-creator/chanly/internal/admin/app"
+	admindomain "github.com/leha-creator/chanly/internal/admin/domain"
+	adminhttp "github.com/leha-creator/chanly/internal/admin/httpapi"
+	adminpg "github.com/leha-creator/chanly/internal/admin/postgres"
+	billinghttp "github.com/leha-creator/chanly/internal/billing/httpapi"
+	"github.com/leha-creator/chanly/internal/bootstrap/bridge"
+	ledgerhttp "github.com/leha-creator/chanly/internal/ledger/httpapi"
+	markinghttp "github.com/leha-creator/chanly/internal/marking/httpapi"
+	payouthttp "github.com/leha-creator/chanly/internal/payout/httpapi"
+	placementhttp "github.com/leha-creator/chanly/internal/placement/httpapi"
+	"github.com/leha-creator/chanly/internal/platform/adminref"
+	"github.com/leha-creator/chanly/internal/platform/audit"
+	"github.com/leha-creator/chanly/internal/platform/logx"
 )
 
 // adminHandlers — псевдоним для встраивания в apiImpl.

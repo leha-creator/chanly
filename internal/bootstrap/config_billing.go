@@ -5,9 +5,9 @@ import (
 	"regexp"
 	"time"
 
-	billingapp "github.com/leha-creator/maxim/internal/billing/app"
-	billingdomain "github.com/leha-creator/maxim/internal/billing/domain"
-	"github.com/leha-creator/maxim/internal/integration/bank/clientbank"
+	billingapp "github.com/leha-creator/chanly/internal/billing/app"
+	billingdomain "github.com/leha-creator/chanly/internal/billing/domain"
+	"github.com/leha-creator/chanly/internal/integration/bank/clientbank"
 )
 
 // BillingConfig — приём оплаты и учёт денег (этап «Приём оплаты и учёт денег», R-10 … R-16).

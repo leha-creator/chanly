@@ -17,10 +17,10 @@ import (
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 
-	"github.com/leha-creator/maxim/internal/platform/clock"
-	"github.com/leha-creator/maxim/internal/platform/logx"
-	"github.com/leha-creator/maxim/internal/platform/storage"
-	"github.com/leha-creator/maxim/internal/platform/storage/storagefake"
+	"github.com/leha-creator/chanly/internal/platform/clock"
+	"github.com/leha-creator/chanly/internal/platform/logx"
+	"github.com/leha-creator/chanly/internal/platform/storage"
+	"github.com/leha-creator/chanly/internal/platform/storage/storagefake"
 )
 
 // MinioImage — образ S3-совместимого хранилища для тестов (тот же, что в compose.dev.yml).

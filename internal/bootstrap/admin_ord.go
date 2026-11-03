@@ -10,12 +10,12 @@ import (
 	"regexp"
 	"text/tabwriter"
 
-	accountdomain "github.com/leha-creator/maxim/internal/account/domain"
-	accountpg "github.com/leha-creator/maxim/internal/account/postgres"
-	markingapp "github.com/leha-creator/maxim/internal/marking/app"
-	markingdomain "github.com/leha-creator/maxim/internal/marking/domain"
-	"github.com/leha-creator/maxim/internal/platform/db"
-	"github.com/leha-creator/maxim/internal/platform/logx"
+	accountdomain "github.com/leha-creator/chanly/internal/account/domain"
+	accountpg "github.com/leha-creator/chanly/internal/account/postgres"
+	markingapp "github.com/leha-creator/chanly/internal/marking/app"
+	markingdomain "github.com/leha-creator/chanly/internal/marking/domain"
+	"github.com/leha-creator/chanly/internal/platform/db"
+	"github.com/leha-creator/chanly/internal/platform/logx"
 )
 
 // errNotAdmin — у пользователя команды нет роли администратора.

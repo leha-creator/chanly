@@ -4,8 +4,8 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/leha-creator/maxim/internal/account/accounttest"
-	accountdomain "github.com/leha-creator/maxim/internal/account/domain"
+	"github.com/leha-creator/chanly/internal/account/accounttest"
+	accountdomain "github.com/leha-creator/chanly/internal/account/domain"
 )
 
 type rocketworkView struct {

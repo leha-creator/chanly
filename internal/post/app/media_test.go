@@ -7,12 +7,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/leha-creator/maxim/internal/platform/apperr"
-	"github.com/leha-creator/maxim/internal/platform/ids"
-	"github.com/leha-creator/maxim/internal/platform/storage/storagefake"
-	"github.com/leha-creator/maxim/internal/post/domain"
-	"github.com/leha-creator/maxim/internal/post/imaging/imagingtest"
-	"github.com/leha-creator/maxim/internal/post/posttest"
+	"github.com/leha-creator/chanly/internal/platform/apperr"
+	"github.com/leha-creator/chanly/internal/platform/ids"
+	"github.com/leha-creator/chanly/internal/platform/storage/storagefake"
+	"github.com/leha-creator/chanly/internal/post/domain"
+	"github.com/leha-creator/chanly/internal/post/imaging/imagingtest"
+	"github.com/leha-creator/chanly/internal/post/posttest"
 )
 
 func TestUploadJPEG(t *testing.T) {

@@ -8,8 +8,8 @@ import (
 
 	"github.com/google/uuid"
 
-	accountdomain "github.com/leha-creator/maxim/internal/account/domain"
-	"github.com/leha-creator/maxim/internal/integration/ord"
+	accountdomain "github.com/leha-creator/chanly/internal/account/domain"
+	"github.com/leha-creator/chanly/internal/integration/ord"
 )
 
 // Этап «API администратора»: организации и пользователи (R-12 … R-14), ошибки ОРД (S-20, R-17).

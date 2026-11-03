@@ -4,8 +4,8 @@ package jobs
 import (
 	"context"
 
-	"github.com/leha-creator/maxim/internal/notification/app"
-	"github.com/leha-creator/maxim/internal/platform/job"
+	"github.com/leha-creator/chanly/internal/notification/app"
+	"github.com/leha-creator/chanly/internal/platform/job"
 )
 
 // Register регистрирует send_notification (07 §2). Исчерпание попыток помечает уведомление

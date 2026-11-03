@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/leha-creator/maxim/internal/post/imaging/imagingtest"
+	"github.com/leha-creator/chanly/internal/post/imaging/imagingtest"
 )
 
 func TestPostOperationsRequireAdvertiser(t *testing.T) {

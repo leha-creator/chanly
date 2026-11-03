@@ -3,10 +3,10 @@ package httpapi
 import (
 	"time"
 
-	"github.com/leha-creator/maxim/internal/apigen"
-	"github.com/leha-creator/maxim/internal/placement/app"
-	"github.com/leha-creator/maxim/internal/placement/domain"
-	"github.com/leha-creator/maxim/internal/platform/money"
+	"github.com/leha-creator/chanly/internal/apigen"
+	"github.com/leha-creator/chanly/internal/placement/app"
+	"github.com/leha-creator/chanly/internal/placement/domain"
+	"github.com/leha-creator/chanly/internal/platform/money"
 )
 
 // Время в ответах — UTC, время суток — ЧЧ:ММ по Москве (соглашения спецификации).

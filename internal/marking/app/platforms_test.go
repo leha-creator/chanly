@@ -8,13 +8,13 @@ import (
 
 	"github.com/google/uuid"
 
-	channelapp "github.com/leha-creator/maxim/internal/channel/app"
-	"github.com/leha-creator/maxim/internal/integration/ord"
-	"github.com/leha-creator/maxim/internal/marking/domain"
-	"github.com/leha-creator/maxim/internal/marking/markingtest"
-	"github.com/leha-creator/maxim/internal/placement/placementtest"
-	"github.com/leha-creator/maxim/internal/platform/audit"
-	"github.com/leha-creator/maxim/internal/platform/ids"
+	channelapp "github.com/leha-creator/chanly/internal/channel/app"
+	"github.com/leha-creator/chanly/internal/integration/ord"
+	"github.com/leha-creator/chanly/internal/marking/domain"
+	"github.com/leha-creator/chanly/internal/marking/markingtest"
+	"github.com/leha-creator/chanly/internal/placement/placementtest"
+	"github.com/leha-creator/chanly/internal/platform/audit"
+	"github.com/leha-creator/chanly/internal/platform/ids"
 )
 
 var chatSeq int64 = -7_000_000_000

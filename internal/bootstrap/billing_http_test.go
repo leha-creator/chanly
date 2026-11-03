@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	billingdomain "github.com/leha-creator/maxim/internal/billing/domain"
-	"github.com/leha-creator/maxim/internal/platform/ids"
+	billingdomain "github.com/leha-creator/chanly/internal/billing/domain"
+	"github.com/leha-creator/chanly/internal/platform/ids"
 )
 
 type invoiceView struct {

@@ -8,8 +8,8 @@
 FROM pgsty/mc:RELEASE.2026-09-16T00-00-00Z AS mc
 
 FROM postgres:17.10-alpine3.24
-LABEL org.opencontainers.image.source="https://github.com/leha-creator/maxim" \
-      org.opencontainers.image.description="Maxim PostgreSQL with WAL archiving and backup tools"
+LABEL org.opencontainers.image.source="https://github.com/leha-creator/chanly" \
+      org.opencontainers.image.description="Chanly PostgreSQL with WAL archiving and backup tools"
 
 # curl — письма о сбое копии по SMTP (backup-lib.sh, notify_failure); jq — манифесты копий.
 # hadolint ignore=DL3018

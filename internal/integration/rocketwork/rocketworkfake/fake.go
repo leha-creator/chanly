@@ -17,8 +17,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/leha-creator/maxim/internal/integration/rocketwork"
-	"github.com/leha-creator/maxim/internal/platform/logx"
+	"github.com/leha-creator/chanly/internal/integration/rocketwork"
+	"github.com/leha-creator/chanly/internal/platform/logx"
 )
 
 // Комиссия подделки (ПРЕДПОЛОЖЕНИЕ (Q-12): тариф сервиса не известен).

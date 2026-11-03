@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/leha-creator/maxim/internal/platform/job"
-	"github.com/leha-creator/maxim/internal/platform/outbound"
+	"github.com/leha-creator/chanly/internal/platform/job"
+	"github.com/leha-creator/chanly/internal/platform/outbound"
 )
 
 // ValidationError — ОРД отклонил запрос проверкой схемы (422, HTTPValidationError).

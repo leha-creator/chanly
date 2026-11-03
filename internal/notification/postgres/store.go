@@ -16,10 +16,10 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/prometheus/client_golang/prometheus"
 
-	"github.com/leha-creator/maxim/internal/notification/domain"
-	"github.com/leha-creator/maxim/internal/notification/postgres/sqlc"
-	"github.com/leha-creator/maxim/internal/platform/db"
-	"github.com/leha-creator/maxim/internal/platform/logx"
+	"github.com/leha-creator/chanly/internal/notification/domain"
+	"github.com/leha-creator/chanly/internal/notification/postgres/sqlc"
+	"github.com/leha-creator/chanly/internal/platform/db"
+	"github.com/leha-creator/chanly/internal/platform/logx"
 )
 
 // Store — хранилище модуля; реализует domain.Repository.

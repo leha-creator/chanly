@@ -3,7 +3,7 @@ package domain
 import (
 	"fmt"
 
-	"github.com/leha-creator/maxim/internal/platform/money"
+	"github.com/leha-creator/chanly/internal/platform/money"
 )
 
 // Distribution — распределение удержания при переходе в accepted или refunded (03 §7).

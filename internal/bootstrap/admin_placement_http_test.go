@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	accountdomain "github.com/leha-creator/maxim/internal/account/domain"
+	accountdomain "github.com/leha-creator/chanly/internal/account/domain"
 )
 
 // Этап «API администратора»: модерация поста, размещения, споры и переписка, блокировка канала

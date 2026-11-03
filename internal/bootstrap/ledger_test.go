@@ -5,9 +5,9 @@ import (
 
 	"github.com/google/uuid"
 
-	ledgerdomain "github.com/leha-creator/maxim/internal/ledger/domain"
-	"github.com/leha-creator/maxim/internal/platform/ids"
-	"github.com/leha-creator/maxim/internal/platform/money"
+	ledgerdomain "github.com/leha-creator/chanly/internal/ledger/domain"
+	"github.com/leha-creator/chanly/internal/platform/ids"
+	"github.com/leha-creator/chanly/internal/platform/money"
 )
 
 // testFunding — баланс рекламодателя из advertiserClient: оформление удерживает деньги (R-6).

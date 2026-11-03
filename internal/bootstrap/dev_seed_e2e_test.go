@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
-	accountdomain "github.com/leha-creator/maxim/internal/account/domain"
-	"github.com/leha-creator/maxim/internal/channel/app"
+	accountdomain "github.com/leha-creator/chanly/internal/account/domain"
+	"github.com/leha-creator/chanly/internal/channel/app"
 )
 
 // testWaiter — ожидание dev seed в тесте: прогоняет worker тестового приложения и двигает

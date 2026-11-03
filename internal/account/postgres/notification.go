@@ -6,7 +6,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/leha-creator/maxim/internal/account/domain"
+	"github.com/leha-creator/chanly/internal/account/domain"
 )
 
 // MemberIDs — активные пользователи организации, владелец первым (адресаты уведомлений, R-1

@@ -3,7 +3,7 @@ package app_test
 import (
 	"testing"
 
-	"github.com/leha-creator/maxim/internal/platform/apperr"
+	"github.com/leha-creator/chanly/internal/platform/apperr"
 )
 
 func TestDevEnsureUser(t *testing.T) {

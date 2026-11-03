@@ -4,8 +4,8 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/leha-creator/maxim/internal/apigen"
-	"github.com/leha-creator/maxim/internal/billing/domain"
+	"github.com/leha-creator/chanly/internal/apigen"
+	"github.com/leha-creator/chanly/internal/billing/domain"
 )
 
 func toClosingAct(a domain.ClosingAct) apigen.ClosingAct {

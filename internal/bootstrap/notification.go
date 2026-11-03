@@ -1,16 +1,16 @@
 package bootstrap
 
 import (
-	accountpg "github.com/leha-creator/maxim/internal/account/postgres"
-	"github.com/leha-creator/maxim/internal/bootstrap/bridge"
-	channelpg "github.com/leha-creator/maxim/internal/channel/postgres"
-	notificationapp "github.com/leha-creator/maxim/internal/notification/app"
-	notificationhttp "github.com/leha-creator/maxim/internal/notification/httpapi"
-	notificationpg "github.com/leha-creator/maxim/internal/notification/postgres"
-	"github.com/leha-creator/maxim/internal/notification/render"
-	"github.com/leha-creator/maxim/internal/platform/job"
-	"github.com/leha-creator/maxim/internal/platform/logx"
-	"github.com/leha-creator/maxim/internal/platform/tx"
+	accountpg "github.com/leha-creator/chanly/internal/account/postgres"
+	"github.com/leha-creator/chanly/internal/bootstrap/bridge"
+	channelpg "github.com/leha-creator/chanly/internal/channel/postgres"
+	notificationapp "github.com/leha-creator/chanly/internal/notification/app"
+	notificationhttp "github.com/leha-creator/chanly/internal/notification/httpapi"
+	notificationpg "github.com/leha-creator/chanly/internal/notification/postgres"
+	"github.com/leha-creator/chanly/internal/notification/render"
+	"github.com/leha-creator/chanly/internal/platform/job"
+	"github.com/leha-creator/chanly/internal/platform/logx"
+	"github.com/leha-creator/chanly/internal/platform/tx"
 )
 
 // notificationHandlers — псевдоним для встраивания в apiImpl.

@@ -14,13 +14,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/leha-creator/maxim/internal/integration/max"
-	"github.com/leha-creator/maxim/internal/platform/clock"
-	"github.com/leha-creator/maxim/internal/platform/dbtest"
-	"github.com/leha-creator/maxim/internal/platform/job"
-	"github.com/leha-creator/maxim/internal/platform/logx"
-	"github.com/leha-creator/maxim/internal/platform/outbound"
-	"github.com/leha-creator/maxim/internal/platform/ratelimit"
+	"github.com/leha-creator/chanly/internal/integration/max"
+	"github.com/leha-creator/chanly/internal/platform/clock"
+	"github.com/leha-creator/chanly/internal/platform/dbtest"
+	"github.com/leha-creator/chanly/internal/platform/job"
+	"github.com/leha-creator/chanly/internal/platform/logx"
+	"github.com/leha-creator/chanly/internal/platform/outbound"
+	"github.com/leha-creator/chanly/internal/platform/ratelimit"
 )
 
 func TestMain(m *testing.M) { os.Exit(dbtest.Main(m)) }

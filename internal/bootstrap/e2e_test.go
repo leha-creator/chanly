@@ -9,8 +9,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/leha-creator/maxim/internal/account/accounttest"
-	"github.com/leha-creator/maxim/internal/account/domain"
+	"github.com/leha-creator/chanly/internal/account/accounttest"
+	"github.com/leha-creator/chanly/internal/account/domain"
 )
 
 type meView struct {

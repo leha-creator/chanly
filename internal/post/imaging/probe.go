@@ -6,7 +6,7 @@ import (
 	"image"
 	"net/http"
 
-	"github.com/leha-creator/maxim/internal/post/domain"
+	"github.com/leha-creator/chanly/internal/post/domain"
 )
 
 // Probe читает сведения о файле без полного декодирования (R-3): тип по содержимому,

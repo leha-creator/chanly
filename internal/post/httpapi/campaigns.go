@@ -3,8 +3,8 @@ package httpapi
 import (
 	"context"
 
-	"github.com/leha-creator/maxim/internal/apigen"
-	"github.com/leha-creator/maxim/internal/post/domain"
+	"github.com/leha-creator/chanly/internal/apigen"
+	"github.com/leha-creator/chanly/internal/post/domain"
 )
 
 func (h *Handlers) ListCampaigns(ctx context.Context, req apigen.ListCampaignsRequestObject) (apigen.ListCampaignsResponseObject, error) {

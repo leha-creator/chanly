@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	accountdomain "github.com/leha-creator/maxim/internal/account/domain"
+	accountdomain "github.com/leha-creator/chanly/internal/account/domain"
 )
 
 // Этап «Приёмка, споры и возвраты»: P-12, P-13, P-14 рекламодателем, P-15 командой администратора.

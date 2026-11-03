@@ -1,21 +1,21 @@
 package bootstrap
 
 import (
-	"github.com/leha-creator/maxim/internal/bootstrap/bridge"
-	channelapp "github.com/leha-creator/maxim/internal/channel/app"
-	ledgerapp "github.com/leha-creator/maxim/internal/ledger/app"
-	notificationapp "github.com/leha-creator/maxim/internal/notification/app"
-	placementapp "github.com/leha-creator/maxim/internal/placement/app"
-	"github.com/leha-creator/maxim/internal/placement/domain"
-	placementhttp "github.com/leha-creator/maxim/internal/placement/httpapi"
-	placementpg "github.com/leha-creator/maxim/internal/placement/postgres"
-	"github.com/leha-creator/maxim/internal/platform/alert"
-	"github.com/leha-creator/maxim/internal/platform/audit"
-	"github.com/leha-creator/maxim/internal/platform/job"
-	"github.com/leha-creator/maxim/internal/platform/logx"
-	"github.com/leha-creator/maxim/internal/platform/stuck"
-	"github.com/leha-creator/maxim/internal/platform/tx"
-	postapp "github.com/leha-creator/maxim/internal/post/app"
+	"github.com/leha-creator/chanly/internal/bootstrap/bridge"
+	channelapp "github.com/leha-creator/chanly/internal/channel/app"
+	ledgerapp "github.com/leha-creator/chanly/internal/ledger/app"
+	notificationapp "github.com/leha-creator/chanly/internal/notification/app"
+	placementapp "github.com/leha-creator/chanly/internal/placement/app"
+	"github.com/leha-creator/chanly/internal/placement/domain"
+	placementhttp "github.com/leha-creator/chanly/internal/placement/httpapi"
+	placementpg "github.com/leha-creator/chanly/internal/placement/postgres"
+	"github.com/leha-creator/chanly/internal/platform/alert"
+	"github.com/leha-creator/chanly/internal/platform/audit"
+	"github.com/leha-creator/chanly/internal/platform/job"
+	"github.com/leha-creator/chanly/internal/platform/logx"
+	"github.com/leha-creator/chanly/internal/platform/stuck"
+	"github.com/leha-creator/chanly/internal/platform/tx"
+	postapp "github.com/leha-creator/chanly/internal/post/app"
 )
 
 // placementHandlers — псевдоним для встраивания в apiImpl рядом с обработчиками других модулей.

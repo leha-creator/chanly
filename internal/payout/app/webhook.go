@@ -1,7 +1,7 @@
 package app
 
 import (
-	"github.com/leha-creator/maxim/internal/payout/domain"
+	"github.com/leha-creator/chanly/internal/payout/domain"
 )
 
 // ParseWebhook проверяет подпись и разбирает событие Рокет Ворк (R-11). Сервис в запросе

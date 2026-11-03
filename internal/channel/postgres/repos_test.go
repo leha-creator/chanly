@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/leha-creator/maxim/internal/channel/domain"
-	"github.com/leha-creator/maxim/internal/platform/ids"
+	"github.com/leha-creator/chanly/internal/channel/domain"
+	"github.com/leha-creator/chanly/internal/platform/ids"
 )
 
 func TestPricesUnavailabilityMetrics(t *testing.T) {

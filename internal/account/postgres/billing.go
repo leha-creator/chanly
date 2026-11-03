@@ -5,7 +5,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/leha-creator/maxim/internal/account/postgres/sqlc"
+	"github.com/leha-creator/chanly/internal/account/postgres/sqlc"
 )
 
 // BillingDetails — реквизиты организации для счёта и закрывающих документов (модуль billing).

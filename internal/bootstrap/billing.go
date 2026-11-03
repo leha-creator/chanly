@@ -1,18 +1,18 @@
 package bootstrap
 
 import (
-	accountpg "github.com/leha-creator/maxim/internal/account/postgres"
-	billingapp "github.com/leha-creator/maxim/internal/billing/app"
-	billinghttp "github.com/leha-creator/maxim/internal/billing/httpapi"
-	billingpdf "github.com/leha-creator/maxim/internal/billing/pdf"
-	billingpg "github.com/leha-creator/maxim/internal/billing/postgres"
-	"github.com/leha-creator/maxim/internal/bootstrap/bridge"
-	"github.com/leha-creator/maxim/internal/integration/bank/clientbank"
-	ledgerapp "github.com/leha-creator/maxim/internal/ledger/app"
-	notificationapp "github.com/leha-creator/maxim/internal/notification/app"
-	"github.com/leha-creator/maxim/internal/platform/audit"
-	"github.com/leha-creator/maxim/internal/platform/logx"
-	"github.com/leha-creator/maxim/internal/platform/tx"
+	accountpg "github.com/leha-creator/chanly/internal/account/postgres"
+	billingapp "github.com/leha-creator/chanly/internal/billing/app"
+	billinghttp "github.com/leha-creator/chanly/internal/billing/httpapi"
+	billingpdf "github.com/leha-creator/chanly/internal/billing/pdf"
+	billingpg "github.com/leha-creator/chanly/internal/billing/postgres"
+	"github.com/leha-creator/chanly/internal/bootstrap/bridge"
+	"github.com/leha-creator/chanly/internal/integration/bank/clientbank"
+	ledgerapp "github.com/leha-creator/chanly/internal/ledger/app"
+	notificationapp "github.com/leha-creator/chanly/internal/notification/app"
+	"github.com/leha-creator/chanly/internal/platform/audit"
+	"github.com/leha-creator/chanly/internal/platform/logx"
+	"github.com/leha-creator/chanly/internal/platform/tx"
 )
 
 // billingHandlers — псевдоним для встраивания в apiImpl рядом с обработчиками других модулей.

@@ -6,7 +6,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/leha-creator/maxim/internal/platform/inbound/sqlc"
+	"github.com/leha-creator/chanly/internal/platform/inbound/sqlc"
 )
 
 // DeleteEvents удаляет обработанные и проигнорированные события старше before (R-10).

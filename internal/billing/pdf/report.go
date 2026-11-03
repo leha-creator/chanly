@@ -3,7 +3,7 @@ package pdf
 import (
 	"strconv"
 
-	"github.com/leha-creator/maxim/internal/billing/domain"
+	"github.com/leha-creator/chanly/internal/billing/domain"
 )
 
 // AgentReport — отчёт агента за месяц (R-16): размещения с распределением удержания в

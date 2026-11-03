@@ -3,9 +3,9 @@ package httpapi
 import (
 	"context"
 
-	"github.com/leha-creator/maxim/internal/apigen"
-	"github.com/leha-creator/maxim/internal/placement/app"
-	"github.com/leha-creator/maxim/internal/placement/domain"
+	"github.com/leha-creator/chanly/internal/apigen"
+	"github.com/leha-creator/chanly/internal/placement/app"
+	"github.com/leha-creator/chanly/internal/placement/domain"
 )
 
 // CheckoutCampaign — оформление заказа (S-06). Операция принадлежит модулю размещений (R-1).

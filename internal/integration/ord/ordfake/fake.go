@@ -14,8 +14,8 @@ import (
 	"net/http"
 	"sync"
 
-	"github.com/leha-creator/maxim/internal/integration/ord"
-	"github.com/leha-creator/maxim/internal/platform/job"
+	"github.com/leha-creator/chanly/internal/integration/ord"
+	"github.com/leha-creator/chanly/internal/platform/job"
 )
 
 // Статусы ОРД.

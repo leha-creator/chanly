@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/leha-creator/maxim/internal/platform/logx"
+	"github.com/leha-creator/chanly/internal/platform/logx"
 )
 
 // Counters — счётчики меню администратора (R-16).

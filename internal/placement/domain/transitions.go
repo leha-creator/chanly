@@ -4,7 +4,7 @@ import (
 	"slices"
 	"time"
 
-	"github.com/leha-creator/maxim/internal/platform/apperr"
+	"github.com/leha-creator/chanly/internal/platform/apperr"
 )
 
 // TransitionCode — номер перехода размещения (03 §4).

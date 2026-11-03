@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/leha-creator/maxim/internal/platform/outbound"
+	"github.com/leha-creator/chanly/internal/platform/outbound"
 )
 
 // APIError — ошибка в теле ответа MAX: {"code": "...", "message": "..."}.

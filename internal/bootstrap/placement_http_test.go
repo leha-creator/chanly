@@ -12,9 +12,9 @@ import (
 
 	"github.com/google/uuid"
 
-	placementapp "github.com/leha-creator/maxim/internal/placement/app"
-	"github.com/leha-creator/maxim/internal/placement/placementtest"
-	"github.com/leha-creator/maxim/internal/platform/money"
+	placementapp "github.com/leha-creator/chanly/internal/placement/app"
+	"github.com/leha-creator/chanly/internal/placement/placementtest"
+	"github.com/leha-creator/chanly/internal/platform/money"
 )
 
 // doKey — запрос с заголовком Idempotency-Key (R-18).

@@ -8,17 +8,17 @@ import (
 
 	"github.com/google/uuid"
 
-	accountpg "github.com/leha-creator/maxim/internal/account/postgres"
-	billingdomain "github.com/leha-creator/maxim/internal/billing/domain"
-	channeldomain "github.com/leha-creator/maxim/internal/channel/domain"
-	channelpg "github.com/leha-creator/maxim/internal/channel/postgres"
-	"github.com/leha-creator/maxim/internal/integration/max"
-	notificationapp "github.com/leha-creator/maxim/internal/notification/app"
-	notificationdomain "github.com/leha-creator/maxim/internal/notification/domain"
-	payoutdomain "github.com/leha-creator/maxim/internal/payout/domain"
-	placementdomain "github.com/leha-creator/maxim/internal/placement/domain"
-	"github.com/leha-creator/maxim/internal/platform/logx"
-	"github.com/leha-creator/maxim/internal/platform/ratelimit"
+	accountpg "github.com/leha-creator/chanly/internal/account/postgres"
+	billingdomain "github.com/leha-creator/chanly/internal/billing/domain"
+	channeldomain "github.com/leha-creator/chanly/internal/channel/domain"
+	channelpg "github.com/leha-creator/chanly/internal/channel/postgres"
+	"github.com/leha-creator/chanly/internal/integration/max"
+	notificationapp "github.com/leha-creator/chanly/internal/notification/app"
+	notificationdomain "github.com/leha-creator/chanly/internal/notification/domain"
+	payoutdomain "github.com/leha-creator/chanly/internal/payout/domain"
+	placementdomain "github.com/leha-creator/chanly/internal/placement/domain"
+	"github.com/leha-creator/chanly/internal/platform/logx"
+	"github.com/leha-creator/chanly/internal/platform/ratelimit"
 )
 
 // ---------------------------------------------------------------- notification ← account, channel, MAX

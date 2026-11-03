@@ -13,8 +13,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/leha-creator/maxim/internal/integration/max"
-	"github.com/leha-creator/maxim/internal/platform/job"
+	"github.com/leha-creator/chanly/internal/integration/max"
+	"github.com/leha-creator/chanly/internal/platform/job"
 )
 
 // postServer — MAX с загрузкой, отправкой, чтением и списком сообщений.
@@ -182,6 +182,37 @@ func TestGetMessageNotFound(t *testing.T) {
 	c, _ := newClient(t, ps.srv, nil)
 	if _, err := c.GetMessage(context.Background(), "mid.ad.1"); !errors.Is(err, max.ErrMessageNotFound) {
 		t.Fatalf("err %v", err)
+	}
+}
+
+// Sanitized GET of our dedicated test post on 2026-11-03: MAX omits
+// sender for a bot publication made on behalf of the channel.
+func TestSenderlessChannelPublication(t *testing.T) {
+	body := testdata(t, "post_channel_senderless.json")
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			t.Errorf("unexpected mutation: %s", r.Method)
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		if r.URL.Path == "/messages" {
+			_, _ = w.Write(append(append([]byte(`{"messages":[`), body...), []byte(`]}`)...))
+			return
+		}
+		_, _ = w.Write(body)
+	}))
+	defer srv.Close()
+	c, _ := newClient(t, srv, nil)
+	ctx := context.Background()
+	m, err := c.GetMessage(ctx, "mid.check.senderless")
+	if err != nil || m.SenderID != 0 || m.FromBot || m.Views == nil || m.ContentHash == "" {
+		t.Fatalf("senderless post: %+v, err %v", m, err)
+	}
+	found, err := c.FindPost(ctx, -70000000001, m.At.Add(-time.Minute), m.At.Add(time.Minute), 0,
+		"maxim-check:00000000-0000-4000-8000-000000000001")
+	if err != nil || found == nil || found.MID != m.MID || found.ContentHash != m.ContentHash {
+		t.Fatalf("channel marker lookup: %+v, err %v", found, err)
 	}
 }
 

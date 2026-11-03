@@ -1,6 +1,14 @@
 # Dev SPA from maxim-frontend; API stays on the real backend.
 __DOMAIN__ {
-    import /etc/caddy/auth/dev.caddy
+    # MAX cannot send browser Basic Auth. The application validates both the
+    # secret path and X-Max-Bot-Api-Secret before recording an event.
+    @max_webhook {
+        method POST
+        path_regexp max_webhook ^/api/v1/webhooks/max/[A-Za-z0-9_-]+$
+    }
+    # The callback URL and header are secrets; do not put them in access logs.
+    @max_webhook_log path /api/v1/webhooks/max/*
+    log_skip @max_webhook_log
     encode zstd gzip
     header {
         Strict-Transport-Security "max-age=31536000; includeSubDomains"
@@ -15,25 +23,9 @@ __DOMAIN__ {
     request_body {
         max_size 52MB
     }
-    @admin_denied {
-        path /api/v1/admin /api/v1/admin/*
-        not remote_ip __ADMIN_ALLOW__
-    }
-    handle @admin_denied {
-        header Content-Type "application/json"
-        respond `{"error":{"code":"forbidden","message":"admin api is not available from this address"}}` 403
-    }
-    @backend path /api /api/* /docs /docs/* /openapi.json /readyz /healthz /livez
-    handle @backend {
-        reverse_proxy __PREFIX__-api-a:8080 __PREFIX__-api-b:8080 {
+    route {
+        reverse_proxy @max_webhook __PREFIX__-api-a:8080 __PREFIX__-api-b:8080 {
             header_up -Authorization
-            # A session 401 must not invalidate the browser's outer Basic Auth cache.
-            # The frontend restores the API status from this explicit marker.
-            @session_missing status 401
-            handle_response @session_missing {
-                header X-Maxim-Auth-Status "401"
-                copy_response 403
-            }
             lb_policy first
             lb_try_duration 10s
             lb_try_interval 250ms
@@ -43,17 +35,47 @@ __DOMAIN__ {
             health_timeout 1s
             health_status 200
         }
-    }
-    handle /assets/* {
-        root * /srv/maxim-dev/current
-        header Cache-Control "public, max-age=31536000, immutable"
-        file_server
-    }
-    handle {
-        root * /srv/maxim-dev/current
-        header Cache-Control "no-cache"
-        try_files {path} /index.html
-        file_server
+        import /etc/caddy/auth/dev.caddy
+        @admin_denied {
+            path /api/v1/admin /api/v1/admin/*
+            not remote_ip __ADMIN_ALLOW__
+        }
+        handle @admin_denied {
+            header Content-Type "application/json"
+            respond `{"error":{"code":"forbidden","message":"admin api is not available from this address"}}` 403
+        }
+        @backend path /api /api/* /docs /docs/* /openapi.json /readyz /healthz /livez
+        handle @backend {
+            reverse_proxy __PREFIX__-api-a:8080 __PREFIX__-api-b:8080 {
+                header_up -Authorization
+                # A session 401 must not invalidate the browser's outer Basic Auth cache.
+                # The frontend restores the API status from this explicit marker.
+                @session_missing status 401
+                handle_response @session_missing {
+                    header X-Chanly-Auth-Status "401"
+                    copy_response 403
+                }
+                lb_policy first
+                lb_try_duration 10s
+                lb_try_interval 250ms
+                fail_duration 10s
+                health_uri /readyz
+                health_interval 2s
+                health_timeout 1s
+                health_status 200
+            }
+        }
+        handle /assets/* {
+            root * /srv/maxim-dev/current
+            header Cache-Control "public, max-age=31536000, immutable"
+            file_server
+        }
+        handle {
+            root * /srv/maxim-dev/current
+            header Cache-Control "no-cache"
+            try_files {path} /index.html
+            file_server
+        }
     }
     handle_errors 502 503 504 {
         header Content-Type "application/json"

@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/leha-creator/maxim/internal/platform/job"
+	"github.com/leha-creator/chanly/internal/platform/job"
 )
 
 func TestListMessages(t *testing.T) {

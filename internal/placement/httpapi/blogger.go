@@ -3,8 +3,8 @@ package httpapi
 import (
 	"context"
 
-	"github.com/leha-creator/maxim/internal/apigen"
-	"github.com/leha-creator/maxim/internal/placement/domain"
+	"github.com/leha-creator/chanly/internal/apigen"
+	"github.com/leha-creator/chanly/internal/placement/domain"
 )
 
 func (h *Handlers) ListBloggerPlacements(ctx context.Context, req apigen.ListBloggerPlacementsRequestObject) (apigen.ListBloggerPlacementsResponseObject, error) {

@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/leha-creator/maxim/internal/platform/job"
+	"github.com/leha-creator/chanly/internal/platform/job"
 )
 
 var mskZone = time.FixedZone("MSK", 3*3600)

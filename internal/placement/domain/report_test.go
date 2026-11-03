@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/leha-creator/maxim/internal/platform/money"
+	"github.com/leha-creator/chanly/internal/platform/money"
 )
 
 func intPtr(v int) *int { return &v }

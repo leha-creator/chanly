@@ -15,14 +15,49 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 
-	"github.com/leha-creator/maxim/internal/platform/clock"
-	"github.com/leha-creator/maxim/internal/platform/dbtest"
-	"github.com/leha-creator/maxim/internal/platform/job"
-	"github.com/leha-creator/maxim/internal/platform/logx"
-	"github.com/leha-creator/maxim/internal/platform/outbound"
+	"github.com/leha-creator/chanly/internal/platform/clock"
+	"github.com/leha-creator/chanly/internal/platform/dbtest"
+	"github.com/leha-creator/chanly/internal/platform/job"
+	"github.com/leha-creator/chanly/internal/platform/logx"
+	"github.com/leha-creator/chanly/internal/platform/outbound"
 )
 
 func TestMain(m *testing.M) { os.Exit(dbtest.Main(m)) }
+
+func TestDiagnosticNoRetry(t *testing.T) {
+	for _, recoverPost := range []bool{false, true} {
+		t.Run(map[bool]string{false: "server error not resent", true: "timeout recovered without resend"}[recoverPost], func(t *testing.T) {
+			d := dbtest.New(t)
+			var calls atomic.Int32
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				calls.Add(1)
+				if recoverPost {
+					<-r.Context().Done()
+					return
+				}
+				w.WriteHeader(http.StatusServiceUnavailable)
+			}))
+			defer srv.Close()
+			client := outbound.New(d.Pool, clock.NewManual(start), logx.Discard(), outbound.Options{
+				System: outbound.SystemMAX, NoRetry: true, HTTP: &http.Client{Timeout: 100 * time.Millisecond},
+				Sleep: func(context.Context, time.Duration) error { t.Fatal("diagnostic request retried"); return nil },
+			})
+			resp, err := client.Do(context.Background(), outbound.Call{
+				Operation: "diagnostic", Method: http.MethodPost, URL: srv.URL, Create: true,
+				CheckExisting: func(context.Context) (bool, error) { return recoverPost, nil },
+			})
+			if recoverPost && (err != nil || !resp.Recovered) {
+				t.Fatalf("recovery: %v, %+v", err, resp)
+			}
+			if !recoverPost && err == nil {
+				t.Fatal("failure passed")
+			}
+			if calls.Load() != 1 {
+				t.Fatalf("requests=%d", calls.Load())
+			}
+		})
+	}
+}
 
 var start = time.Date(2026, 10, 16, 9, 0, 0, 0, time.UTC)
 

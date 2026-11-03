@@ -6,7 +6,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/leha-creator/maxim/internal/platform/alert/sqlc"
+	"github.com/leha-creator/chanly/internal/platform/alert/sqlc"
 )
 
 // DeleteResolved удаляет закрытые оповещения, закрытые раньше before (R-10).
