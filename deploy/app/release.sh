@@ -108,6 +108,23 @@ admin_allow_re='^[0-9A-Za-z_.:/ ]+$'
 [[ -n $IMAGE && -n $PROJECT ]] || { log error invalid_config file="$STACK_ENV" hint="MAXIM_IMAGE and COMPOSE_PROJECT_NAME are required"; exit 1; }
 
 [[ -f $SLOTS_ENV ]] || printf 'ACTIVE_SLOT=\nMAXIM_TAG_A=\nMAXIM_TAG_B=\n' > "$SLOTS_ENV"
+# A manual root release can leave this non-secret state file owned by root.
+# Recover only the known dev file, using the already installed PostgreSQL image;
+# the helper sees no other host files and cannot access the network.
+if [[ ! -r $SLOTS_ENV && $APP_DIR == /opt/maxim-dev && $PROJECT == maxim-dev ]]; then
+  [[ ! -L $SLOTS_ENV && -f $SLOTS_ENV ]] || { log error invalid_slot_state; exit 1; }
+  state_owner=$(stat -c '%u:%g' "$STACK_ENV")
+  [[ ${state_owner%%:*} == "$(id -u)" ]] || { log error unexpected_stack_owner; exit 1; }
+  state_image=$(value_of "$STACK_ENV" MAXIM_POSTGRES_IMAGE)
+  [[ -n $state_image ]] || { log error missing_postgres_image; exit 1; }
+  log warn slot_state_permissions_repair file="$SLOTS_ENV" owner="$state_owner"
+  docker run --rm --pull never --network none --read-only --user 0 \
+    --cap-drop ALL --cap-add CHOWN --cap-add FOWNER \
+    --mount "type=bind,src=$SLOTS_ENV,dst=/slots.env" \
+    --entrypoint /bin/sh "$state_image" -ec \
+    'chown "$1" /slots.env; chmod 600 /slots.env' sh "$state_owner"
+fi
+[[ -r $SLOTS_ENV ]] || { log error slot_state_unreadable file="$SLOTS_ENV"; exit 1; }
 ACTIVE=$(value_of "$SLOTS_ENV" ACTIVE_SLOT)
 TAG_A=$(value_of "$SLOTS_ENV" MAXIM_TAG_A)
 TAG_B=$(value_of "$SLOTS_ENV" MAXIM_TAG_B)
@@ -171,6 +188,10 @@ write_slots() {
   local tmp="$SLOTS_ENV.tmp"
   printf '# Пишет release.sh: активная ячейка и теги образов ячеек.\nACTIVE_SLOT=%s\nMAXIM_TAG_A=%s\nMAXIM_TAG_B=%s\n' \
     "$1" "$2" "$3" > "$tmp"
+  chmod 600 "$tmp"
+  if [[ $(id -u) == 0 ]]; then
+    chown --reference="$STACK_ENV" "$tmp"
+  fi
   mv "$tmp" "$SLOTS_ENV"
 }
 
