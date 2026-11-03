@@ -159,6 +159,13 @@ d_rb=$(($(now_ms) - t))
 expect_slots a rehearsal-v1
 sleep 2
 
+log info rehearsal_step step=reapply_configuration
+sed -i 's/^EDGE_ADMIN_ALLOW=.*/EDGE_ADMIN_ALLOW=127.0.0.1\/32 private_ranges/' "$APP/stack.env"
+release --tag rehearsal-v1 --reapply
+expect_slots b rehearsal-v1
+grep -q '127.0.0.1/32 private_ranges' "$EDGE/sites/maxim-rehearsal.caddy"
+sleep 2
+
 kill "$LOAD_PID" 2>/dev/null || true
 wait "$LOAD_PID" 2>/dev/null || true
 LOAD_PID=""

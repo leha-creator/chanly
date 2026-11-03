@@ -337,9 +337,9 @@ docker compose -f compose.dev.yml run --rm --no-deps api admin dispute resolve -
 | Workflow | Что делает |
 |---|---|
 | [backend.yml](.github/workflows/backend.yml) | Генерация без изменений в git, `sqlc vet`, `go vet`, `go test -race` с контейнерами, сборка образа |
-| [deploy.yml](.github/workflows/deploy.yml) | Заглушка API: проверки, образ, выкладка на [тестовый стенд](deploy/README.md) |
+| [deploy.yml](.github/workflows/deploy.yml) | PR: проверки; push/merge master: автоматический выпуск настоящего бэкенда на chanly.ru |
 | [ops.yml](.github/workflows/ops.yml) | Скрипты и шаблоны эксплуатации: `shellcheck`, `check-env.sh`, `check-migrations.sh` (миграции совместимы с прошлым выпуском), `compose config`, `caddy validate`, `hadolint`, `maxim config check` шаблонов; репетиции копий с восстановлением и выпуска без простоя |
-| [release.yml](.github/workflows/release.yml) | Только вручную: образы бэкенда и PostgreSQL в GHCR, выпуск или откат на `staging` или `production` через `release.sh` |
+| [release.yml](.github/workflows/release.yml) | Общие проверки и выпуск фиксированного SHA; вызывается автодеплоем, вручную — выпуск/откат staging или production |
 
 ## Структура
 

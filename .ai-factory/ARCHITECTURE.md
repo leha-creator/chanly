@@ -180,6 +180,8 @@ maxim/
 ├── deploy/                          # эксплуатация (deploy/app/README.md); стенд заглушки — compose.yml, maxim.caddy, bootstrap.sh
 │   ├── app/                         #   стек окружения: compose (ячейки api/worker a и b, postgres, backup), сайт edge-Caddy,
 │   │   └── env/<env>/               #   release.sh; шаблоны app.env и stack.env для staging и production
+│   ├── edge/                        #   production Caddy, сеть edge и постоянные TLS-тома; устанавливает app/bootstrap.sh
+│   ├── tests/                       #   проверки защиты выпуска без Docker
 │   ├── postgres/                    #   образ maxim-postgres: архив WAL, роли, скрипты копий и восстановления (bin/), crontab
 │   ├── local/                       #   репетиции выпуска и копий на своей машине (свой edge-Caddy, MinIO, Mailpit)
 │   └── scripts/                     #   lib.sh (журнал JSON), check-env.sh, check-migrations.sh

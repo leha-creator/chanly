@@ -4,29 +4,12 @@
 name: ops
 
 on:
-  push:
-    branches: [master]
-    paths:
-      - deploy/**
-      - migrations/**
-      - Dockerfile
-      - Dockerfile.dockerignore
-      - .env.example
-      - .github/workflows/ops.yml
-  pull_request:
-    branches: [master]
-    paths:
-      - deploy/**
-      - migrations/**
-      - Dockerfile
-      - Dockerfile.dockerignore
-      - .env.example
-      - .github/workflows/ops.yml
+  workflow_call:
+    inputs:
+      ref:
+        type: string
+        required: true
   workflow_dispatch:
-
-concurrency:
-  group: ops-${{ github.ref }}
-  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -37,6 +20,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
+          ref: ${{ inputs.ref || github.sha }}
           # check-migrations.sh сравнивает с базовой веткой.
           fetch-depth: 0
       - name: shellcheck
@@ -47,9 +31,21 @@ jobs:
           echo "::endgroup::"
       - name: Environment templates
         run: deploy/scripts/check-env.sh
+      - name: Release guard regression checks
+        run: bash deploy/tests/release-guards.sh
       - name: Migrations are compatible with the previous release
         if: github.event_name == 'pull_request'
         run: deploy/scripts/check-migrations.sh "origin/${GITHUB_BASE_REF}"
+      - name: Check migrations on direct master pushes
+        if: github.event_name == 'push'
+        env:
+          BEFORE_SHA: ${{ github.event.before }}
+        run: |
+          if [[ "$BEFORE_SHA" =~ ^0+$ ]]; then
+            echo "::error::No previous master revision to validate migration compatibility"
+            exit 1
+          fi
+          bash deploy/scripts/check-migrations.sh "$BEFORE_SHA"
       - name: docker compose config
         run: |
           for env in staging production; do
@@ -63,6 +59,7 @@ jobs:
             -f deploy/local/compose.rehearsal.yml --env-file deploy/local/rehearsal.stack.env \
             --profile slot-a --profile slot-b --profile tools --profile mailpit config --quiet
           echo "compose config ok: rehearsal"
+          docker compose -f deploy/edge/compose.yml config --quiet
       - name: caddy validate
         run: |
           mkdir -p "$RUNNER_TEMP/caddy"
@@ -78,6 +75,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.ref || github.sha }}
       - uses: docker/setup-buildx-action@v3
       - name: Build backend image
         uses: docker/build-push-action@v6
@@ -117,6 +116,8 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.ref || github.sha }}
       - name: Backup and restore rehearsal
         run: deploy/local/rehearse-backup.sh
       - name: Zero-downtime release rehearsal

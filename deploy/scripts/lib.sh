@@ -21,6 +21,11 @@ json_escape() {
 log() {
   local level=$1 event=$2 out kv k v
   shift 2
+  # Debug diagnostics are opt-in; operational checkpoints remain visible by default.
+  case "${LOG_LEVEL:-info}:$level" in
+    debug:*) ;;
+    *:debug|warn:info|error:info|error:warn) return 0 ;;
+  esac
   out=$(printf '{"ts":"%s","level":"%s","component":"%s","event":"%s"' \
     "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$level" "${LOG_COMPONENT:-deploy}" "$(json_escape "$event")")
   for kv in "$@"; do
