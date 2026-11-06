@@ -136,6 +136,7 @@ func (b MarkingOrd) UpsertCreative(ctx context.Context, r domain.CreativeRequest
 	c := ord.Creative{
 		ID: r.ID, CreativeType: r.CreativeType, IsSocial: r.IsSocial, IsSocialQuota: r.IsSocialQuota, CoBranding: r.CoBranding,
 		ContractIDs: r.ContractIDs, KKTUCodes: r.KKTUCodes, Form: r.Form, TextData: r.TextData, URLs: r.URLs,
+		Description: r.Description,
 	}
 	for _, m := range r.MediaData {
 		c.MediaData = append(c.MediaData, ord.MediaData{MediaURL: m.MediaURL, MediaURLFileType: m.MediaURLFileType})

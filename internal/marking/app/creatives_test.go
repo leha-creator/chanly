@@ -50,7 +50,7 @@ func TestApprovedVersionGetsErid(t *testing.T) {
 	}
 	if body.KKTUCodes[0] != kktu || body.Form != domain.FormTextBlock || len(body.URLs) != 1 ||
 		!strings.Contains(body.URLs[0], "utm_campaign=order_") || body.TextData[0] != "Скидки в магазине" ||
-		body.ContractIDs[0] != c.ContractID.String() {
+		body.ContractIDs[0] != c.ContractID.String() || body.Description != "Скидки в магазине" {
 		t.Fatalf("creative request: %+v", body)
 	}
 	v, err := e.post.GetVersion(context.Background(), o.Version.ID)

@@ -102,11 +102,24 @@ func TestNewPlatformRequest(t *testing.T) {
 	}
 }
 
+func TestCreativeDescriptionV8Limit(t *testing.T) {
+	c := NewCreative(uuid.New(), uuid.New(), t0)
+	text := strings.Repeat("Товар ", 200)
+	req := NewCreativeRequest(c, "contract-1", CreativeContent{Text: text}, "30.15.1")
+	if utf8.RuneCountInString(req.Description) > 1000 || !utf8.ValidString(req.Description) ||
+		req.Description != strings.TrimSpace(string([]rune(text)[:1000])) {
+		t.Fatalf("description does not satisfy v8 limit: %q", req.Description)
+	}
+	if req.TextData[0] != strings.TrimSpace(text) {
+		t.Fatal("description limit truncated the creative text")
+	}
+}
+
 func TestNewCreativeRequest(t *testing.T) {
 	c := NewCreative(uuid.New(), uuid.New(), t0)
 	content := CreativeContent{Text: "  Скидки до 50%  ", URLs: []string{"https://shop.ru/?utm_source=maxim"}}
 	req := NewCreativeRequest(c, "contract-1", content, "30.15.1")
-	if req.Form != FormTextBlock || len(req.MediaData) != 0 || req.TextData[0] != "Скидки до 50%" ||
+	if req.Form != FormTextBlock || len(req.MediaData) != 0 || req.TextData[0] != "Скидки до 50%" || req.Description != "Скидки до 50%" ||
 		req.CreativeType != "creative" || req.CoBranding || req.IsSocial || req.IsSocialQuota ||
 		len(req.ContractIDs) != 1 || req.ContractIDs[0] != "contract-1" || req.KKTUCodes[0] != "30.15.1" ||
 		req.ID != c.ID.String() || req.URLs[0] != content.URLs[0] {

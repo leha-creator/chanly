@@ -113,6 +113,7 @@ type CreativeRequest struct {
 	CoBranding    bool            `json:"coBranding"`
 	ContractIDs   []string        `json:"contractIds"`
 	KKTUCodes     []string        `json:"kktuCodes"`
+	Description   string          `json:"description,omitempty"`
 	Form          string          `json:"form"`
 	TextData      []string        `json:"textData,omitempty"`
 	MediaData     []CreativeMedia `json:"mediaData,omitempty"`
@@ -128,7 +129,8 @@ type CreativeMedia struct {
 // NewCreativeRequest собирает запрос креатива (R-8): не социальная реклама, без сорекламы —
 // ровно один договор (изначальный), один код ККТУ из конфигурации (A-42, Q-39). Форма —
 // text-graphic-block при изображениях, иначе text-block (уточнение 05 §3.4).
-// Описание креатива в спецификации v8 не предусмотрено и не отправляется.
+// Описание объекта рекламирования берётся из текста; API v8 ограничивает его 1000 символами.
+// Для ККТУ 30.15.1 оно обязательно.
 func NewCreativeRequest(c Creative, contractExternalID string, content CreativeContent, kktu string) CreativeRequest {
 	req := CreativeRequest{
 		ID: c.ExternalID(), CreativeType: CreativeTypeCreative,
@@ -137,6 +139,7 @@ func NewCreativeRequest(c Creative, contractExternalID string, content CreativeC
 	}
 	if text := strings.TrimSpace(truncate(strings.TrimSpace(content.Text), maxCreativeText)); text != "" {
 		req.TextData = []string{text}
+		req.Description = strings.TrimSpace(truncate(text, 1000))
 	}
 	for _, u := range content.ImageURLs {
 		req.MediaData = append(req.MediaData, CreativeMedia{MediaURL: u, MediaURLFileType: MediaFileTypeImage})

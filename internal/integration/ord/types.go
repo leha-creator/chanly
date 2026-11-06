@@ -54,6 +54,7 @@ type Creative struct {
 	CoBranding    bool        `json:"coBranding"`
 	ContractIDs   []string    `json:"contractIds"`
 	KKTUCodes     []string    `json:"kktuCodes"`
+	Description   string      `json:"description,omitempty"`
 	Form          string      `json:"form"`
 	TextData      []string    `json:"textData,omitempty"`
 	MediaData     []MediaData `json:"mediaData,omitempty"`
