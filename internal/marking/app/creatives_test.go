@@ -203,6 +203,9 @@ func TestErirRejectionAfterErid(t *testing.T) {
 	_, ch := e.blogger("Кулинария")
 	o := e.order(ch)
 	e.approve(o.Version.ID)
+	// Keep the creative pending until rejection, regardless of job ordering.
+	// Once async success is reached, polling correctly stops.
+	e.ord.HoldStatus(e.creative(o.Version.ID).ID.String(), true)
 	e.settle(5)
 	c := e.creative(o.Version.ID)
 	if !c.HasErid() {
