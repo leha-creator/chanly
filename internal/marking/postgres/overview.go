@@ -20,6 +20,10 @@ func (r *Overview) ListErrors(ctx context.Context, typ domain.ObjectType, after 
 	if after != nil {
 		at, id := after.UpdatedAt, after.ID
 		p.AfterAt, p.AfterID = &at, &id
+		p.AfterType = string(after.Type)
+		if p.AfterType == "" {
+			p.AfterType = "~"
+		}
 	}
 	rows, err := r.q(ctx).ListOrdErrors(ctx, p)
 	if err != nil {
@@ -89,6 +93,9 @@ func (r *Overview) LastRequest(ctx context.Context, ref domain.ObjectRef, extern
 		return nil, nil
 	}
 	objectType := string(ref.Type)
+	if ref.Type == domain.TypeInvoiceCreatives {
+		objectType = "invoice/creatives"
+	}
 	if ref.Type == domain.TypePlatform {
 		objectType = "platforms" // операция адаптера, как в ListOrdErrors
 	}

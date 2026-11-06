@@ -115,6 +115,16 @@ func (c *Client) UpsertInvoiceCreatives(_ context.Context, ic ord.InvoiceCreativ
 // InvoiceCreativesID — идентификатор разбивки акта в поддельном ОРД.
 func InvoiceCreativesID(invoiceID string) string { return invoiceID + "/creatives" }
 
+func (c *Client) SubmitStatisticsV8(_ context.Context, id string, body ord.StatisticsV8) (ord.Receipt, error) {
+	return c.upsert(ord.OpStatistics, []string{id}, body)
+}
+func (c *Client) SubmitInvoiceV8(_ context.Context, body ord.InvoiceV8) (ord.Receipt, error) {
+	return c.upsert(ord.OpInvoice, []string{body.ID}, body)
+}
+func (c *Client) SubmitInvoiceCreativesV8(_ context.Context, id string, body ord.InvoiceCreativesV8) (ord.Receipt, error) {
+	return c.upsert(ord.OpInvoiceCreatives, []string{InvoiceCreativesID(id)}, body)
+}
+
 func (c *Client) upsert(op string, ids []string, body any) (ord.Receipt, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -208,7 +218,7 @@ func (c *Client) advance(obj *Object) {
 // stopsAtOrd — объекты без проверки ЕРИР: финальный статус — ORD success.
 func stopsAtOrd(op string) bool {
 	switch op {
-	case ord.OpPlatforms, ord.OpStatistics, ord.OpInvoice, ord.OpInvoiceCreatives:
+	case ord.OpPlatforms:
 		return true
 	}
 	return false

@@ -3518,6 +3518,7 @@ paths:
               schema: { $ref: '#/components/schemas/OrdReport' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
         '422': { $ref: '#/components/responses/ValidationFailed' }
   /admin/ord/reports/{period}/send:
     post:
@@ -5566,7 +5567,7 @@ components:
     # ------------------------------------------------ admin: ORD
     OrdObjectType:
       type: string
-      enum: [organization, contract, platform, creative, statistics, invoice]
+      enum: [organization, contract, platform, creative, statistics, invoice, invoice_creatives]
     OrdSyncStatus:
       type: string
       enum: [pending, sent, synced, error]
@@ -5655,8 +5656,14 @@ components:
         attempts: { type: integer, minimum: 0 }
     OrdInvoiceRow:
       type: object
-      required: [id, contract_kind, organization, number, invoice_date, amount, items_count, status, attempts]
+      required: [id, contract_kind, organization, number, invoice_date, amount, items_count, status, attempts, links_status, links_attempts]
       properties:
+        links_status: { $ref: '#/components/schemas/OrdSyncStatus' }
+        links_attempts: { type: integer, minimum: 0 }
+        links_error: { type: string }
+        document_request_id: { type: string }
+        links_request_id: { type: string }
+        reconciliation_required: { type: boolean }
         id: { $ref: '#/components/schemas/Uuid' }
         contract_kind: { type: string, enum: [initial, publisher] }
         organization: { $ref: '#/components/schemas/AdminOrganizationRef' }

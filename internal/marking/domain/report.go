@@ -75,9 +75,11 @@ func (p Period) Closed(now time.Time) bool { return !now.Before(p.End()) }
 
 // ReportPlacement — размещение с публикацией, пересекающей месяц (вход правил R-19, R-20).
 type ReportPlacement struct {
-	PlacementID uuid.UUID
-	CreativeID  uuid.UUID
-	PlatformID  uuid.UUID
+	Finance      ReportFinance
+	PublisherTax TaxTotal
+	PlacementID  uuid.UUID
+	CreativeID   uuid.UUID
+	PlatformID   uuid.UUID
 	// InitialContractID, PublisherContractID — договоры с рекламодателем и с блогером.
 	InitialContractID   uuid.UUID
 	PublisherContractID uuid.UUID
@@ -99,6 +101,7 @@ type ReportPlacement struct {
 
 // StatisticsLine — строка статистики месяца по паре «креатив + площадка».
 type StatisticsLine struct {
+	Finance     ReportFinance
 	CreativeID  uuid.UUID
 	PlatformID  uuid.UUID
 	PlacementID uuid.UUID
@@ -144,6 +147,7 @@ func BuildStatistics(placements []ReportPlacement, period Period) []StatisticsLi
 		if !ok {
 			line = &StatisticsLine{CreativeID: p.CreativeID, PlatformID: p.PlatformID, PlacementID: p.PlacementID,
 				ShownFrom: dateOf(shownFrom), ShownTo: dateOf(shownTo)}
+			line.Finance.Services = TaxTotal{Rate: p.Finance.Services.Rate, Known: p.Finance.Services.Known}
 			byPair[key] = line
 			order = append(order, key)
 		}
@@ -156,6 +160,7 @@ func BuildStatistics(placements []ReportPlacement, period Period) []StatisticsLi
 		}
 		if endedHere {
 			line.Amount += p.AdvertiserAmount
+			line.Finance.Services.Add(p.Finance.Services)
 			line.Placements = append(line.Placements, p)
 		}
 	}
@@ -168,6 +173,7 @@ func BuildStatistics(placements []ReportPlacement, period Period) []StatisticsLi
 
 // InvoiceDraft — акт месяца по договору.
 type InvoiceDraft struct {
+	Finance    ReportFinance
 	ContractID uuid.UUID
 	Kind       ContractKind
 	Amount     int64
@@ -176,6 +182,7 @@ type InvoiceDraft struct {
 
 // InvoiceItem — строка разбивки акта по паре «креатив + площадка».
 type InvoiceItem struct {
+	Tax        TaxTotal
 	CreativeID uuid.UUID
 	PlatformID uuid.UUID
 	Amount     int64
@@ -190,7 +197,7 @@ func BuildInvoices(lines []StatisticsLine) []InvoiceDraft {
 		kind     ContractKind
 	}
 	drafts := map[key]*InvoiceDraft{}
-	add := func(contract uuid.UUID, kind ContractKind, creative, platform uuid.UUID, amount int64) {
+	add := func(contract uuid.UUID, kind ContractKind, creative, platform uuid.UUID, amount int64, tax TaxTotal, commission TaxTotal) {
 		if contract == uuid.Nil || amount <= 0 {
 			return
 		}
@@ -201,18 +208,23 @@ func BuildInvoices(lines []StatisticsLine) []InvoiceDraft {
 			drafts[k] = d
 		}
 		d.Amount += amount
+		d.Finance.Services.Add(tax)
+		if kind == ContractInitial {
+			d.Finance.Commission.Add(commission)
+		}
 		for i := range d.Items {
 			if d.Items[i].CreativeID == creative && d.Items[i].PlatformID == platform {
 				d.Items[i].Amount += amount
+				d.Items[i].Tax.Add(tax)
 				return
 			}
 		}
-		d.Items = append(d.Items, InvoiceItem{CreativeID: creative, PlatformID: platform, Amount: amount})
+		d.Items = append(d.Items, InvoiceItem{CreativeID: creative, PlatformID: platform, Amount: amount, Tax: tax})
 	}
 	for _, l := range lines {
 		for _, p := range l.Placements {
-			add(p.InitialContractID, ContractInitial, l.CreativeID, l.PlatformID, p.AdvertiserAmount)
-			add(p.PublisherContractID, ContractPublisher, l.CreativeID, l.PlatformID, p.BloggerAmount)
+			add(p.InitialContractID, ContractInitial, l.CreativeID, l.PlatformID, p.AdvertiserAmount, p.Finance.Services, p.Finance.Commission)
+			add(p.PublisherContractID, ContractPublisher, l.CreativeID, l.PlatformID, p.BloggerAmount, p.PublisherTax, TaxTotal{})
 		}
 	}
 	out := make([]InvoiceDraft, 0, len(drafts))

@@ -75,6 +75,148 @@ func TestIntegrationCheckPreflight(t *testing.T) {
 	}
 }
 
+func TestIntegrationCheckORDPreflight(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		set  map[string]string
+		code int
+	}{
+		{"sandbox configuration", nil, 0},
+		{"test forces fake", map[string]string{"APP_ENV": "test"}, 1},
+		{"production forbidden", map[string]string{"APP_ENV": "production"}, 1},
+		{"disabled", map[string]string{"ORD_ENABLED": "false"}, 1},
+		{"fake", map[string]string{"ORD_OAUTH_TOKEN": ""}, 1},
+		{"missing KKTU", map[string]string{"ORD_KKTU_CODE": ""}, 1},
+		{"missing platform", map[string]string{"ORD_PLATFORM_NAME": ""}, 1},
+		{"automatic reports", map[string]string{"ORD_REPORT_AUTO_SEND": "true"}, 1},
+		{"production endpoint", map[string]string{"ORD_API_URL": "https://ord.yandex.net"}, 1},
+		{"insecure endpoint", map[string]string{"ORD_API_URL": "http://ord-prestable.yandex.net"}, 1},
+		{"URL credentials", map[string]string{"ORD_API_URL": "https://private-ord-token@ord-prestable.yandex.net"}, 1},
+		{"URL query", map[string]string{"ORD_API_URL": "https://ord-prestable.yandex.net?token=private-ord-token"}, 1},
+		{"URL fragment", map[string]string{"ORD_API_URL": "https://ord-prestable.yandex.net#private-ord-token"}, 1},
+		{"URL path", map[string]string{"ORD_API_URL": "https://ord-prestable.yandex.net/api"}, 1},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			vars := checkTestEnv()
+			vars["ORD_OAUTH_TOKEN"] = "private-ord-token"
+			vars["ORD_KKTU_CODE"] = "30.15.1"
+			vars["ORD_PLATFORM_INN"] = devPlatformINN
+			vars["ORD_PLATFORM_NAME"] = "private-platform-name"
+			for k, v := range tc.set {
+				vars[k] = v
+			}
+			var out bytes.Buffer
+			code := Run(context.Background(), RunParams{Command: "integration-check", Args: []string{"--system", "ord"}, Environ: environ(vars), Stdout: &out, Stderr: &out})
+			if code != tc.code {
+				t.Fatalf("code %d want %d: %s", code, tc.code, out.String())
+			}
+			for _, secret := range []string{"private-ord-token", devPlatformINN, "private-platform-name"} {
+				if strings.Contains(out.String(), secret) {
+					t.Fatal("ORD configuration leaked")
+				}
+			}
+			if code == 0 && (!strings.Contains(out.String(), `"live_verified":false`) || !strings.Contains(out.String(), `"network_called":false`)) {
+				t.Fatal("configuration check misrepresented as live evidence")
+			}
+		})
+	}
+}
+
+func TestIntegrationCheckORDUnverifiedScenariosBlocked(t *testing.T) {
+	for _, scenario := range []string{"publish", "observe", "recover", "remove"} {
+		if _, err := parseIntegrationCheck([]string{"--system", "ord", "--scenario", scenario, "--execute", "--run-dir", t.TempDir()}); err == nil {
+			t.Fatalf("unverified ORD scenario %s accepted", scenario)
+		}
+	}
+}
+
+func TestIntegrationCheckORDInspectConfiguration(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		set    map[string]string
+		wantOK bool
+	}{
+		{"read without contract configuration", nil, true},
+		{"test fake", map[string]string{"APP_ENV": "test"}, false},
+		{"disabled", map[string]string{"ORD_ENABLED": "false"}, false},
+		{"fake", map[string]string{"ORD_OAUTH_TOKEN": ""}, false},
+		{"production URL", map[string]string{"ORD_API_URL": "https://ord.yandex.net"}, false},
+		{"automatic reports", map[string]string{"ORD_REPORT_AUTO_SEND": "true"}, false},
+		{"path injection", map[string]string{"ORD_API_VERSION": "v8/../v7"}, false},
+		{"rate too high", map[string]string{"ORD_RATE": "6"}, false},
+		{"invalid rate", map[string]string{"ORD_RATE": "NaN"}, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			vars := checkTestEnv()
+			vars["ORD_OAUTH_TOKEN"] = "private-ord-token"
+			for k, v := range tc.set {
+				vars[k] = v
+			}
+			cfg, err := LoadConfig(vars, ModeDev)
+			if err != nil {
+				t.Fatal(err)
+			}
+			o, err := parseIntegrationCheck([]string{"--system", "ord", "--scenario", "inspect", "--execute"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := integrationCheckPreflight(cfg, vars, &o); (err == nil) != tc.wantOK {
+				t.Fatalf("preflight error = %v", err)
+			}
+		})
+	}
+	if _, err := parseIntegrationCheck([]string{"--system", "ord", "--scenario", "inspect"}); err == nil {
+		t.Fatal("implicit network call allowed")
+	}
+}
+
+func TestIntegrationCheckORDInspectAdapter(t *testing.T) {
+	d := dbtest.New(t)
+	var calls atomic.Int32
+	var status atomic.Int32
+	status.Store(http.StatusNotFound)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls.Add(1)
+		if r.Method != http.MethodGet || r.URL.Path != "/api/v8/organization" || !strings.HasPrefix(r.URL.Query().Get("object_id"), "access-check-") {
+			t.Error("unexpected ORD request")
+		}
+		if r.Header.Get("Authorization") != "Bearer private-ord-token" {
+			t.Error("missing authorization")
+		}
+		w.Header().Set("Location", "/redirect-target")
+		w.WriteHeader(int(status.Load()))
+		_, _ = io.WriteString(w, `{"detail":"Not found organization by id"}`)
+	}))
+	defer srv.Close()
+	cfg, err := LoadConfig(checkTestEnv(), ModeDev)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg.ORD.APIURL, cfg.ORD.OAuthToken = srv.URL, "private-ord-token"
+	var out bytes.Buffer
+	in := &infra{pool: d.Pool, clock: clock.System{}, log: integrationCheckLogger(&out, slog.LevelDebug)}
+	if err := in.inspectCheckORD(context.Background(), cfg); err != nil {
+		t.Fatal(err)
+	}
+	if calls.Load() != 1 || !strings.Contains(out.String(), `"authorization_verified":true`) || strings.Contains(out.String(), "private-ord-token") {
+		t.Fatal("incorrect diagnostic result")
+	}
+	for _, code := range []int{http.StatusServiceUnavailable, http.StatusFound} {
+		status.Store(int32(code))
+		before := calls.Load()
+		out.Reset()
+		if err := in.inspectCheckORD(context.Background(), cfg); err == nil {
+			t.Fatal("failed request accepted")
+		}
+		if calls.Load() != before+1 {
+			t.Fatal("diagnostic followed redirect or retried")
+		}
+		if strings.Contains(out.String(), `"authorization_verified":true`) {
+			t.Fatal("failed request marked verified")
+		}
+	}
+}
+
 type checkMAXStub struct {
 	maxAPI
 	sends, deletes int

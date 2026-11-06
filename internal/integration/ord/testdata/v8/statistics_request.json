@@ -1,0 +1,22 @@
+{
+    "statistics":  [
+                       {
+                           "amount":  {
+                                          "excludingVat":  "900.00",
+                                          "includingVat":  "900.00",
+                                          "vat":  "0.00",
+                                          "vatRate":  "100"
+                                      },
+                           "amountPerUnit":  "900.00",
+                           "creativeId":  "fixture-creative",
+                           "dateEndFact":  "2026-10-31",
+                           "dateEndPlan":  "2026-10-31",
+                           "dateStartFact":  "2026-10-01",
+                           "dateStartPlan":  "2026-10-01",
+                           "impsFact":  100,
+                           "impsPlan":  100,
+                           "platformId":  "fixture-platform",
+                           "type":  "other"
+                       }
+                   ]
+}

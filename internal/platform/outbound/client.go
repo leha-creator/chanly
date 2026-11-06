@@ -120,6 +120,9 @@ func (c *Client) System() string { return c.opts.System }
 
 // Call — один вызов внешней системы.
 type Call struct {
+	// NoRetry forbids inline replay for a write whose outcome must be reconciled
+	// by its durable workflow. It can only strengthen Options.NoRetry.
+	NoRetry bool
 	// Operation — имя операции адаптера: GetMe, SendMessage…
 	Operation string
 	Method    string
@@ -242,7 +245,7 @@ func (c *Client) Do(ctx context.Context, call Call) (Response, error) {
 			c.alert(ctx, call, last.err)
 			return last.resp, job.Permanent(last.err)
 		}
-		if c.opts.NoRetry {
+		if c.opts.NoRetry || call.NoRetry {
 			log.WarnContext(ctx, "outbound inline retry disabled", "attempt", attempt, "status", last.resp.Status)
 			return last.resp, last.err
 		}

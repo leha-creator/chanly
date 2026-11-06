@@ -77,6 +77,7 @@ func (s *Store) fail(ctx context.Context, op string, err error) error {
 
 // syncCols — поля синхронизации в виде колонок.
 type syncCols struct {
+	SubmissionUncertain                                  bool
 	ExternalID, RequestID, Error, PayloadHash, OrdStatus *string
 	Status                                               string
 	Attempts                                             int32
@@ -85,7 +86,8 @@ type syncCols struct {
 
 func toCols(s domain.SyncState) syncCols {
 	return syncCols{
-		ExternalID: text(s.ExternalID), RequestID: text(s.RequestID), Error: text(s.Error),
+		SubmissionUncertain: s.SubmissionUncertain,
+		ExternalID:          text(s.ExternalID), RequestID: text(s.RequestID), Error: text(s.Error),
 		PayloadHash: text(s.PayloadHash), OrdStatus: text(s.OrdStatus), Status: string(s.Status),
 		Attempts: int32(s.Attempts), SyncedAt: tsPtr(s.SyncedAt), SentAt: tsPtr(s.SentAt),
 	}
@@ -93,7 +95,8 @@ func toCols(s domain.SyncState) syncCols {
 
 func fromCols(c syncCols) domain.SyncState {
 	return domain.SyncState{
-		Status: domain.SyncStatus(c.Status), ExternalID: str(c.ExternalID), RequestID: str(c.RequestID),
+		SubmissionUncertain: c.SubmissionUncertain,
+		Status:              domain.SyncStatus(c.Status), ExternalID: str(c.ExternalID), RequestID: str(c.RequestID),
 		OrdStatus: str(c.OrdStatus), Error: str(c.Error), Attempts: int(c.Attempts),
 		SentAt: ts(c.SentAt), SyncedAt: ts(c.SyncedAt), PayloadHash: str(c.PayloadHash),
 	}

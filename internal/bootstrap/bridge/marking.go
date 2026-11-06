@@ -35,7 +35,7 @@ func (b MarkingOrganizations) Details(ctx context.Context, orgID uuid.UUID) (dom
 	if err != nil {
 		return domain.OrgDetails{}, err
 	}
-	return domain.OrgDetails{ID: d.ID, LegalType: d.LegalType, INN: d.INN, Name: d.Name, KPP: d.KPP, IsPlatform: d.IsPlatform}, nil
+	return domain.OrgDetails{ID: d.ID, LegalType: d.LegalType, INN: d.INN, Name: d.Name, KPP: d.KPP, IsPlatform: d.IsPlatform, VATRate: d.VATRate}, nil
 }
 
 func (b MarkingOrganizations) Platform(ctx context.Context) (domain.OrgDetails, error) {
@@ -95,14 +95,14 @@ type OrdClient interface {
 	UpsertContract(ctx context.Context, c ord.Contract) (ord.Receipt, error)
 	UpsertPlatforms(ctx context.Context, p ord.Platforms) (ord.Receipt, error)
 	UpsertCreative(ctx context.Context, c ord.Creative) (ord.Receipt, error)
-	UpsertStatistics(ctx context.Context, s ord.Statistics) (ord.Receipt, error)
-	UpsertInvoice(ctx context.Context, inv ord.Invoice) (ord.Receipt, error)
-	UpsertInvoiceCreatives(ctx context.Context, ic ord.InvoiceCreatives) (ord.Receipt, error)
+	SubmitStatisticsV8(ctx context.Context, correlationID string, s ord.StatisticsV8) (ord.Receipt, error)
+	SubmitInvoiceV8(ctx context.Context, inv ord.InvoiceV8) (ord.Receipt, error)
+	SubmitInvoiceCreativesV8(ctx context.Context, correlationID string, ic ord.InvoiceCreativesV8) (ord.Receipt, error)
 	GetStatus(ctx context.Context, requestID string) (ord.Receipt, error)
 }
 
-// MarkingOrd — marking/domain.OrdAPI поверх адаптера ОРД: поля запросов переносятся один в один,
-// поэтому хеш полезной нагрузки (R-6) совпадает с отправленным телом.
+// MarkingOrd maps domain snapshots to versioned ORD transport DTOs.
+// Payload hashes identify domain snapshots, not serialized wire bytes.
 type MarkingOrd struct{ Client OrdClient }
 
 var _ domain.OrdAPI = MarkingOrd{}
@@ -141,32 +141,6 @@ func (b MarkingOrd) UpsertCreative(ctx context.Context, r domain.CreativeRequest
 		c.MediaData = append(c.MediaData, ord.MediaData{MediaURL: m.MediaURL, MediaURLFileType: m.MediaURLFileType})
 	}
 	rec, err := b.Client.UpsertCreative(ctx, c)
-	return receipt(rec), err
-}
-
-func (b MarkingOrd) UpsertStatistics(ctx context.Context, r domain.StatisticsRequest) (domain.Receipt, error) {
-	rec, err := b.Client.UpsertStatistics(ctx, ord.Statistics{
-		ID: r.ID, CreativeID: r.CreativeID, PlatformID: r.PlatformID, ImpsFact: r.ImpsFact, ImpsPlan: r.ImpsPlan,
-		StartDateFact: r.StartDateFact, EndDateFact: r.EndDateFact, StartDatePlan: r.StartDatePlan, EndDatePlan: r.EndDatePlan,
-		Amount: ord.Amount{Incl: r.Amount},
-	})
-	return receipt(rec), err
-}
-
-// UpsertInvoice — акт, затем разбивка (R-22): квитанция второго вызова, по ней идёт опрос.
-// ПРЕДПОЛОЖЕНИЕ (Q-42): статус акта ОРД сообщает по reqid разбивки.
-func (b MarkingOrd) UpsertInvoice(ctx context.Context, r domain.InvoiceRequest) (domain.Receipt, error) {
-	if _, err := b.Client.UpsertInvoice(ctx, ord.Invoice{
-		ID: r.ID, ContractID: r.ContractID, Type: r.Type, Number: r.Number, Date: r.Date, StartDate: r.StartDate,
-		EndDate: r.EndDate, Amount: ord.Amount{Incl: r.Amount}, IsVat: r.IsVat,
-	}); err != nil {
-		return domain.Receipt{}, err
-	}
-	ic := ord.InvoiceCreatives{InvoiceID: r.ID, Items: make([]ord.InvoiceItem, 0, len(r.Items))}
-	for _, it := range r.Items {
-		ic.Items = append(ic.Items, ord.InvoiceItem{CreativeID: it.CreativeID, PlatformID: it.PlatformID, Amount: ord.Amount{Incl: it.Amount}})
-	}
-	rec, err := b.Client.UpsertInvoiceCreatives(ctx, ic)
 	return receipt(rec), err
 }
 
@@ -235,7 +209,8 @@ func (b MarkingReportSource) Placements(ctx context.Context, period domain.Perio
 	out := make([]domain.SourcePlacement, 0, len(rows))
 	for _, r := range rows {
 		p := domain.SourcePlacement{
-			PlacementID: r.PlacementID, PublicationID: r.PublicationID, ChannelID: r.ChannelID, PostVersionID: r.PostVersionID,
+			CommissionAmount: r.FeeAmount,
+			PlacementID:      r.PlacementID, PublicationID: r.PublicationID, ChannelID: r.ChannelID, PostVersionID: r.PostVersionID,
 			AdvertiserOrgID: r.AdvertiserOrganizationID, BloggerOrgID: r.BloggerOrganizationID, PublishedAt: r.PublishedAt,
 			AdvertiserAmount: r.TotalAmount, BloggerAmount: r.BloggerAmount,
 		}
@@ -244,15 +219,18 @@ func (b MarkingReportSource) Placements(ctx context.Context, period domain.Perio
 		}
 		switch {
 		case r.FinalViews != nil:
-			p.FinalViews = *r.FinalViews
+			p.FinalViews, p.FinalViewsKnown = *r.FinalViews, true
 		case r.Views != nil:
-			p.FinalViews = *r.Views
+			p.FinalViews, p.FinalViewsKnown = *r.Views, true
 		}
 		if r.RefundAmount != nil {
 			p.AdvertiserAmount = max(r.TotalAmount-*r.RefundAmount, 0)
 		}
 		if r.PayoutAmount != nil {
 			p.BloggerAmount = *r.PayoutAmount
+		}
+		if r.FeeCharged != nil {
+			p.CommissionAmount = *r.FeeCharged
 		}
 		out = append(out, p)
 	}

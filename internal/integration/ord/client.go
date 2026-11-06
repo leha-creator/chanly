@@ -96,6 +96,7 @@ func (c *Client) endpoint(path string) string {
 
 // request — запрос к ОРД.
 type request struct {
+	noRetry   bool
 	operation string
 	method    string
 	path      string
@@ -117,6 +118,7 @@ func (c *Client) do(ctx context.Context, r request) (Receipt, error) {
 		u += "?" + r.query.Encode()
 	}
 	call := outbound.Call{
+		NoRetry:    r.noRetry,
 		Operation:  "ORD." + r.operation,
 		Method:     r.method,
 		URL:        u,
@@ -128,8 +130,15 @@ func (c *Client) do(ctx context.Context, r request) (Receipt, error) {
 	if r.body != nil {
 		call.RecordBody = recordBody(r.body)
 	}
+	if r.method == http.MethodGet && r.operation == OpOrganization {
+		call.Redact = []string{"data", "error_message", "detail"}
+		call.ExpectedRejections = []int{http.StatusNotFound}
+	}
 	resp, err := c.out.Do(ctx, call)
 	if err != nil {
+		if r.method == http.MethodGet && r.operation == OpOrganization && organizationNotFound(resp) {
+			return Receipt{}, ErrOrganizationNotFound
+		}
 		return Receipt{}, classify(resp, err)
 	}
 	var rec Receipt
@@ -141,7 +150,11 @@ func (c *Client) do(ctx context.Context, r request) (Receipt, error) {
 
 // submit — POST объекта: журнал «внешняя операция выполнена» (07 §5.3).
 func (c *Client) submit(ctx context.Context, operation, objectID string, body any) (Receipt, error) {
-	rec, err := c.do(ctx, request{operation: operation, method: http.MethodPost, path: operation, body: body, objectID: objectID})
+	return c.submitWithPolicy(ctx, operation, objectID, body, false)
+}
+
+func (c *Client) submitWithPolicy(ctx context.Context, operation, objectID string, body any, noRetry bool) (Receipt, error) {
+	rec, err := c.do(ctx, request{operation: operation, method: http.MethodPost, path: operation, body: body, objectID: objectID, noRetry: noRetry})
 	if err != nil {
 		return Receipt{}, err
 	}

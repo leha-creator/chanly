@@ -24,6 +24,7 @@ func (r *OrdReport) Placements(ctx context.Context, from, to time.Time) ([]domai
 	out := make([]domain.OrdReportRow, 0, len(rows))
 	for _, row := range rows {
 		out = append(out, domain.OrdReportRow{
+			FeeAmount: int64(row.FeeAmount), FeeCharged: row.FeeCharged,
 			PlacementID: row.PlacementID, PublicationID: row.PublicationID, ChannelID: row.ChannelID,
 			PostVersionID: row.PostVersionID, AdvertiserOrganizationID: row.AdvertiserOrganizationID,
 			BloggerOrganizationID: row.BloggerOrganizationID, PublishedAt: row.PublishedAt, RemovedAt: row.RemovedAt,
@@ -43,6 +44,9 @@ func (r *OrdReport) LiveViews(ctx context.Context, at time.Time) ([]domain.OrdLi
 	}
 	out := make([]domain.OrdLiveViews, 0, len(rows))
 	for _, row := range rows {
+		if row.Views == nil {
+			continue
+		}
 		v := domain.OrdLiveViews{PublicationID: row.ID, CheckedAt: row.ViewsCheckedAt}
 		if row.Views != nil {
 			v.Views = int64(*row.Views)

@@ -6,7 +6,7 @@ SELECT e.object_type, e.id, e.ord_external_id, e.ord_status, e.sync_error, e.syn
     -- Последний вызов ОРД по объекту (outbound_request.object_type — операция адаптера).
     (SELECT r.id FROM outbound_request r
      WHERE r.system = 'yandex_ord'
-       AND r.object_type = CASE e.object_type WHEN 'platform' THEN 'platforms' ELSE e.object_type END
+       AND r.object_type = CASE e.object_type WHEN 'platform' THEN 'platforms' WHEN 'invoice_creatives' THEN 'invoice/creatives' ELSE e.object_type END
        AND r.object_id = e.ord_external_id
      ORDER BY r.created_at DESC LIMIT 1)::uuid AS last_request_id
 FROM (
@@ -27,11 +27,14 @@ FROM (
     UNION ALL
     SELECT 'invoice'::text, iv.id, iv.ord_external_id, iv.ord_status, iv.sync_error, iv.sync_attempts, iv.updated_at
     FROM ord_invoice iv WHERE iv.sync_status = 'error'
+    UNION ALL
+    SELECT 'invoice_creatives'::text, ic.ord_invoice_id, ic.ord_external_id, ic.ord_status, ic.sync_error, ic.sync_attempts, ic.updated_at
+    FROM ord_invoice_creatives ic WHERE ic.sync_status = 'error'
 ) e
 WHERE (@object_type::text = '' OR e.object_type = @object_type)
   AND (sqlc.narg(after_at)::timestamptz IS NULL
-   OR (e.updated_at, e.id) > (sqlc.narg(after_at)::timestamptz, sqlc.narg(after_id)::uuid))
-ORDER BY e.updated_at, e.id
+   OR (e.updated_at, e.id, e.object_type) > (sqlc.narg(after_at)::timestamptz, sqlc.narg(after_id)::uuid, @after_type::text))
+ORDER BY e.updated_at, e.id, e.object_type
 LIMIT @lim;
 
 -- name: ListOrdStuckSent :many
@@ -47,6 +50,8 @@ SELECT s.object_type, s.id, s.sent_at FROM (
     SELECT 'statistics'::text, st.id, st.sent_at FROM ord_statistics st WHERE st.sync_status = 'sent'
     UNION ALL
     SELECT 'invoice'::text, iv.id, iv.sent_at FROM ord_invoice iv WHERE iv.sync_status = 'sent'
+    UNION ALL
+    SELECT 'invoice_creatives'::text, ic.ord_invoice_id, ic.sent_at FROM ord_invoice_creatives ic WHERE ic.sync_status = 'sent'
 ) s
 WHERE s.sent_at < @before::timestamptz
 ORDER BY s.sent_at, s.id
@@ -69,7 +74,9 @@ SELECT 'creative'::text, cr.sync_status, count(*)::int FROM creative cr GROUP BY
 UNION ALL
 SELECT 'statistics'::text, st.sync_status, count(*)::int FROM ord_statistics st GROUP BY st.sync_status
 UNION ALL
-SELECT 'invoice'::text, iv.sync_status, count(*)::int FROM ord_invoice iv GROUP BY iv.sync_status;
+SELECT 'invoice'::text, iv.sync_status, count(*)::int FROM ord_invoice iv GROUP BY iv.sync_status
+UNION ALL
+SELECT 'invoice_creatives'::text, ic.sync_status, count(*)::int FROM ord_invoice_creatives ic GROUP BY ic.sync_status;
 
 -- name: LastOrdRequest :one
 -- Последний вызов ОРД по объекту (этап «API администратора», R-17): тела — как сохранены адаптером.

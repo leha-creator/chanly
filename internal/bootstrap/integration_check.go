@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"math"
 	"net/http"
 	"net/url"
 	"slices"
@@ -55,7 +56,11 @@ func parseIntegrationCheck(args []string) (integrationCheckOptions, error) {
 			return o, errUsage
 		}
 	case "inspect":
-		if o.system != "max" || !o.execute {
+		if (o.system != "max" && o.system != "ord") || !o.execute {
+			return o, errUsage
+		}
+	case "sandbox":
+		if o.system != "ord" || !o.execute || o.runDir == "" {
 			return o, errUsage
 		}
 	case "publish", "observe", "recover", "remove":
@@ -102,6 +107,16 @@ func integrationCheckPreflight(c Config, vars map[string]string, o *integrationC
 		}
 		if !checkEndpoint(c.ORDBaseURL(), ord.TestBaseURL) {
 			return errors.New("ORD_API_URL must be the ORD sandbox endpoint")
+		}
+		if c.ORD.ReportAutoSend {
+			return errors.New("ORD_REPORT_AUTO_SEND must be false for isolated integration checks")
+		}
+		if c.ORD.APIVersion != ord.DefaultAPIVersion || math.IsNaN(c.ORD.Rate) || c.ORD.Rate <= 0 || c.ORD.Rate > ord.DefaultRate {
+			return errors.New("ORD diagnostics require API v8 and a positive ORD_RATE no greater than 5")
+		}
+		// Read-only access verification needs no legal identity, KKTU or contract defaults.
+		if o.scenario == "inspect" || o.scenario == "sandbox" {
+			return nil
 		}
 		var bad []string
 		c.validateORD(func(field, _ string) { bad = append(bad, field) })
@@ -157,7 +172,13 @@ func runIntegrationCheck(ctx context.Context, p RunParams) int {
 	defer pool.Close()
 	in := &infra{pool: pool, clock: clock.System{}, log: log}
 	// No full worker bootstrap: no subscriptions, scheduled jobs, mail or unrelated integrations.
-	if err = in.connectCheckMAX(cfg); err == nil {
+	if o.system == "ord" {
+		if o.scenario == "sandbox" {
+			err = executeORDSandbox(ctx, in.checkORDClient(cfg), in.clock, log, o.runDir)
+		} else {
+			err = in.inspectCheckORD(ctx, cfg)
+		}
+	} else if err = in.connectCheckMAX(cfg); err == nil {
 		err = executeMAXCheck(ctx, in.max, in.clock, log, o)
 	}
 	if err != nil {

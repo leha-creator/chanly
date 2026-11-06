@@ -68,6 +68,8 @@ type MediaData struct {
 
 // Receipt — ответ ResponseStatus на POST и GET /status.
 type Receipt struct {
+	// ObjectID is returned by GET /organization; data is deliberately not decoded.
+	ObjectID       string            `json:"object_id,omitempty"`
 	RequestID      string            `json:"request_id"`
 	Status         string            `json:"status"`
 	Token          string            `json:"token"`

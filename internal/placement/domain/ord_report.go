@@ -9,6 +9,8 @@ import (
 // OrdReportRow — размещение с публикацией для ежемесячной отчётности ОРД (этап «API администратора
 // и отчётность ОРД», R-19, R-20). Читает модуль маркировки через bootstrap/bridge.
 type OrdReportRow struct {
+	FeeAmount                int64
+	FeeCharged               *int64
 	PlacementID              uuid.UUID
 	PublicationID            uuid.UUID
 	ChannelID                uuid.UUID

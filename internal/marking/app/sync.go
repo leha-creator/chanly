@@ -72,6 +72,10 @@ func (s *Service) prepare(ctx context.Context, ref domain.ObjectRef) (*outgoing,
 		return nil, nil, err
 	}
 	st := r.state()
+	if st.SubmissionUncertain {
+		s.log.WarnContext(ctx, "ord report submission requires reconciliation", KeyObjectType, ref.Type, KeyObjectID, ref.ID)
+		return nil, nil, nil
+	}
 	switch st.Status {
 	case domain.SyncSent:
 		s.log.DebugContext(ctx, "ord object up to date", logx.KeyOp, op, KeyObjectType, ref.Type, KeyObjectID, ref.ID,
@@ -104,6 +108,12 @@ func (s *Service) prepare(ctx context.Context, ref domain.ObjectRef) (*outgoing,
 		return nil, nil, nil
 	}
 	// build мог дополнить запись (дата договора, изначальный договор креатива).
+	if isReportWrite(ref.Type) {
+		st.SubmissionUncertain = true
+		st.PayloadHash, st.ExternalID, st.SentAt = out.hash, out.externalID, s.Clock.Now()
+		st.RequestID = ""
+		st.Fail("submission_uncertain", false)
+	}
 	if err := r.save(ctx, s, s.Clock.Now()); err != nil {
 		return nil, nil, err
 	}
@@ -125,6 +135,8 @@ func (s *Service) build(ctx context.Context, r record) (*outgoing, error, error)
 		return s.buildStatistics(ctx, v)
 	case *invoiceRecord:
 		return s.buildInvoice(ctx, v)
+	case *invoiceLinksRecord:
+		return s.buildInvoiceLinks(ctx, v)
 	}
 	return nil, nil, fmt.Errorf("marking: unknown record %T", r)
 }
@@ -141,9 +153,15 @@ func (s *Service) commit(ctx context.Context, out *outgoing, rec domain.Receipt,
 		return nil, err
 	}
 	st, now := r.state(), s.Clock.Now()
+	if isReportWrite(out.ref.Type) && (!st.SubmissionUncertain || st.PayloadHash != out.hash) {
+		return nil, errors.New("marking: report submission checkpoint changed")
+	}
 	st.ExternalID = out.externalID // и при отказе: по нему S-20 находит вызов в outbound_request
 	if callErr != nil {
-		if job.IsPermanent(callErr) {
+		var rejected interface{ DefiniteRejection() bool }
+		definite := errors.As(callErr, &rejected) && rejected.DefiniteRejection()
+		if job.IsPermanent(callErr) && (!isReportWrite(out.ref.Type) || definite) {
+			st.SubmissionUncertain = false // definite rejection, no accepted receipt
 			st.Fail(callErr.Error(), true)
 			if err := r.save(ctx, s, now); err != nil {
 				return nil, err
@@ -155,7 +173,15 @@ func (s *Service) commit(ctx context.Context, out *outgoing, rec domain.Receipt,
 		if err := r.save(ctx, s, now); err != nil {
 			return nil, err
 		}
+		if isReportWrite(out.ref.Type) {
+			s.failed(ctx, op, r, "submission_uncertain")
+			return nil, nil
+		}
 		return callErr, nil
+	}
+	if isReportWrite(out.ref.Type) && rec.RequestID == "" {
+		s.failed(ctx, op, r, "accepted_without_receipt")
+		return nil, nil // durable checkpoint stays uncertain; no replay
 	}
 	status, token, errs := rec.For(out.externalID)
 	st.MarkSent(out.externalID, rec.RequestID, status, out.hash, now)
@@ -179,6 +205,10 @@ func (s *Service) commit(ctx context.Context, out *outgoing, rec domain.Receipt,
 		s.confirmed(ctx, op, r, now)
 	}
 	return nil, nil
+}
+
+func isReportWrite(t domain.ObjectType) bool {
+	return t == domain.TypeStatistics || t == domain.TypeInvoice || t == domain.TypeInvoiceCreatives
 }
 
 // afterStatus — последствия нового статуса по виду объекта в той же транзакции: токен креатива,

@@ -6,10 +6,15 @@ import (
 	"errors"
 	"net/http"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	accountdomain "github.com/leha-creator/chanly/internal/account/domain"
+	"github.com/leha-creator/chanly/internal/integration/ord"
+	markingdomain "github.com/leha-creator/chanly/internal/marking/domain"
+	"github.com/leha-creator/chanly/internal/platform/job"
 )
 
 // Этап «API администратора и отчётность ОРД»: ежемесячная статистика и акты (R-19 … R-23, S-31).
@@ -59,6 +64,10 @@ func TestOrdMonthlyReportEndToEnd(t *testing.T) {
 	a.acceptOffers(adv)
 	blg := a.bloggerClient("blg-report@example.ru")
 	a.acceptOffers(blg)
+	// Explicit financial inputs: absence of VAT configuration must not imply no VAT.
+	if _, err := a.db.Pool.Exec(context.Background(), `UPDATE organization SET vat_rate='none' WHERE vat_rate IS NULL`); err != nil {
+		t.Fatal(err)
+	}
 	// Маркированный пост: креатив, площадка и договоры в ОРД (этап «Маркировка»).
 	ch := a.moderatedChannel(blg, -73000000077, 5000)
 	if r := a.adminClient("mod0.report@example.ru", accountdomain.AdminModerator).do(http.MethodPost, "/admin/channels/"+ch+"/approve", nil); r.status != http.StatusOK {
@@ -90,6 +99,10 @@ func TestOrdMonthlyReportEndToEnd(t *testing.T) {
 	}
 	a.ordSettle()
 
+	// Report fixture supplies a measured value explicitly; absent MAX metrics stay unknown.
+	if _, err := a.db.Pool.Exec(context.Background(), "UPDATE placement SET final_views=1200 WHERE id=$1", pid); err != nil {
+		t.Fatal(err)
+	}
 	mod := a.adminClient("mod.report@example.ru", accountdomain.AdminModerator)
 	senior := a.adminClient("senior.report@example.ru", accountdomain.AdminSenior)
 
@@ -152,6 +165,7 @@ func TestOrdMonthlyReportEndToEnd(t *testing.T) {
 	}
 
 	// Отправка senior: статистика, акты; ordfake подтверждает.
+	a.ord.FailNext(ord.OpInvoiceCreatives, http.StatusUnprocessableEntity, "invalid test allocation")
 	v = ordReportView{}
 	senior.do(http.MethodPost, "/admin/ord/reports/2026-10/send", map[string]any{"reason": "ежемесячная отправка"}).json(t, &v)
 	if v.State != "sending" {
@@ -159,6 +173,23 @@ func TestOrdMonthlyReportEndToEnd(t *testing.T) {
 	}
 	a.ordSettle()
 	a.ordSettle()
+	if n := a.count(`SELECT count(*) FROM ord_invoice WHERE sync_status <> 'synced'`); n != 0 {
+		t.Fatalf("document not confirmed: %d", n)
+	}
+	if n := a.count(`SELECT count(*) FROM ord_invoice_creatives WHERE sync_status='error'`); n != 1 {
+		t.Fatalf("expected one failed links object, got %d", n)
+	}
+	documentCalls := a.ord.Calls(ord.OpInvoice)
+	if r := senior.do(http.MethodPost, "/admin/ord/reports/2026-10/send", map[string]any{"reason": "retry links only"}); r.status != http.StatusOK {
+		t.Fatalf("retry links: %d %s", r.status, r.body)
+	}
+	a.ordSettle()
+	if a.ord.Calls(ord.OpInvoice) != documentCalls {
+		t.Fatal("retrying links repeated document POST")
+	}
+	if n := a.count(`SELECT count(*) FROM ord_invoice i JOIN ord_invoice_creatives l ON l.ord_invoice_id=i.id WHERE i.sync_request_id IS NULL OR l.sync_request_id IS NULL OR i.sync_request_id=l.sync_request_id`); n != 0 {
+		t.Fatal("independent receipts not persisted")
+	}
 	v = ordReportView{}
 	mod.do(http.MethodGet, "/admin/ord/reports/2026-10", nil).json(t, &v)
 	if v.State != "sent" || v.PendingCount != 0 || v.ErrorCount != 0 {
@@ -167,7 +198,7 @@ func TestOrdMonthlyReportEndToEnd(t *testing.T) {
 	if _, ok := a.ord.Object(v.Statistics[0].ID); !ok {
 		t.Fatal("statistics not in ordfake")
 	}
-	if n := a.count(`SELECT count(*) FROM audit_log WHERE action IN ('ord_report.built', 'ord_report.send_requested') AND actor_type = 'admin'`); n != 2 {
+	if n := a.count(`SELECT count(*) FROM audit_log WHERE action IN ('ord_report.built', 'ord_report.send_requested') AND actor_type = 'admin'`); n != 3 {
 		t.Fatalf("audit %d", n)
 	}
 
@@ -194,4 +225,188 @@ func TestOrdMonthlyReportEndToEnd(t *testing.T) {
 			t.Fatalf("log contains %s", secret)
 		}
 	}
+
+	t.Run("missing metrics are not reported as zero", func(t *testing.T) {
+		ctx := context.Background()
+		var final, views *int32
+		if err := a.db.Pool.QueryRow(ctx, "SELECT pl.final_views,p.views FROM placement pl JOIN publication p ON p.placement_id=pl.id WHERE pl.id=$1", pid).Scan(&final, &views); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := a.db.Pool.Exec(ctx, "UPDATE placement SET final_views=NULL WHERE id=$1", pid); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := a.db.Pool.Exec(ctx, "UPDATE publication SET views=NULL WHERE placement_id=$1", pid); err != nil {
+			t.Fatal(err)
+		}
+		result := senior.do(http.MethodPost, "/admin/ord/reports/2026-10/rebuild", map[string]any{"reason": "check unknown metrics"})
+		if result.status != http.StatusUnprocessableEntity {
+			t.Fatalf("unknown views accepted: %d %s", result.status, result.body)
+		}
+		if _, err := a.db.Pool.Exec(ctx, "UPDATE placement SET final_views=$2 WHERE id=$1", pid, final); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := a.db.Pool.Exec(ctx, "UPDATE publication SET views=$2 WHERE placement_id=$1", pid, views); err != nil {
+			t.Fatal(err)
+		}
+	})
+	t.Run("known receipts resume polling without POST", func(t *testing.T) {
+		ctx := context.Background()
+		tables := []string{"ord_statistics", "ord_invoice", "ord_invoice_creatives"}
+		before := a.ord.Calls(ord.OpStatistics) + a.ord.Calls(ord.OpInvoice) + a.ord.Calls(ord.OpInvoiceCreatives)
+		for _, table := range tables {
+			if _, err := a.db.Pool.Exec(ctx, "UPDATE "+table+" SET sync_status='error',sync_error='status_timeout',ord_status='ERIR sync success'"); err != nil {
+				t.Fatal(err)
+			}
+		}
+		if _, err := a.mods.marking.SendReport(ctx, markingdomain.Period{Year: 2026, Month: time.October}, nil, ""); err != nil {
+			t.Fatal(err)
+		}
+		a.ordSettle()
+		after := a.ord.Calls(ord.OpStatistics) + a.ord.Calls(ord.OpInvoice) + a.ord.Calls(ord.OpInvoiceCreatives)
+		if before != after {
+			t.Fatal("timeout replayed an accepted report")
+		}
+		for _, table := range tables {
+			if a.count("SELECT count(*) FROM "+table+" WHERE sync_status<>'synced'") != 0 {
+				t.Fatal("receipt did not finish: " + table)
+			}
+		}
+	})
+	t.Run("permanent cancellation retains every report checkpoint", func(t *testing.T) {
+		ctx := context.Background()
+		original := a.mods.marking.Ord
+		defer func() { a.mods.marking.Ord = original }()
+		a.mods.marking.Ord = canceledReportAPI{original}
+		cases := []struct {
+			table, key, id string
+			kind           markingdomain.ObjectType
+			op             string
+		}{
+			{"ord_invoice_creatives", "ord_invoice_id", v.Invoices[0].ID, markingdomain.TypeInvoiceCreatives, ord.OpInvoiceCreatives},
+			{"ord_invoice", "id", v.Invoices[0].ID, markingdomain.TypeInvoice, ord.OpInvoice},
+			{"ord_statistics", "id", v.Statistics[0].ID, markingdomain.TypeStatistics, ord.OpStatistics},
+		}
+		for _, tc := range cases {
+			t.Run(string(tc.kind), func(t *testing.T) {
+				var savedReceipt *string
+				if err := a.db.Pool.QueryRow(ctx, "SELECT sync_request_id FROM "+tc.table+" WHERE "+tc.key+"=$1", tc.id).Scan(&savedReceipt); err != nil {
+					t.Fatal(err)
+				}
+				if _, err := a.db.Pool.Exec(ctx, "UPDATE "+tc.table+" SET sync_status='pending' WHERE "+tc.key+"=$1", tc.id); err != nil {
+					t.Fatal(err)
+				}
+				ref := markingdomain.ObjectRef{Type: tc.kind, ID: uuid.MustParse(tc.id)}
+				before := a.ord.Calls(tc.op)
+				if err := a.mods.marking.Sync(ctx, ref, 1); err != nil {
+					t.Fatal(err)
+				}
+				if err := a.mods.marking.Sync(ctx, ref, 2); err != nil {
+					t.Fatal(err)
+				}
+				var uncertain bool
+				if err := a.db.Pool.QueryRow(ctx, "SELECT submission_uncertain FROM "+tc.table+" WHERE "+tc.key+"=$1", tc.id).Scan(&uncertain); err != nil {
+					t.Fatal(err)
+				}
+				if !uncertain || a.ord.Calls(tc.op) != before+1 {
+					t.Fatal("canceled accepted POST lost its checkpoint or replayed")
+				}
+				// Restore this fixture only, after verifying the production guard.
+				if _, err := a.db.Pool.Exec(ctx, "UPDATE "+tc.table+" SET submission_uncertain=false,sync_status='synced',sync_request_id=$2 WHERE "+tc.key+"=$1", tc.id, savedReceipt); err != nil {
+					t.Fatal(err)
+				}
+			})
+		}
+	})
+	t.Run("unknown outcome blocks concurrent sends and restart", func(t *testing.T) {
+		id := uuid.MustParse(v.Statistics[0].ID)
+		if _, err := a.db.Pool.Exec(context.Background(), `UPDATE ord_statistics SET sync_status='pending' WHERE id=$1`, id); err != nil {
+			t.Fatal(err)
+		}
+		before := a.ord.Calls(ord.OpStatistics)
+		a.ord.TimeoutNext(ord.OpStatistics)
+		ref := markingdomain.ObjectRef{Type: markingdomain.TypeStatistics, ID: id}
+		var wg sync.WaitGroup
+		for range 2 {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				if err := a.mods.marking.Sync(context.Background(), ref, 1); err != nil {
+					t.Error(err)
+				}
+			}()
+		}
+		wg.Wait()
+		restarted := *a.mods.marking
+		if err := restarted.Sync(context.Background(), ref, 2); err != nil {
+			t.Fatal(err)
+		}
+		if a.ord.Calls(ord.OpStatistics) != before+1 {
+			t.Fatal("uncertain write replayed")
+		}
+		if n := a.count(`SELECT count(*) FROM ord_statistics WHERE submission_uncertain AND sync_status='error'`); n != 1 {
+			t.Fatal("checkpoint missing")
+		}
+		p := markingdomain.Period{Year: 2026, Month: time.October}
+		if _, err := a.mods.marking.SendReport(context.Background(), p, nil, ""); err == nil {
+			t.Fatal("SendReport bypassed uncertainty")
+		}
+		if r := senior.do(http.MethodPost, "/admin/ord/reports/2026-10/rebuild", map[string]any{"reason": "must not bypass uncertainty"}); r.status != http.StatusConflict {
+			t.Fatalf("rebuild uncertainty: %d %s", r.status, r.body)
+		}
+	})
+	t.Run("late document rejection blocks creative links", func(t *testing.T) {
+		ctx := context.Background()
+		id := v.Invoices[0].ID
+		a.ord.RejectObject(id, markingdomain.OrdErirAsyncError, "late test rejection")
+		if _, err := a.db.Pool.Exec(ctx, "UPDATE ord_invoice SET sync_status='sent' WHERE id=$1", id); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := a.db.Pool.Exec(ctx, "UPDATE ord_invoice_creatives SET sync_status='pending' WHERE ord_invoice_id=$1", id); err != nil {
+			t.Fatal(err)
+		}
+		before := a.ord.Calls(ord.OpInvoiceCreatives)
+		for range 4 {
+			_ = a.mods.marking.Poll(ctx, markingdomain.ObjectRef{Type: markingdomain.TypeInvoice, ID: uuid.MustParse(id)})
+		}
+		_ = a.mods.marking.Sync(ctx, markingdomain.ObjectRef{Type: markingdomain.TypeInvoiceCreatives, ID: uuid.MustParse(id)}, 1)
+		if a.ord.Calls(ord.OpInvoiceCreatives) != before {
+			t.Fatal("links submitted after document rejection")
+		}
+		if a.count("SELECT count(*) FROM ord_invoice WHERE sync_status='error'") != 1 {
+			t.Fatal("late rejection lost")
+		}
+		a.ord.ClearReject(id)
+		if _, err := a.db.Pool.Exec(ctx, "UPDATE ord_invoice SET sync_status='synced' WHERE id=$1", id); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := a.db.Pool.Exec(ctx, "UPDATE ord_invoice_creatives SET sync_status='synced' WHERE ord_invoice_id=$1", id); err != nil {
+			t.Fatal(err)
+		}
+	})
+
+}
+
+// Cancellation can be wrapped as permanent by outbound after the provider accepted it.
+type canceledReportAPI struct{ markingdomain.OrdAPI }
+
+func (a canceledReportAPI) UpsertStatistics(ctx context.Context, r markingdomain.StatisticsRequest) (markingdomain.Receipt, error) {
+	_, err := a.OrdAPI.UpsertStatistics(ctx, r)
+	if err != nil {
+		return markingdomain.Receipt{}, err
+	}
+	return markingdomain.Receipt{}, job.Permanent(context.Canceled)
+}
+func (a canceledReportAPI) UpsertInvoice(ctx context.Context, r markingdomain.InvoiceRequest) (markingdomain.Receipt, error) {
+	_, err := a.OrdAPI.UpsertInvoice(ctx, r)
+	if err != nil {
+		return markingdomain.Receipt{}, err
+	}
+	return markingdomain.Receipt{}, job.Permanent(context.Canceled)
+}
+func (a canceledReportAPI) UpsertInvoiceCreatives(ctx context.Context, r markingdomain.InvoiceRequest) (markingdomain.Receipt, error) {
+	_, err := a.OrdAPI.UpsertInvoiceCreatives(ctx, r)
+	if err != nil {
+		return markingdomain.Receipt{}, err
+	}
+	return markingdomain.Receipt{}, job.Permanent(context.Canceled)
 }

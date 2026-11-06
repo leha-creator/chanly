@@ -22,7 +22,7 @@ const (
 )
 
 // ObjectTypes — все виды в постоянном порядке.
-var ObjectTypes = []ObjectType{TypeOrganization, TypeContract, TypePlatform, TypeCreative, TypeStatistics, TypeInvoice}
+var ObjectTypes = []ObjectType{TypeOrganization, TypeContract, TypePlatform, TypeCreative, TypeStatistics, TypeInvoice, TypeInvoiceCreatives}
 
 // Valid сообщает, что вид из перечисления.
 func (t ObjectType) Valid() bool {
@@ -88,15 +88,18 @@ const (
 // SyncState — поля синхронизации объекта (04 §6.1) и сверх них ord_status, sent_at (R-2).
 // Нулевое время — NULL.
 type SyncState struct {
-	Status      SyncStatus
-	ExternalID  string
-	RequestID   string
-	OrdStatus   string
-	Error       string
-	Attempts    int
-	SentAt      time.Time
-	SyncedAt    time.Time
-	PayloadHash string
+	// SubmissionUncertain is durably set before a report POST. No automatic
+	// retry/rebuild may clear it after a lost response or legacy migration.
+	SubmissionUncertain bool
+	Status              SyncStatus
+	ExternalID          string
+	RequestID           string
+	OrdStatus           string
+	Error               string
+	Attempts            int
+	SentAt              time.Time
+	SyncedAt            time.Time
+	PayloadHash         string
 }
 
 // NewSyncState — объект, ожидающий первой отправки.
@@ -116,6 +119,7 @@ const (
 
 // MarkSent — запрос принят ОРД (R-2): pending → sent. Попытка засчитывается.
 func (s *SyncState) MarkSent(externalID, requestID, ordStatus, hash string, now time.Time) {
+	s.SubmissionUncertain = false
 	s.Status = SyncSent
 	s.ExternalID = externalID
 	s.RequestID = requestID
@@ -157,6 +161,9 @@ func (s *SyncState) Fail(reason string, attempted bool) {
 
 // Retry — «Повторить» администратора (S-20): error → pending. Из других состояний — отказ.
 func (s *SyncState) Retry() error {
+	if s.SubmissionUncertain {
+		return fmt.Errorf("marking: submission requires reconciliation")
+	}
 	if s.Status != SyncError {
 		return &StateError{Status: s.Status}
 	}
@@ -180,6 +187,9 @@ func (s *SyncState) Requeue(hash string) bool {
 // Invalidate ставит объект на повторную отправку без сравнения нагрузки: изменились данные,
 // из которых она собирается (признак isRr контрагента). true — состояние изменилось.
 func (s *SyncState) Invalidate() bool {
+	if s.SubmissionUncertain {
+		return false
+	}
 	if s.Status == SyncPending {
 		return false
 	}

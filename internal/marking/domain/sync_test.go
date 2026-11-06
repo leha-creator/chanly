@@ -139,12 +139,22 @@ func TestReceiptFor(t *testing.T) {
 	r := Receipt{RequestID: "r", Status: OrdRequestAccepted, Token: "common", Errors: []string{"general"},
 		ObjectStatuses: []ObjectStatus{{ObjectID: "a", Status: OrdErirSyncSuccess, Token: "tok-a", Errors: []string{"own"}}}}
 	st, tok, errs := r.For("a")
-	if st != OrdErirSyncSuccess || tok != "tok-a" || len(errs) != 2 {
+	if st != OrdRequestAccepted || tok != "tok-a" || len(errs) != 2 {
 		t.Fatalf("For(a) = %q %q %v", st, tok, errs)
 	}
 	st, tok, _ = r.For("b")
 	if st != OrdRequestAccepted || tok != "common" {
 		t.Fatalf("For(b) = %q %q", st, tok)
+	}
+	r.Status = OrdErirAsyncSuccess
+	r.ObjectStatuses = []ObjectStatus{{ObjectID: "a", Status: OrdErirAsyncSuccess}, {ObjectID: "other", Status: OrdRequestAccepted}}
+	if st, _, _ := r.For("a"); st != OrdRequestAccepted {
+		t.Fatal("pending child hidden by matching success")
+	}
+	r.ObjectStatuses = append(r.ObjectStatuses, ObjectStatus{ObjectID: "other", Status: OrdErirAsyncError})
+	st, _, _ = r.For("a")
+	if st != OrdErirAsyncError {
+		t.Fatal("child failure hidden by top-level success")
 	}
 }
 

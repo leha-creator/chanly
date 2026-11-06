@@ -1,0 +1,34 @@
+{
+    "amount":  {
+                   "services":  {
+                                    "excludingVat":  "900.00",
+                                    "includingVat":  "900.00",
+                                    "vat":  "0.00",
+                                    "vatRate":  "100"
+                                }
+               },
+    "clientRole":  "psr",
+    "contractId":  "fixture-placement",
+    "contractorRole":  "rr",
+    "date":  "2026-10-31",
+    "endDate":  "2026-10-31",
+    "id":  "fixture-publisher-invoice",
+    "isSocial":  false,
+    "isSocialQuota":  false,
+    "items":  [
+                  {
+                      "amount":  {
+                                     "excludingVat":  "900.00",
+                                     "includingVat":  "900.00",
+                                     "vat":  "0.00",
+                                     "vatRate":  "100"
+                                 },
+                      "contractId":  "fixture-initial",
+                      "isSocial":  false,
+                      "isSocialQuota":  false
+                  }
+              ],
+    "number":  "TEST-publisher-invoice-01a1b294-c7f6-7b6f-886c-63234a552312",
+    "startDate":  "2026-10-01",
+    "type":  "invoice"
+}

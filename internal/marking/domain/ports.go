@@ -27,16 +27,19 @@ type ObjectStatus struct {
 // For — статус, токен и ошибки объекта externalID: из object_statuses[] по нашему
 // идентификатору, иначе общие (R-3).
 func (r Receipt) For(externalID string) (status, token string, errs []string) {
+	status, token = r.Status, r.Token
+	errs = append([]string(nil), r.Errors...)
 	for _, o := range r.ObjectStatuses {
-		if o.ObjectID == externalID {
+		errs = append(errs, o.Errors...)
+		if o.ObjectID == externalID && o.Token != "" {
 			token = o.Token
-			if token == "" {
-				token = r.Token
-			}
-			return o.Status, token, append(append([]string(nil), o.Errors...), r.Errors...)
+		}
+		current, child := ClassifyOrdStatus(status, true), ClassifyOrdStatus(o.Status, true)
+		if current != ProgressFinalError && (child == ProgressFinalError || child < current) {
+			status = o.Status
 		}
 	}
-	return r.Status, r.Token, r.Errors
+	return
 }
 
 // OrdAPI — Яндекс ОРД, API v8 (05 §3). Реализация: integration/ord (переходник в bootstrap/bridge)
@@ -49,8 +52,9 @@ type OrdAPI interface {
 	UpsertCreative(ctx context.Context, req CreativeRequest) (Receipt, error)
 	// UpsertStatistics — строка статистики месяца (R-20).
 	UpsertStatistics(ctx context.Context, req StatisticsRequest) (Receipt, error)
-	// UpsertInvoice — акт и его разбивка: два вызова в одном шаге; квитанция — второго (R-22).
+	// Each report operation returns its own receipt and is persisted independently.
 	UpsertInvoice(ctx context.Context, req InvoiceRequest) (Receipt, error)
+	UpsertInvoiceCreatives(ctx context.Context, req InvoiceRequest) (Receipt, error)
 	GetStatus(ctx context.Context, requestID string) (Receipt, error)
 }
 
@@ -160,6 +164,7 @@ type RequestLog struct {
 
 // ErrorCursor — ключ страницы списка ошибок: (updated_at, id).
 type ErrorCursor struct {
+	Type      ObjectType
 	UpdatedAt time.Time
 	ID        uuid.UUID
 }
@@ -234,6 +239,8 @@ func (c Config) WithDefaults() Config {
 
 // SourcePlacement — размещение с публикацией из модуля размещений (переходник в bootstrap/bridge).
 type SourcePlacement struct {
+	FinalViewsKnown  bool
+	CommissionAmount int64
 	PlacementID      uuid.UUID
 	PublicationID    uuid.UUID
 	ChannelID        uuid.UUID

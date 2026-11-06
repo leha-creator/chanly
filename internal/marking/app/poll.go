@@ -80,6 +80,8 @@ func (s *Service) applyPolled(ctx context.Context, ref domain.ObjectRef, target 
 		// Ошибка сети или ответа при опросе — следующий опрос по тому же расписанию (R-10).
 		s.log.WarnContext(ctx, "ord status poll failed", logx.KeyOp, op, KeyObjectType, ref.Type, KeyObjectID, ref.ID,
 			KeyReqID, target.requestID, logx.KeyError, callErr.Error())
+	} else if rec.RequestID != target.requestID {
+		s.log.WarnContext(ctx, "ord receipt mismatch", KeyObjectID, ref.ID, KeyReqID, target.requestID)
 	} else {
 		status, token, errs := rec.For(r.externalID())
 		outcome = st.ApplyStatus(status, errs, domain.PassesErir(ref.Type), now)

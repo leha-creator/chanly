@@ -26,6 +26,42 @@ import (
 
 func TestMain(m *testing.M) { os.Exit(dbtest.Main(m)) }
 
+func TestGetOrganizationStatus(t *testing.T) {
+	for _, tc := range []struct {
+		name                string
+		status              int
+		body                string
+		wantMissing, wantOK bool
+	}{
+		{"authenticated absence", 404, `{"detail":"Not found organization by id"}`, true, false},
+		{"generic 404", 404, `{"detail":"Not Found"}`, false, false},
+		{"unauthorized", 401, `{"detail":"Not authenticated"}`, false, false},
+		{"found", 200, `{"object_id":"check-org","status":"ERIR async success","data":{"name":"private-name"}}`, false, true},
+		{"wrong identity", 200, `{"object_id":"other"}`, false, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			c, d := newClient(t, func(w http.ResponseWriter, r *http.Request) {
+				if r.Method != http.MethodGet || r.URL.Query().Get("object_id") != "check-org" {
+					t.Error("invalid lookup")
+				}
+				w.WriteHeader(tc.status)
+				_, _ = io.WriteString(w, tc.body)
+			})
+			_, err := c.GetOrganizationStatus(context.Background(), "check-org")
+			if errors.Is(err, ord.ErrOrganizationNotFound) != tc.wantMissing || (err == nil) != tc.wantOK {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			var stored string
+			if err := d.Pool.QueryRow(context.Background(), `SELECT response_body::text FROM outbound_request LIMIT 1`).Scan(&stored); err != nil {
+				t.Fatal(err)
+			}
+			if strings.Contains(stored, "private-name") {
+				t.Fatal("organization data persisted without redaction")
+			}
+		})
+	}
+}
+
 const token = "ord-oauth-secret"
 
 func testdata(t *testing.T, name string) []byte {
@@ -77,7 +113,10 @@ func sameJSON(t *testing.T, got, want []byte) {
 	}
 }
 
-func TestUpsertBodiesMatchSpecification(t *testing.T) {
+// Legacy report fixtures predate the verified v8 schema. Keep this compatibility
+// test until the production domain mapping and durable two-step workflow migrate.
+// Actual v8 report schema/HTTP coverage lives in TestReportingV8WireBodies.
+func TestLegacyUpsertBodiesMatchFixtures(t *testing.T) {
 	type seen struct{ method, path, auth string }
 	var last seen
 	var body []byte
@@ -101,7 +140,7 @@ func TestUpsertBodiesMatchSpecification(t *testing.T) {
 		{"/api/v8/platforms", "platforms_request.json", func() (ord.Receipt, error) {
 			return c.UpsertPlatforms(ctx, decode[ord.Platforms](t, "platforms_request.json"))
 		}},
-		// ПРЕДПОЛОЖЕНИЕ (Q-42): образцы отчётности составлены по описанию API v8, не записаны с контура.
+		// Legacy reporting bodies; these are NOT API v8 compatibility evidence.
 		{"/api/v8/statistics", "statistics_request.json", func() (ord.Receipt, error) {
 			return c.UpsertStatistics(ctx, decode[ord.Statistics](t, "statistics_request.json"))
 		}},

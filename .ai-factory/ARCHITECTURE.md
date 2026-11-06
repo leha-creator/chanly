@@ -64,6 +64,7 @@ maxim/
 │   │   ├── server.go                #   сборка strict server из обработчиков модулей
 │   │   ├── dev.go                   #   maxim dev post-version — только development и test
 │   │   ├── integration_check.go     #   явная диагностика MAX/ОРД, только development, без запуска worker
+│   │   ├── integration_check_ord.go # чтение sandbox ОРД через outbound и ограничитель, без записи объектов
 │   │   ├── integration_check_state.go # состояние тестового MAX-прогона и проверка срока удаления
 │   │   └── bridge/                  #   переходники портов между модулями (используют bootstrap и сценарные тесты)
 │   │
@@ -408,3 +409,10 @@ func (h *Handlers) PublishNow(ctx context.Context, req apigen.PublishNowRequestO
 - ❌ **Правка `apigen/` или `sqlc/` руками.** Меняется спецификация или SQL, затем генерация.
 - ❌ **Логирование текста поста, ИНН, почты без маскирования, токенов и кодов** (07 §5.4).
 - ❌ **Глобальные переменные с состоянием** (пулы, клиенты, конфигурация). Зависимости передаются через конструкторы из `bootstrap`.
+
+### Диагностика ОРД sandbox
+
+integration_check_ord.go создаёт клиент с outbound, ограничителем, запретом redirect и сетевых повторов. integration_check_ord_fixtures.go содержит тестовую агентскую цепочку. integration_check_ord_state.go сохраняет состояние перед POST, опрашивает квитанции, блокирует неизвестный исход и чужие идентификаторы. integration_check_ord_state_test.go проверяет восстановление и официальную сохранённую OpenAPI через jsonschema/v6 и regexp2 (ECMAScript lookahead). Эти зависимости используются тестами; raw sandbox fixtures не заменяют производственные DTO отчётности.
+Транспорт отчётности API v8: internal/integration/ord/reporting_v8.go содержит отдельные wire DTO и Submit*V8; ими пользуются sandbox и bootstrap/bridge/marking_reports.go. Внутренний correlation ID статистики не сериализуется. outbound.Call.NoRetry запрещает повтор отдельной операции и не ослабляет глобальный Options.NoRetry. Реальные HTTP-тела сверяются с OpenAPI в reporting_v8_test.go; legacy-fixture тест не считается подтверждением спецификации.
+
+Акт и разбивка — независимые объекты invoice/invoice_creatives с отдельными квитанциями и dedupe keys. ord_invoice_creatives имеет PK/FK на акт; обе стадии сериализуются блокировкой родительской строки. Перед POST отчётности marking/app сохраняет checkpoint, сеть вызывается вне транзакции. Неопределённый исход не допускает replay; известная квитанция после timeout возобновляет polling. Миграция 17 сохраняет старую квитанцию разбивки и блокирует исторический акт для сверки. Финансовые снимки в копейках хранятся вместе с отчётом; комиссия приходит из placement, НДС — из account, без импортов чужих модулей внутри marking. Неизвестные метрики не превращаются в нули.

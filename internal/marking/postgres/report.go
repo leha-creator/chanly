@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 
 	"github.com/google/uuid"
@@ -46,11 +47,11 @@ func (r *Reports) Snapshots(ctx context.Context, period domain.Period) (map[uuid
 }
 
 func statisticsFromRow(r sqlc.OrdStatistic) domain.Statistics {
-	return domain.Statistics{
+	return domain.Statistics{Finance: decodeFinance(r.ReportFinance),
 		ID: r.ID, CreativeID: r.CreativeID, PlatformID: r.OrdPlatformID, PlacementID: r.PlacementID,
 		Period: domain.PeriodFromDate(dateVal(r.Period)), Impressions: r.Impressions,
 		ShownFrom: dateVal(r.ShownFrom), ShownTo: dateVal(r.ShownTo), Amount: r.Amount,
-		Sync: fromCols(syncCols{
+		Sync: fromCols(syncCols{SubmissionUncertain: r.SubmissionUncertain,
 			ExternalID: r.OrdExternalID, RequestID: r.SyncRequestID, Error: r.SyncError, PayloadHash: r.PayloadHash,
 			OrdStatus: r.OrdStatus, Status: r.SyncStatus, Attempts: r.SyncAttempts, SyncedAt: r.SyncedAt, SentAt: r.SentAt,
 		}),
@@ -80,7 +81,7 @@ func (r *Reports) StatisticsForUpdate(ctx context.Context, id uuid.UUID) (domain
 
 func (r *Reports) InsertStatistics(ctx context.Context, s domain.Statistics) error {
 	c := toCols(s.Sync)
-	if err := r.q(ctx).InsertOrdStatistics(ctx, sqlc.InsertOrdStatisticsParams{
+	if err := r.q(ctx).InsertOrdStatistics(ctx, sqlc.InsertOrdStatisticsParams{ReportFinance: reportJSON(s.Finance), SubmissionUncertain: c.SubmissionUncertain,
 		ID: s.ID, CreativeID: s.CreativeID, OrdPlatformID: s.PlatformID, PlacementID: s.PlacementID,
 		Period: pgDate(s.Period.Date()), Impressions: s.Impressions, ShownFrom: pgDate(s.ShownFrom), ShownTo: pgDate(s.ShownTo),
 		Amount: s.Amount, OrdExternalID: c.ExternalID, SyncStatus: c.Status, SyncRequestID: c.RequestID, SyncError: c.Error,
@@ -95,7 +96,7 @@ func (r *Reports) InsertStatistics(ctx context.Context, s domain.Statistics) err
 
 func (r *Reports) SaveStatistics(ctx context.Context, s domain.Statistics) error {
 	c := toCols(s.Sync)
-	if err := r.q(ctx).SaveOrdStatistics(ctx, sqlc.SaveOrdStatisticsParams{
+	if err := r.q(ctx).SaveOrdStatistics(ctx, sqlc.SaveOrdStatisticsParams{ReportFinance: reportJSON(s.Finance), SubmissionUncertain: c.SubmissionUncertain,
 		ID: s.ID, Impressions: s.Impressions, ShownFrom: pgDate(s.ShownFrom), ShownTo: pgDate(s.ShownTo), Amount: s.Amount,
 		OrdExternalID: c.ExternalID, SyncStatus: c.Status, SyncRequestID: c.RequestID, SyncError: c.Error,
 		SyncAttempts: c.Attempts, SyncedAt: c.SyncedAt, PayloadHash: c.PayloadHash, OrdStatus: c.OrdStatus, SentAt: c.SentAt,
@@ -115,10 +116,10 @@ func (r *Reports) DeleteStatistics(ctx context.Context, id uuid.UUID) error {
 }
 
 func invoiceFromRow(r sqlc.OrdInvoice) domain.Invoice {
-	return domain.Invoice{
+	return domain.Invoice{Finance: decodeFinance(r.ReportFinance),
 		ID: r.ID, ContractID: r.OrdContractID, Period: domain.PeriodFromDate(dateVal(r.Period)), Type: r.Type,
 		Number: r.Number, InvoiceDate: dateVal(r.InvoiceDate), Amount: r.Amount,
-		Sync: fromCols(syncCols{
+		Sync: fromCols(syncCols{SubmissionUncertain: r.SubmissionUncertain,
 			ExternalID: r.OrdExternalID, RequestID: r.SyncRequestID, Error: r.SyncError, PayloadHash: r.PayloadHash,
 			OrdStatus: r.OrdStatus, Status: r.SyncStatus, Attempts: r.SyncAttempts, SyncedAt: r.SyncedAt, SentAt: r.SentAt,
 		}),
@@ -127,7 +128,9 @@ func invoiceFromRow(r sqlc.OrdInvoice) domain.Invoice {
 }
 
 func itemFromRow(r sqlc.OrdInvoiceItem) domain.InvoiceItem {
-	return domain.InvoiceItem{CreativeID: r.CreativeID, PlatformID: r.OrdPlatformID, Amount: r.Amount}
+	var tax domain.TaxTotal
+	_ = json.Unmarshal(r.TaxSnapshot, &tax)
+	return domain.InvoiceItem{CreativeID: r.CreativeID, PlatformID: r.OrdPlatformID, Amount: r.Amount, Tax: tax}
 }
 
 func (r *Reports) Invoices(ctx context.Context, period domain.Period) ([]domain.Invoice, error) {
@@ -148,6 +151,9 @@ func (r *Reports) Invoices(ctx context.Context, period domain.Period) ([]domain.
 	for _, row := range rows {
 		inv := invoiceFromRow(row)
 		inv.Items = byInvoice[inv.ID]
+		if err := r.loadLinks(ctx, &inv); err != nil {
+			return nil, err
+		}
 		out = append(out, inv)
 	}
 	return out, nil
@@ -160,6 +166,9 @@ func (r *Reports) InvoiceForUpdate(ctx context.Context, id uuid.UUID) (domain.In
 		return domain.Invoice{}, r.fail(ctx, "OrdReports.InvoiceForUpdate", err)
 	}
 	inv := invoiceFromRow(row)
+	if err := r.loadLinks(ctx, &inv); err != nil {
+		return domain.Invoice{}, err
+	}
 	items, err := q.ListOrdInvoiceItemsOf(ctx, id)
 	if err != nil {
 		return domain.Invoice{}, r.fail(ctx, "OrdReports.InvoiceForUpdate", err)
@@ -172,13 +181,16 @@ func (r *Reports) InvoiceForUpdate(ctx context.Context, id uuid.UUID) (domain.In
 
 func (r *Reports) InsertInvoice(ctx context.Context, i domain.Invoice) error {
 	c := toCols(i.Sync)
-	if err := r.q(ctx).InsertOrdInvoice(ctx, sqlc.InsertOrdInvoiceParams{
+	if err := r.q(ctx).InsertOrdInvoice(ctx, sqlc.InsertOrdInvoiceParams{ReportFinance: reportJSON(i.Finance), SubmissionUncertain: c.SubmissionUncertain,
 		ID: i.ID, OrdContractID: i.ContractID, Period: pgDate(i.Period.Date()), Type: i.Type, Number: i.Number,
 		InvoiceDate: pgDate(i.InvoiceDate), Amount: i.Amount, OrdExternalID: c.ExternalID, SyncStatus: c.Status,
 		SyncRequestID: c.RequestID, SyncError: c.Error, SyncAttempts: c.Attempts, SyncedAt: c.SyncedAt,
 		PayloadHash: c.PayloadHash, OrdStatus: c.OrdStatus, SentAt: c.SentAt, CreatedAt: i.CreatedAt, UpdatedAt: i.UpdatedAt,
 	}); err != nil {
 		return r.fail(ctx, "OrdReports.InsertInvoice", err)
+	}
+	if err := r.saveLinks(ctx, i); err != nil {
+		return err
 	}
 	if err := r.replaceItems(ctx, i); err != nil {
 		return err
@@ -189,12 +201,15 @@ func (r *Reports) InsertInvoice(ctx context.Context, i domain.Invoice) error {
 
 func (r *Reports) SaveInvoice(ctx context.Context, i domain.Invoice) error {
 	c := toCols(i.Sync)
-	if err := r.q(ctx).SaveOrdInvoice(ctx, sqlc.SaveOrdInvoiceParams{
+	if err := r.q(ctx).SaveOrdInvoice(ctx, sqlc.SaveOrdInvoiceParams{ReportFinance: reportJSON(i.Finance), SubmissionUncertain: c.SubmissionUncertain,
 		ID: i.ID, Type: i.Type, InvoiceDate: pgDate(i.InvoiceDate), Amount: i.Amount, OrdExternalID: c.ExternalID,
 		SyncStatus: c.Status, SyncRequestID: c.RequestID, SyncError: c.Error, SyncAttempts: c.Attempts,
 		SyncedAt: c.SyncedAt, PayloadHash: c.PayloadHash, OrdStatus: c.OrdStatus, SentAt: c.SentAt, UpdatedAt: i.UpdatedAt,
 	}); err != nil {
 		return r.fail(ctx, "OrdReports.SaveInvoice", err)
+	}
+	if err := r.saveLinks(ctx, i); err != nil {
+		return err
 	}
 	if err := r.replaceItems(ctx, i); err != nil {
 		return err
@@ -209,7 +224,7 @@ func (r *Reports) replaceItems(ctx context.Context, i domain.Invoice) error {
 		return r.fail(ctx, "OrdReports.replaceItems", err)
 	}
 	for _, it := range i.Items {
-		if err := q.InsertOrdInvoiceItem(ctx, sqlc.InsertOrdInvoiceItemParams{
+		if err := q.InsertOrdInvoiceItem(ctx, sqlc.InsertOrdInvoiceItemParams{TaxSnapshot: reportJSON(it.Tax),
 			OrdInvoiceID: i.ID, CreativeID: it.CreativeID, OrdPlatformID: it.PlatformID, Amount: it.Amount,
 		}); err != nil {
 			return r.fail(ctx, "OrdReports.replaceItems", err)
@@ -219,6 +234,9 @@ func (r *Reports) replaceItems(ctx context.Context, i domain.Invoice) error {
 }
 
 func (r *Reports) DeleteInvoice(ctx context.Context, id uuid.UUID) error {
+	if err := r.q(ctx).DeleteOrdInvoiceLinks(ctx, id); err != nil {
+		return r.fail(ctx, "OrdReports.DeleteInvoiceLinks", err)
+	}
 	q := r.q(ctx)
 	if err := q.DeleteOrdInvoiceItems(ctx, id); err != nil {
 		return r.fail(ctx, "OrdReports.DeleteInvoice", err)
@@ -265,3 +283,39 @@ func (r *Reports) ReportList(ctx context.Context) ([]domain.ReportState, error) 
 	}
 	return out, nil
 }
+
+func (r *Reports) loadLinks(ctx context.Context, i *domain.Invoice) error {
+	row, err := r.q(ctx).GetOrdInvoiceLinks(ctx, i.ID)
+	if err != nil {
+		return r.fail(ctx, "OrdReports.GetInvoiceLinks", err)
+	}
+	i.Links = fromCols(syncCols{
+		ExternalID: row.OrdExternalID, RequestID: row.SyncRequestID, Error: row.SyncError,
+		PayloadHash: row.PayloadHash, OrdStatus: row.OrdStatus, Status: row.SyncStatus,
+		Attempts: row.SyncAttempts, SyncedAt: row.SyncedAt, SentAt: row.SentAt, SubmissionUncertain: row.SubmissionUncertain,
+	})
+	return nil
+}
+func (r *Reports) saveLinks(ctx context.Context, i domain.Invoice) error {
+	if i.Links.Status == "" {
+		i.Links = domain.NewSyncState()
+	}
+	c := toCols(i.Links)
+	err := r.q(ctx).SaveOrdInvoiceLinks(ctx, sqlc.SaveOrdInvoiceLinksParams{
+		OrdInvoiceID: i.ID, OrdExternalID: c.ExternalID, SyncStatus: c.Status,
+		SyncRequestID: c.RequestID, SyncError: c.Error, SyncAttempts: c.Attempts,
+		SyncedAt: c.SyncedAt, PayloadHash: c.PayloadHash, OrdStatus: c.OrdStatus,
+		SentAt: c.SentAt, SubmissionUncertain: c.SubmissionUncertain, CreatedAt: i.CreatedAt, UpdatedAt: i.UpdatedAt,
+	})
+	if err != nil {
+		return r.fail(ctx, "OrdReports.SaveInvoiceLinks", err)
+	}
+	return nil
+}
+
+func decodeFinance(raw []byte) domain.ReportFinance {
+	var f domain.ReportFinance
+	_ = json.Unmarshal(raw, &f)
+	return f
+}
+func reportJSON(v any) []byte { b, _ := json.Marshal(v); return b }

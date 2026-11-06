@@ -80,7 +80,7 @@ UPDATE organization SET name = @name, contact_name = @name, updated_at = @now WH
 
 -- name: GetOrganizationForMarking :one
 -- Реквизиты для ОРД (модуль marking); без блокировки.
-SELECT id, legal_type, inn, name, kpp, is_platform FROM organization WHERE id = @id;
+SELECT id, legal_type, inn, name, kpp, is_platform, vat_rate FROM organization WHERE id = @id;
 
 -- name: FirstOfferAcceptance :one
 -- Первое принятие оферты вида: дата договора и версия для номера (R-7 этапа «Маркировка»).

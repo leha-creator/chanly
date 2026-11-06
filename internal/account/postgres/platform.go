@@ -56,6 +56,7 @@ func (r *Organizations) RenamePlatform(ctx context.Context, id uuid.UUID, name s
 
 // MarkingDetails — реквизиты организации для ОРД (модуль marking); без блокировки.
 type MarkingDetails struct {
+	VATRate    string
 	ID         uuid.UUID
 	LegalType  string
 	INN        string
@@ -72,6 +73,9 @@ func (r *Organizations) ForMarking(ctx context.Context, id uuid.UUID) (MarkingDe
 		return MarkingDetails{}, r.s.fail(ctx, op, err)
 	}
 	d := MarkingDetails{ID: row.ID, LegalType: row.LegalType, INN: row.Inn, Name: row.Name, IsPlatform: row.IsPlatform}
+	if row.VatRate != nil {
+		d.VATRate = *row.VatRate
+	}
 	if row.Kpp != nil {
 		d.KPP = *row.Kpp
 	}

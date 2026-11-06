@@ -75,6 +75,11 @@ func (r *statisticsRecord) save(ctx context.Context, s *Service, now time.Time) 
 
 type invoiceRecord struct{ v domain.Invoice }
 
+type invoiceLinksRecord struct{ invoiceRecord }
+
+func (r *invoiceLinksRecord) ref() domain.ObjectRef    { return r.v.LinksRef() }
+func (r *invoiceLinksRecord) state() *domain.SyncState { return &r.v.Links }
+
 func (r *invoiceRecord) ref() domain.ObjectRef    { return r.v.Ref() }
 func (r *invoiceRecord) state() *domain.SyncState { return &r.v.Sync }
 func (r *invoiceRecord) externalID() string       { return r.v.ExternalID() }
@@ -105,11 +110,14 @@ func (s *Service) lock(ctx context.Context, ref domain.ObjectRef) (record, error
 		}
 		v, err := s.Reports.StatisticsForUpdate(ctx, ref.ID)
 		return &statisticsRecord{v}, err
-	case domain.TypeInvoice:
+	case domain.TypeInvoice, domain.TypeInvoiceCreatives:
 		if s.Reports == nil {
 			return nil, domain.ErrNotFound
 		}
 		v, err := s.Reports.InvoiceForUpdate(ctx, ref.ID)
+		if ref.Type == domain.TypeInvoiceCreatives {
+			return &invoiceLinksRecord{invoiceRecord{v}}, err
+		}
 		return &invoiceRecord{v}, err
 	}
 	return nil, fmt.Errorf("marking: unknown object type %q", ref.Type)

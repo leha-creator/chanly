@@ -104,6 +104,9 @@ func (s *Service) view(ctx context.Context, r record) (*ObjectView, error) {
 	case *invoiceRecord:
 		v.UpdatedAt = x.v.UpdatedAt
 		v.Title = "Акт № " + x.v.Number
+	case *invoiceLinksRecord:
+		v.UpdatedAt = x.v.UpdatedAt
+		v.Title = "Креативы акта № " + x.v.Number
 	}
 	last, err := s.Overview.LastRequest(ctx, v.Ref, r.externalID())
 	if err != nil {

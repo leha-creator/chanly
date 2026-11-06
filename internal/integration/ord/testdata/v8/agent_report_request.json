@@ -1,0 +1,41 @@
+{
+    "amount":  {
+                   "commission":  {
+                                      "excludingVat":  "100.00",
+                                      "includingVat":  "100.00",
+                                      "isInvoice":  false,
+                                      "vat":  "0.00",
+                                      "vatRate":  "100"
+                                  },
+                   "services":  {
+                                    "excludingVat":  "1000.00",
+                                    "includingVat":  "1000.00",
+                                    "vat":  "0.00",
+                                    "vatRate":  "100"
+                                }
+               },
+    "clientRole":  "rd",
+    "contractId":  "fixture-initial",
+    "contractorRole":  "psr",
+    "date":  "2026-10-31",
+    "endDate":  "2026-10-31",
+    "id":  "fixture-agent-report",
+    "isSocial":  false,
+    "isSocialQuota":  false,
+    "items":  [
+                  {
+                      "amount":  {
+                                     "excludingVat":  "1000.00",
+                                     "includingVat":  "1000.00",
+                                     "vat":  "0.00",
+                                     "vatRate":  "100"
+                                 },
+                      "contractId":  "fixture-initial",
+                      "isSocial":  false,
+                      "isSocialQuota":  false
+                  }
+              ],
+    "number":  "TEST-agent-report-01a1b294-c7f6-7b6f-886c-63234a552312",
+    "startDate":  "2026-10-01",
+    "type":  "intermediary-report"
+}

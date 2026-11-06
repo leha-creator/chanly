@@ -18,11 +18,11 @@ SELECT * FROM ord_statistics WHERE id = @id FOR UPDATE;
 INSERT INTO ord_statistics (
     id, creative_id, ord_platform_id, placement_id, period, impressions, shown_from, shown_to, amount,
     ord_external_id, sync_status, sync_request_id, sync_error, sync_attempts, synced_at, payload_hash, ord_status,
-    sent_at, created_at, updated_at
+    sent_at, created_at, updated_at, submission_uncertain, report_finance
 ) VALUES (
     @id, @creative_id, @ord_platform_id, @placement_id, @period, @impressions, @shown_from, @shown_to, @amount,
     @ord_external_id, @sync_status, @sync_request_id, @sync_error, @sync_attempts, @synced_at, @payload_hash, @ord_status,
-    @sent_at, @created_at, @updated_at
+    @sent_at, @created_at, @updated_at, @submission_uncertain, @report_finance
 );
 
 -- name: SaveOrdStatistics :exec
@@ -30,7 +30,7 @@ UPDATE ord_statistics SET
     impressions = @impressions, shown_from = @shown_from, shown_to = @shown_to, amount = @amount,
     ord_external_id = @ord_external_id, sync_status = @sync_status, sync_request_id = @sync_request_id,
     sync_error = @sync_error, sync_attempts = @sync_attempts, synced_at = @synced_at, payload_hash = @payload_hash,
-    ord_status = @ord_status, sent_at = @sent_at, updated_at = @updated_at
+    ord_status = @ord_status, sent_at = @sent_at, updated_at = @updated_at, submission_uncertain = @submission_uncertain, report_finance = @report_finance
 WHERE id = @id;
 
 -- name: DeleteOrdStatistics :exec
@@ -52,10 +52,10 @@ SELECT * FROM ord_invoice WHERE id = @id FOR UPDATE;
 -- name: InsertOrdInvoice :exec
 INSERT INTO ord_invoice (
     id, ord_contract_id, period, type, number, invoice_date, amount, ord_external_id, sync_status, sync_request_id,
-    sync_error, sync_attempts, synced_at, payload_hash, ord_status, sent_at, created_at, updated_at
+    sync_error, sync_attempts, synced_at, payload_hash, ord_status, sent_at, created_at, updated_at, submission_uncertain, report_finance
 ) VALUES (
     @id, @ord_contract_id, @period, @type, @number, @invoice_date, @amount, @ord_external_id, @sync_status, @sync_request_id,
-    @sync_error, @sync_attempts, @synced_at, @payload_hash, @ord_status, @sent_at, @created_at, @updated_at
+    @sync_error, @sync_attempts, @synced_at, @payload_hash, @ord_status, @sent_at, @created_at, @updated_at, @submission_uncertain, @report_finance
 );
 
 -- name: SaveOrdInvoice :exec
@@ -63,15 +63,15 @@ UPDATE ord_invoice SET
     type = @type, invoice_date = @invoice_date, amount = @amount, ord_external_id = @ord_external_id,
     sync_status = @sync_status, sync_request_id = @sync_request_id, sync_error = @sync_error,
     sync_attempts = @sync_attempts, synced_at = @synced_at, payload_hash = @payload_hash, ord_status = @ord_status,
-    sent_at = @sent_at, updated_at = @updated_at
+    sent_at = @sent_at, updated_at = @updated_at, submission_uncertain = @submission_uncertain, report_finance = @report_finance
 WHERE id = @id;
 
 -- name: DeleteOrdInvoiceItems :exec
 DELETE FROM ord_invoice_item WHERE ord_invoice_id = @ord_invoice_id;
 
 -- name: InsertOrdInvoiceItem :exec
-INSERT INTO ord_invoice_item (ord_invoice_id, creative_id, ord_platform_id, amount)
-VALUES (@ord_invoice_id, @creative_id, @ord_platform_id, @amount);
+INSERT INTO ord_invoice_item (ord_invoice_id, creative_id, ord_platform_id, amount, tax_snapshot)
+VALUES (@ord_invoice_id, @creative_id, @ord_platform_id, @amount, @tax_snapshot);
 
 -- name: DeleteOrdInvoice :exec
 DELETE FROM ord_invoice WHERE id = @id;
@@ -88,3 +88,23 @@ ON CONFLICT (period) DO UPDATE SET
 
 -- name: ListOrdReports :many
 SELECT * FROM ord_report ORDER BY period DESC LIMIT 120;
+
+-- name: GetOrdInvoiceLinks :one
+SELECT * FROM ord_invoice_creatives WHERE ord_invoice_id = @ord_invoice_id;
+
+-- name: SaveOrdInvoiceLinks :exec
+INSERT INTO ord_invoice_creatives (
+ ord_invoice_id, ord_external_id, sync_status, sync_request_id, sync_error, sync_attempts,
+ synced_at, payload_hash, ord_status, sent_at, submission_uncertain, created_at, updated_at
+) VALUES (
+ @ord_invoice_id, @ord_external_id, @sync_status, @sync_request_id, @sync_error, @sync_attempts,
+ @synced_at, @payload_hash, @ord_status, @sent_at, @submission_uncertain, @created_at, @updated_at
+) ON CONFLICT (ord_invoice_id) DO UPDATE SET
+ ord_external_id=EXCLUDED.ord_external_id, sync_status=EXCLUDED.sync_status,
+ sync_request_id=EXCLUDED.sync_request_id, sync_error=EXCLUDED.sync_error,
+ sync_attempts=EXCLUDED.sync_attempts, synced_at=EXCLUDED.synced_at,
+ payload_hash=EXCLUDED.payload_hash, ord_status=EXCLUDED.ord_status,
+ sent_at=EXCLUDED.sent_at, submission_uncertain=EXCLUDED.submission_uncertain, updated_at=EXCLUDED.updated_at;
+
+-- name: DeleteOrdInvoiceLinks :exec
+DELETE FROM ord_invoice_creatives WHERE ord_invoice_id = @ord_invoice_id;

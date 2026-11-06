@@ -48,5 +48,5 @@ func ClassifyOrdStatus(status string, erir bool) Progress {
 
 // PassesErir сообщает, что объект вида t подтверждается ЕРИР (R-3).
 func PassesErir(t ObjectType) bool {
-	return t != TypePlatform && t != TypeStatistics && t != TypeInvoice
+	return t != TypePlatform
 }

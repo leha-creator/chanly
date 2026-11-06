@@ -50,6 +50,8 @@ func TestRenderLoginCode(t *testing.T) {
 func TestSendThroughMailpit(t *testing.T) {
 	ctx := context.Background()
 	ctr, err := testcontainers.Run(ctx, MailpitImage,
+		// SMTP delivery must not depend on external reverse DNS for Docker addresses.
+		testcontainers.WithCmd("--smtp-disable-rdns"),
 		testcontainers.WithExposedPorts("1025/tcp", "8025/tcp"),
 		testcontainers.WithWaitStrategy(
 			wait.ForHTTP("/livez").WithPort("8025/tcp").WithStartupTimeout(time.Minute),

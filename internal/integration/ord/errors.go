@@ -2,6 +2,7 @@ package ord
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -10,10 +11,23 @@ import (
 	"github.com/leha-creator/chanly/internal/platform/outbound"
 )
 
+// ErrOrganizationNotFound means an authenticated lookup found no such organization.
+var ErrOrganizationNotFound = errors.New("ord organization not found")
+
+func organizationNotFound(resp outbound.Response) bool {
+	var body struct {
+		Detail string `json:"detail"`
+	}
+	return resp.Status == http.StatusNotFound && json.Unmarshal(resp.Body, &body) == nil &&
+		body.Detail == "Not found organization by id"
+}
+
 // ValidationError — ОРД отклонил запрос проверкой схемы (422, HTTPValidationError).
 type ValidationError struct {
 	Details []string
 }
+
+func (e *ValidationError) DefiniteRejection() bool { return true }
 
 func (e *ValidationError) Error() string {
 	return "ord validation failed: " + strings.Join(e.Details, "; ")

@@ -1,0 +1,11 @@
+{
+    "creatives":  [
+                      {
+                          "contractId":  "fixture-initial",
+                          "creativeIds":  [
+                                              "fixture-creative"
+                                          ],
+                          "invoiceId":  "fixture-publisher-invoice"
+                      }
+                  ]
+}

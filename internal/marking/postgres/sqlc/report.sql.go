@@ -31,6 +31,15 @@ func (q *Queries) DeleteOrdInvoiceItems(ctx context.Context, ordInvoiceID uuid.U
 	return err
 }
 
+const deleteOrdInvoiceLinks = `-- name: DeleteOrdInvoiceLinks :exec
+DELETE FROM ord_invoice_creatives WHERE ord_invoice_id = $1
+`
+
+func (q *Queries) DeleteOrdInvoiceLinks(ctx context.Context, ordInvoiceID uuid.UUID) error {
+	_, err := q.db.Exec(ctx, deleteOrdInvoiceLinks, ordInvoiceID)
+	return err
+}
+
 const deleteOrdStatistics = `-- name: DeleteOrdStatistics :exec
 DELETE FROM ord_statistics WHERE id = $1
 `
@@ -41,7 +50,7 @@ func (q *Queries) DeleteOrdStatistics(ctx context.Context, id uuid.UUID) error {
 }
 
 const getOrdInvoiceForUpdate = `-- name: GetOrdInvoiceForUpdate :one
-SELECT id, ord_contract_id, period, type, number, invoice_date, amount, ord_external_id, sync_status, sync_request_id, sync_error, sync_attempts, synced_at, payload_hash, ord_status, sent_at, created_at, updated_at FROM ord_invoice WHERE id = $1 FOR UPDATE
+SELECT id, ord_contract_id, period, type, number, invoice_date, amount, ord_external_id, sync_status, sync_request_id, sync_error, sync_attempts, synced_at, payload_hash, ord_status, sent_at, created_at, updated_at, report_finance, submission_uncertain FROM ord_invoice WHERE id = $1 FOR UPDATE
 `
 
 func (q *Queries) GetOrdInvoiceForUpdate(ctx context.Context, id uuid.UUID) (OrdInvoice, error) {
@@ -64,6 +73,33 @@ func (q *Queries) GetOrdInvoiceForUpdate(ctx context.Context, id uuid.UUID) (Ord
 		&i.PayloadHash,
 		&i.OrdStatus,
 		&i.SentAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.ReportFinance,
+		&i.SubmissionUncertain,
+	)
+	return i, err
+}
+
+const getOrdInvoiceLinks = `-- name: GetOrdInvoiceLinks :one
+SELECT ord_invoice_id, ord_external_id, sync_status, sync_request_id, sync_error, sync_attempts, synced_at, payload_hash, ord_status, sent_at, submission_uncertain, created_at, updated_at FROM ord_invoice_creatives WHERE ord_invoice_id = $1
+`
+
+func (q *Queries) GetOrdInvoiceLinks(ctx context.Context, ordInvoiceID uuid.UUID) (OrdInvoiceCreative, error) {
+	row := q.db.QueryRow(ctx, getOrdInvoiceLinks, ordInvoiceID)
+	var i OrdInvoiceCreative
+	err := row.Scan(
+		&i.OrdInvoiceID,
+		&i.OrdExternalID,
+		&i.SyncStatus,
+		&i.SyncRequestID,
+		&i.SyncError,
+		&i.SyncAttempts,
+		&i.SyncedAt,
+		&i.PayloadHash,
+		&i.OrdStatus,
+		&i.SentAt,
+		&i.SubmissionUncertain,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -89,7 +125,7 @@ func (q *Queries) GetOrdReport(ctx context.Context, period pgtype.Date) (OrdRepo
 }
 
 const getOrdStatisticsForUpdate = `-- name: GetOrdStatisticsForUpdate :one
-SELECT id, creative_id, ord_platform_id, placement_id, period, impressions, shown_from, shown_to, amount, ord_external_id, sync_status, sync_request_id, sync_error, sync_attempts, synced_at, payload_hash, ord_status, sent_at, created_at, updated_at FROM ord_statistics WHERE id = $1 FOR UPDATE
+SELECT id, creative_id, ord_platform_id, placement_id, period, impressions, shown_from, shown_to, amount, ord_external_id, sync_status, sync_request_id, sync_error, sync_attempts, synced_at, payload_hash, ord_status, sent_at, created_at, updated_at, report_finance, submission_uncertain FROM ord_statistics WHERE id = $1 FOR UPDATE
 `
 
 func (q *Queries) GetOrdStatisticsForUpdate(ctx context.Context, id uuid.UUID) (OrdStatistic, error) {
@@ -116,6 +152,8 @@ func (q *Queries) GetOrdStatisticsForUpdate(ctx context.Context, id uuid.UUID) (
 		&i.SentAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ReportFinance,
+		&i.SubmissionUncertain,
 	)
 	return i, err
 }
@@ -123,32 +161,34 @@ func (q *Queries) GetOrdStatisticsForUpdate(ctx context.Context, id uuid.UUID) (
 const insertOrdInvoice = `-- name: InsertOrdInvoice :exec
 INSERT INTO ord_invoice (
     id, ord_contract_id, period, type, number, invoice_date, amount, ord_external_id, sync_status, sync_request_id,
-    sync_error, sync_attempts, synced_at, payload_hash, ord_status, sent_at, created_at, updated_at
+    sync_error, sync_attempts, synced_at, payload_hash, ord_status, sent_at, created_at, updated_at, submission_uncertain, report_finance
 ) VALUES (
     $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
-    $11, $12, $13, $14, $15, $16, $17, $18
+    $11, $12, $13, $14, $15, $16, $17, $18, $19, $20
 )
 `
 
 type InsertOrdInvoiceParams struct {
-	ID            uuid.UUID
-	OrdContractID uuid.UUID
-	Period        pgtype.Date
-	Type          string
-	Number        string
-	InvoiceDate   pgtype.Date
-	Amount        int64
-	OrdExternalID *string
-	SyncStatus    string
-	SyncRequestID *string
-	SyncError     *string
-	SyncAttempts  int32
-	SyncedAt      *time.Time
-	PayloadHash   *string
-	OrdStatus     *string
-	SentAt        *time.Time
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
+	ID                  uuid.UUID
+	OrdContractID       uuid.UUID
+	Period              pgtype.Date
+	Type                string
+	Number              string
+	InvoiceDate         pgtype.Date
+	Amount              int64
+	OrdExternalID       *string
+	SyncStatus          string
+	SyncRequestID       *string
+	SyncError           *string
+	SyncAttempts        int32
+	SyncedAt            *time.Time
+	PayloadHash         *string
+	OrdStatus           *string
+	SentAt              *time.Time
+	CreatedAt           time.Time
+	UpdatedAt           time.Time
+	SubmissionUncertain bool
+	ReportFinance       []byte
 }
 
 func (q *Queries) InsertOrdInvoice(ctx context.Context, arg InsertOrdInvoiceParams) error {
@@ -171,13 +211,15 @@ func (q *Queries) InsertOrdInvoice(ctx context.Context, arg InsertOrdInvoicePara
 		arg.SentAt,
 		arg.CreatedAt,
 		arg.UpdatedAt,
+		arg.SubmissionUncertain,
+		arg.ReportFinance,
 	)
 	return err
 }
 
 const insertOrdInvoiceItem = `-- name: InsertOrdInvoiceItem :exec
-INSERT INTO ord_invoice_item (ord_invoice_id, creative_id, ord_platform_id, amount)
-VALUES ($1, $2, $3, $4)
+INSERT INTO ord_invoice_item (ord_invoice_id, creative_id, ord_platform_id, amount, tax_snapshot)
+VALUES ($1, $2, $3, $4, $5)
 `
 
 type InsertOrdInvoiceItemParams struct {
@@ -185,6 +227,7 @@ type InsertOrdInvoiceItemParams struct {
 	CreativeID    uuid.UUID
 	OrdPlatformID uuid.UUID
 	Amount        int64
+	TaxSnapshot   []byte
 }
 
 func (q *Queries) InsertOrdInvoiceItem(ctx context.Context, arg InsertOrdInvoiceItemParams) error {
@@ -193,6 +236,7 @@ func (q *Queries) InsertOrdInvoiceItem(ctx context.Context, arg InsertOrdInvoice
 		arg.CreativeID,
 		arg.OrdPlatformID,
 		arg.Amount,
+		arg.TaxSnapshot,
 	)
 	return err
 }
@@ -201,35 +245,37 @@ const insertOrdStatistics = `-- name: InsertOrdStatistics :exec
 INSERT INTO ord_statistics (
     id, creative_id, ord_platform_id, placement_id, period, impressions, shown_from, shown_to, amount,
     ord_external_id, sync_status, sync_request_id, sync_error, sync_attempts, synced_at, payload_hash, ord_status,
-    sent_at, created_at, updated_at
+    sent_at, created_at, updated_at, submission_uncertain, report_finance
 ) VALUES (
     $1, $2, $3, $4, $5, $6, $7, $8, $9,
     $10, $11, $12, $13, $14, $15, $16, $17,
-    $18, $19, $20
+    $18, $19, $20, $21, $22
 )
 `
 
 type InsertOrdStatisticsParams struct {
-	ID            uuid.UUID
-	CreativeID    uuid.UUID
-	OrdPlatformID uuid.UUID
-	PlacementID   uuid.UUID
-	Period        pgtype.Date
-	Impressions   int64
-	ShownFrom     pgtype.Date
-	ShownTo       pgtype.Date
-	Amount        int64
-	OrdExternalID *string
-	SyncStatus    string
-	SyncRequestID *string
-	SyncError     *string
-	SyncAttempts  int32
-	SyncedAt      *time.Time
-	PayloadHash   *string
-	OrdStatus     *string
-	SentAt        *time.Time
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
+	ID                  uuid.UUID
+	CreativeID          uuid.UUID
+	OrdPlatformID       uuid.UUID
+	PlacementID         uuid.UUID
+	Period              pgtype.Date
+	Impressions         int64
+	ShownFrom           pgtype.Date
+	ShownTo             pgtype.Date
+	Amount              int64
+	OrdExternalID       *string
+	SyncStatus          string
+	SyncRequestID       *string
+	SyncError           *string
+	SyncAttempts        int32
+	SyncedAt            *time.Time
+	PayloadHash         *string
+	OrdStatus           *string
+	SentAt              *time.Time
+	CreatedAt           time.Time
+	UpdatedAt           time.Time
+	SubmissionUncertain bool
+	ReportFinance       []byte
 }
 
 func (q *Queries) InsertOrdStatistics(ctx context.Context, arg InsertOrdStatisticsParams) error {
@@ -254,6 +300,8 @@ func (q *Queries) InsertOrdStatistics(ctx context.Context, arg InsertOrdStatisti
 		arg.SentAt,
 		arg.CreatedAt,
 		arg.UpdatedAt,
+		arg.SubmissionUncertain,
+		arg.ReportFinance,
 	)
 	return err
 }
@@ -289,7 +337,7 @@ func (q *Queries) InsertViewsSnapshot(ctx context.Context, arg InsertViewsSnapsh
 }
 
 const listOrdInvoiceItems = `-- name: ListOrdInvoiceItems :many
-SELECT i.ord_invoice_id, i.creative_id, i.ord_platform_id, i.amount FROM ord_invoice_item i JOIN ord_invoice v ON v.id = i.ord_invoice_id
+SELECT i.ord_invoice_id, i.creative_id, i.ord_platform_id, i.amount, i.tax_snapshot FROM ord_invoice_item i JOIN ord_invoice v ON v.id = i.ord_invoice_id
 WHERE v.period = $1 ORDER BY i.ord_invoice_id, i.creative_id, i.ord_platform_id
 `
 
@@ -307,6 +355,7 @@ func (q *Queries) ListOrdInvoiceItems(ctx context.Context, period pgtype.Date) (
 			&i.CreativeID,
 			&i.OrdPlatformID,
 			&i.Amount,
+			&i.TaxSnapshot,
 		); err != nil {
 			return nil, err
 		}
@@ -319,7 +368,7 @@ func (q *Queries) ListOrdInvoiceItems(ctx context.Context, period pgtype.Date) (
 }
 
 const listOrdInvoiceItemsOf = `-- name: ListOrdInvoiceItemsOf :many
-SELECT ord_invoice_id, creative_id, ord_platform_id, amount FROM ord_invoice_item WHERE ord_invoice_id = $1 ORDER BY creative_id, ord_platform_id
+SELECT ord_invoice_id, creative_id, ord_platform_id, amount, tax_snapshot FROM ord_invoice_item WHERE ord_invoice_id = $1 ORDER BY creative_id, ord_platform_id
 `
 
 func (q *Queries) ListOrdInvoiceItemsOf(ctx context.Context, ordInvoiceID uuid.UUID) ([]OrdInvoiceItem, error) {
@@ -336,6 +385,7 @@ func (q *Queries) ListOrdInvoiceItemsOf(ctx context.Context, ordInvoiceID uuid.U
 			&i.CreativeID,
 			&i.OrdPlatformID,
 			&i.Amount,
+			&i.TaxSnapshot,
 		); err != nil {
 			return nil, err
 		}
@@ -348,7 +398,7 @@ func (q *Queries) ListOrdInvoiceItemsOf(ctx context.Context, ordInvoiceID uuid.U
 }
 
 const listOrdInvoices = `-- name: ListOrdInvoices :many
-SELECT id, ord_contract_id, period, type, number, invoice_date, amount, ord_external_id, sync_status, sync_request_id, sync_error, sync_attempts, synced_at, payload_hash, ord_status, sent_at, created_at, updated_at FROM ord_invoice WHERE period = $1 ORDER BY number
+SELECT id, ord_contract_id, period, type, number, invoice_date, amount, ord_external_id, sync_status, sync_request_id, sync_error, sync_attempts, synced_at, payload_hash, ord_status, sent_at, created_at, updated_at, report_finance, submission_uncertain FROM ord_invoice WHERE period = $1 ORDER BY number
 `
 
 func (q *Queries) ListOrdInvoices(ctx context.Context, period pgtype.Date) ([]OrdInvoice, error) {
@@ -379,6 +429,8 @@ func (q *Queries) ListOrdInvoices(ctx context.Context, period pgtype.Date) ([]Or
 			&i.SentAt,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.ReportFinance,
+			&i.SubmissionUncertain,
 		); err != nil {
 			return nil, err
 		}
@@ -422,7 +474,7 @@ func (q *Queries) ListOrdReports(ctx context.Context) ([]OrdReport, error) {
 }
 
 const listOrdStatistics = `-- name: ListOrdStatistics :many
-SELECT id, creative_id, ord_platform_id, placement_id, period, impressions, shown_from, shown_to, amount, ord_external_id, sync_status, sync_request_id, sync_error, sync_attempts, synced_at, payload_hash, ord_status, sent_at, created_at, updated_at FROM ord_statistics WHERE period = $1 ORDER BY created_at, id
+SELECT id, creative_id, ord_platform_id, placement_id, period, impressions, shown_from, shown_to, amount, ord_external_id, sync_status, sync_request_id, sync_error, sync_attempts, synced_at, payload_hash, ord_status, sent_at, created_at, updated_at, report_finance, submission_uncertain FROM ord_statistics WHERE period = $1 ORDER BY created_at, id
 `
 
 func (q *Queries) ListOrdStatistics(ctx context.Context, period pgtype.Date) ([]OrdStatistic, error) {
@@ -455,6 +507,8 @@ func (q *Queries) ListOrdStatistics(ctx context.Context, period pgtype.Date) ([]
 			&i.SentAt,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.ReportFinance,
+			&i.SubmissionUncertain,
 		); err != nil {
 			return nil, err
 		}
@@ -500,25 +554,27 @@ UPDATE ord_invoice SET
     type = $1, invoice_date = $2, amount = $3, ord_external_id = $4,
     sync_status = $5, sync_request_id = $6, sync_error = $7,
     sync_attempts = $8, synced_at = $9, payload_hash = $10, ord_status = $11,
-    sent_at = $12, updated_at = $13
-WHERE id = $14
+    sent_at = $12, updated_at = $13, submission_uncertain = $14, report_finance = $15
+WHERE id = $16
 `
 
 type SaveOrdInvoiceParams struct {
-	Type          string
-	InvoiceDate   pgtype.Date
-	Amount        int64
-	OrdExternalID *string
-	SyncStatus    string
-	SyncRequestID *string
-	SyncError     *string
-	SyncAttempts  int32
-	SyncedAt      *time.Time
-	PayloadHash   *string
-	OrdStatus     *string
-	SentAt        *time.Time
-	UpdatedAt     time.Time
-	ID            uuid.UUID
+	Type                string
+	InvoiceDate         pgtype.Date
+	Amount              int64
+	OrdExternalID       *string
+	SyncStatus          string
+	SyncRequestID       *string
+	SyncError           *string
+	SyncAttempts        int32
+	SyncedAt            *time.Time
+	PayloadHash         *string
+	OrdStatus           *string
+	SentAt              *time.Time
+	UpdatedAt           time.Time
+	SubmissionUncertain bool
+	ReportFinance       []byte
+	ID                  uuid.UUID
 }
 
 func (q *Queries) SaveOrdInvoice(ctx context.Context, arg SaveOrdInvoiceParams) error {
@@ -536,7 +592,59 @@ func (q *Queries) SaveOrdInvoice(ctx context.Context, arg SaveOrdInvoiceParams) 
 		arg.OrdStatus,
 		arg.SentAt,
 		arg.UpdatedAt,
+		arg.SubmissionUncertain,
+		arg.ReportFinance,
 		arg.ID,
+	)
+	return err
+}
+
+const saveOrdInvoiceLinks = `-- name: SaveOrdInvoiceLinks :exec
+INSERT INTO ord_invoice_creatives (
+ ord_invoice_id, ord_external_id, sync_status, sync_request_id, sync_error, sync_attempts,
+ synced_at, payload_hash, ord_status, sent_at, submission_uncertain, created_at, updated_at
+) VALUES (
+ $1, $2, $3, $4, $5, $6,
+ $7, $8, $9, $10, $11, $12, $13
+) ON CONFLICT (ord_invoice_id) DO UPDATE SET
+ ord_external_id=EXCLUDED.ord_external_id, sync_status=EXCLUDED.sync_status,
+ sync_request_id=EXCLUDED.sync_request_id, sync_error=EXCLUDED.sync_error,
+ sync_attempts=EXCLUDED.sync_attempts, synced_at=EXCLUDED.synced_at,
+ payload_hash=EXCLUDED.payload_hash, ord_status=EXCLUDED.ord_status,
+ sent_at=EXCLUDED.sent_at, submission_uncertain=EXCLUDED.submission_uncertain, updated_at=EXCLUDED.updated_at
+`
+
+type SaveOrdInvoiceLinksParams struct {
+	OrdInvoiceID        uuid.UUID
+	OrdExternalID       *string
+	SyncStatus          string
+	SyncRequestID       *string
+	SyncError           *string
+	SyncAttempts        int32
+	SyncedAt            *time.Time
+	PayloadHash         *string
+	OrdStatus           *string
+	SentAt              *time.Time
+	SubmissionUncertain bool
+	CreatedAt           time.Time
+	UpdatedAt           time.Time
+}
+
+func (q *Queries) SaveOrdInvoiceLinks(ctx context.Context, arg SaveOrdInvoiceLinksParams) error {
+	_, err := q.db.Exec(ctx, saveOrdInvoiceLinks,
+		arg.OrdInvoiceID,
+		arg.OrdExternalID,
+		arg.SyncStatus,
+		arg.SyncRequestID,
+		arg.SyncError,
+		arg.SyncAttempts,
+		arg.SyncedAt,
+		arg.PayloadHash,
+		arg.OrdStatus,
+		arg.SentAt,
+		arg.SubmissionUncertain,
+		arg.CreatedAt,
+		arg.UpdatedAt,
 	)
 	return err
 }
@@ -546,26 +654,28 @@ UPDATE ord_statistics SET
     impressions = $1, shown_from = $2, shown_to = $3, amount = $4,
     ord_external_id = $5, sync_status = $6, sync_request_id = $7,
     sync_error = $8, sync_attempts = $9, synced_at = $10, payload_hash = $11,
-    ord_status = $12, sent_at = $13, updated_at = $14
-WHERE id = $15
+    ord_status = $12, sent_at = $13, updated_at = $14, submission_uncertain = $15, report_finance = $16
+WHERE id = $17
 `
 
 type SaveOrdStatisticsParams struct {
-	Impressions   int64
-	ShownFrom     pgtype.Date
-	ShownTo       pgtype.Date
-	Amount        int64
-	OrdExternalID *string
-	SyncStatus    string
-	SyncRequestID *string
-	SyncError     *string
-	SyncAttempts  int32
-	SyncedAt      *time.Time
-	PayloadHash   *string
-	OrdStatus     *string
-	SentAt        *time.Time
-	UpdatedAt     time.Time
-	ID            uuid.UUID
+	Impressions         int64
+	ShownFrom           pgtype.Date
+	ShownTo             pgtype.Date
+	Amount              int64
+	OrdExternalID       *string
+	SyncStatus          string
+	SyncRequestID       *string
+	SyncError           *string
+	SyncAttempts        int32
+	SyncedAt            *time.Time
+	PayloadHash         *string
+	OrdStatus           *string
+	SentAt              *time.Time
+	UpdatedAt           time.Time
+	SubmissionUncertain bool
+	ReportFinance       []byte
+	ID                  uuid.UUID
 }
 
 func (q *Queries) SaveOrdStatistics(ctx context.Context, arg SaveOrdStatisticsParams) error {
@@ -584,6 +694,8 @@ func (q *Queries) SaveOrdStatistics(ctx context.Context, arg SaveOrdStatisticsPa
 		arg.OrdStatus,
 		arg.SentAt,
 		arg.UpdatedAt,
+		arg.SubmissionUncertain,
+		arg.ReportFinance,
 		arg.ID,
 	)
 	return err

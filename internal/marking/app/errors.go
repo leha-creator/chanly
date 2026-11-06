@@ -61,7 +61,7 @@ func (s *Service) ListErrorsOfType(ctx context.Context, typ domain.ObjectType, c
 	if len(items) > limit {
 		page.Items = items[:limit]
 		last := page.Items[limit-1]
-		raw, _ := json.Marshal(domain.ErrorCursor{UpdatedAt: last.UpdatedAt, ID: last.Ref.ID})
+		raw, _ := json.Marshal(domain.ErrorCursor{UpdatedAt: last.UpdatedAt, ID: last.Ref.ID, Type: last.Ref.Type})
 		page.NextCursor = base64.RawURLEncoding.EncodeToString(raw)
 	}
 	s.log.DebugContext(ctx, "ord errors listed", logx.KeyOp, op, "count", len(page.Items), "has_next", page.NextCursor != "")
@@ -88,10 +88,14 @@ func (s *Service) Retry(ctx context.Context, ref domain.ObjectRef, adminID uuid.
 			return err
 		}
 		st, now := r.state(), s.Clock.Now()
+		if st.SubmissionUncertain {
+			return apperr.Conflict("ORD submission requires reconciliation")
+		}
 		if st.Status != domain.SyncError {
 			return apperr.Conflict("ord object is not in error").WithDetail("sync_status", string(st.Status))
 		}
-		if c, ok := r.(*creativeRecord); ok && c.v.HasErid() {
+		c, creative := r.(*creativeRecord)
+		if (creative && c.v.HasErid()) || (isReportWrite(ref.Type) && st.RequestID != "" && domain.ClassifyOrdStatus(st.OrdStatus, true) != domain.ProgressFinalError) {
 			// Опрос заново с полным сроком ожидания (R-10).
 			st.Status, st.Error, st.SentAt = domain.SyncSent, "", now
 			resumed = true

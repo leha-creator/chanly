@@ -167,7 +167,7 @@ func (q *Queries) GetOrganizationByUser(ctx context.Context, userID uuid.UUID) (
 }
 
 const getOrganizationForMarking = `-- name: GetOrganizationForMarking :one
-SELECT id, legal_type, inn, name, kpp, is_platform FROM organization WHERE id = $1
+SELECT id, legal_type, inn, name, kpp, is_platform, vat_rate FROM organization WHERE id = $1
 `
 
 type GetOrganizationForMarkingRow struct {
@@ -177,6 +177,7 @@ type GetOrganizationForMarkingRow struct {
 	Name       string
 	Kpp        *string
 	IsPlatform bool
+	VatRate    *string
 }
 
 // Реквизиты для ОРД (модуль marking); без блокировки.
@@ -190,6 +191,7 @@ func (q *Queries) GetOrganizationForMarking(ctx context.Context, id uuid.UUID) (
 		&i.Name,
 		&i.Kpp,
 		&i.IsPlatform,
+		&i.VatRate,
 	)
 	return i, err
 }

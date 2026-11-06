@@ -154,7 +154,10 @@ func (h *Handlers) toReport(ctx context.Context, v *app.ReportView) (apigen.OrdR
 	}
 	for _, r := range v.Invoices {
 		inv, o := r.Invoice, refs.Org(r.OrganizationID)
+		reconcile := inv.Sync.SubmissionUncertain || inv.Links.SubmissionUncertain
 		out.Invoices = append(out.Invoices, apigen.OrdInvoiceRow{
+			LinksStatus: apigen.OrdSyncStatus(inv.Links.Status), LinksAttempts: inv.Links.Attempts, LinksError: opt(inv.Links.Error),
+			DocumentRequestId: opt(inv.Sync.RequestID), LinksRequestId: opt(inv.Links.RequestID), ReconciliationRequired: &reconcile,
 			Id: inv.ID, Number: inv.Number, InvoiceDate: openapi_types.Date{Time: inv.InvoiceDate}, Amount: inv.Amount,
 			ContractKind: apigen.OrdInvoiceRowContractKind(r.Kind), ItemsCount: len(inv.Items),
 			Organization: apigen.AdminOrganizationRef{Id: r.OrganizationID, Name: o.Name, Inn: logx.MaskINN(o.INN)},

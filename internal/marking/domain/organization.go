@@ -30,6 +30,7 @@ const maxOrganizationName = 255
 
 // OrgDetails — реквизиты организации для ОРД (порт Organizations).
 type OrgDetails struct {
+	VATRate    string
 	ID         uuid.UUID
 	LegalType  string
 	INN        string

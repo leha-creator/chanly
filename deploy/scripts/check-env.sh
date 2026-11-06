@@ -107,6 +107,12 @@ for dir in "${envs[@]}"; do
   [[ -f $app && -f $stack ]] || continue
 
   check_common "$app" 1
+  if [[ $env_name == staging ]]; then
+    [[ $(value_of "$app" ORD_API_URL) == https://ord-prestable.yandex.net ]] || \
+      fail ord_sandbox_required env="$env_name" key=ORD_API_URL
+    [[ $(value_of "$app" ORD_REPORT_AUTO_SEND) == false ]] || \
+      fail ord_auto_send_forbidden env="$env_name" key=ORD_REPORT_AUTO_SEND
+  fi
   mapfile -t keys < <(keys_of "$app")
   for k in "${keys[@]}"; do
     if contains "$k" "${STACK_KEYS[@]}"; then

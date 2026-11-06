@@ -76,7 +76,7 @@ func TestCreativeTokenAndFailures(t *testing.T) {
 	}
 }
 
-func TestReportingObjectsStopAtOrdSuccess(t *testing.T) {
+func TestReportingObjectsWaitForErir(t *testing.T) {
 	ctx := context.Background()
 	f := ordfake.New()
 	st, _ := f.UpsertStatistics(ctx, ord.Statistics{ID: "stat-1", CreativeID: "cr-1", PlatformID: "ch-1"})
@@ -87,7 +87,7 @@ func TestReportingObjectsStopAtOrdSuccess(t *testing.T) {
 		_, _ = f.GetStatus(ctx, ic.RequestID)
 	}
 	for _, id := range []string{"stat-1", "inv-1", ordfake.InvoiceCreativesID("inv-1")} {
-		if o, ok := f.Object(id); !ok || o.Status != "ORD success" && id != "inv-1" {
+		if o, ok := f.Object(id); !ok || o.Status != "ERIR async success" && id != "inv-1" {
 			t.Fatalf("%s: %+v", id, o)
 		}
 	}

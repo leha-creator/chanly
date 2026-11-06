@@ -12,6 +12,7 @@ import (
 	"github.com/leha-creator/chanly/internal/platform/apperr"
 	"github.com/leha-creator/chanly/internal/platform/audit"
 	"github.com/leha-creator/chanly/internal/platform/ids"
+	"github.com/leha-creator/chanly/internal/platform/job"
 	"github.com/leha-creator/chanly/internal/platform/logx"
 )
 
@@ -203,11 +204,33 @@ func (s *Service) reportPlacements(ctx context.Context, store domain.Reports, pe
 			PlacementID: p.PlacementID, CreativeID: cr.ID, PlatformID: pl.ID, PublishedAt: p.PublishedAt,
 			RemovedAt: p.RemovedAt, FinalViews: p.FinalViews, AdvertiserAmount: p.AdvertiserAmount, BloggerAmount: p.BloggerAmount,
 		}
-		rp.ViewsAtStart, rp.HasStart = startViews[p.PublicationID]
-		rp.ViewsAtEnd, rp.HasEnd = endViews[p.PublicationID]
-		if rp.InitialContractID, err = s.contractOf(ctx, domain.ContractInitial, platformOrg.ID, p.AdvertiserOrgID); err != nil {
+		blogger, err := s.Accounts.Details(ctx, p.BloggerOrgID)
+		if err != nil {
 			return nil, err
 		}
+		rp.PublisherTax, err = domain.GrossTax(p.BloggerAmount, blogger.VATRate)
+		if err != nil {
+			return nil, apperr.Validation("vat_rate", "publisher_report_vat_required")
+		}
+		rp.Finance.Commission, err = domain.GrossTax(p.CommissionAmount, platformOrg.VATRate)
+		if err != nil {
+			return nil, apperr.Validation("vat_rate", "platform_report_vat_required")
+		}
+		if p.BloggerAmount > p.AdvertiserAmount || p.CommissionAmount != p.AdvertiserAmount-p.BloggerAmount {
+			return nil, apperr.Conflict("ORD report amounts do not reconcile with settlement")
+		}
+		rp.Finance.Services = rp.PublisherTax
+		rp.Finance.Services.Add(rp.Finance.Commission)
+		rp.ViewsAtStart, rp.HasStart = startViews[p.PublicationID]
+		rp.ViewsAtEnd, rp.HasEnd = endViews[p.PublicationID]
+		if p.PublishedAt.Before(period.Start()) && !rp.HasStart {
+			return nil, apperr.Validation("views", "start_snapshot_missing")
+		}
+		endedHere := !p.RemovedAt.IsZero() && p.RemovedAt.Before(period.End())
+		if (endedHere && !p.FinalViewsKnown) || (!endedHere && !rp.HasEnd) {
+			return nil, apperr.Validation("views", "end_snapshot_missing")
+		}
+		rp.InitialContractID = cr.ContractID
 		if rp.PublisherContractID, err = s.contractOf(ctx, domain.ContractPublisher, platformOrg.ID, p.BloggerOrgID); err != nil {
 			return nil, err
 		}
@@ -257,10 +280,16 @@ func (s *Service) saveStatistics(ctx context.Context, store domain.Reports, peri
 		if err != nil {
 			return err
 		}
+		if locked.Sync.SubmissionUncertain {
+			return apperr.Conflict("ORD statistics require reconciliation")
+		}
 		if !locked.SetLine(l) {
 			*unchanged++
 			s.log.DebugContext(ctx, "ord report object unchanged", logx.KeyOp, op, KeyObjectType, domain.TypeStatistics, KeyObjectID, locked.ID)
 			continue
+		}
+		if locked.Sync.Status == domain.SyncSent {
+			return apperr.Conflict("ORD statistics are still processing")
 		}
 		locked.Sync.Invalidate() // R-21: правка после спора — запись снова ждёт отправки
 		locked.UpdatedAt = at
@@ -274,18 +303,23 @@ func (s *Service) saveStatistics(ctx context.Context, store domain.Reports, peri
 		if seen[key] {
 			continue
 		}
-		if cur.Sync.ExternalID == "" && cur.Sync.Status != domain.SyncSent {
-			if err := store.DeleteStatistics(ctx, cur.ID); err != nil {
+		locked, err := store.StatisticsForUpdate(ctx, cur.ID)
+		if err != nil {
+			return err
+		}
+		if locked.Sync.SubmissionUncertain || locked.Sync.Status == domain.SyncSent {
+			return apperr.Conflict("ORD statistics require reconciliation")
+		}
+		if locked.Sync.ExternalID == "" {
+			if err := store.DeleteStatistics(ctx, locked.ID); err != nil {
 				return err
 			}
 			*removed++
 			continue
 		}
-		locked, err := store.StatisticsForUpdate(ctx, cur.ID)
-		if err != nil {
-			return err
-		}
-		if locked.SetLine(domain.StatisticsLine{ShownFrom: locked.ShownFrom, ShownTo: locked.ShownTo}) {
+		zero := locked.Finance
+		zero.Services.Gross, zero.Services.VAT = 0, 0
+		if locked.SetLine(domain.StatisticsLine{ShownFrom: locked.ShownFrom, ShownTo: locked.ShownTo, Finance: zero}) {
 			locked.Sync.Invalidate()
 			locked.UpdatedAt = at
 			if err := store.SaveStatistics(ctx, locked); err != nil {
@@ -318,7 +352,7 @@ func (s *Service) saveInvoices(ctx context.Context, store domain.Reports, period
 			seq++
 			inv := domain.Invoice{ID: ids.New(), ContractID: d.ContractID, Period: period, Type: rules.InvoiceType(d.Kind),
 				Number: domain.InvoiceNumber(rules.NumberPrefix, period, seq), InvoiceDate: period.LastDay(), Amount: d.Amount,
-				Items: d.Items, Sync: domain.NewSyncState(), CreatedAt: at, UpdatedAt: at}
+				Items: d.Items, Finance: d.Finance, Links: domain.NewSyncState(), Sync: domain.NewSyncState(), CreatedAt: at, UpdatedAt: at}
 			if err := store.InsertInvoice(ctx, inv); err != nil {
 				return 0, err
 			}
@@ -328,12 +362,17 @@ func (s *Service) saveInvoices(ctx context.Context, store domain.Reports, period
 		if err != nil {
 			return 0, err
 		}
-		if locked.Amount == d.Amount && sameItems(locked.Items, d.Items) && locked.Type == rules.InvoiceType(d.Kind) {
+		if locked.Finance == d.Finance && locked.Amount == d.Amount && sameItems(locked.Items, d.Items) && locked.Type == rules.InvoiceType(d.Kind) {
 			s.log.DebugContext(ctx, "ord report object unchanged", logx.KeyOp, op, KeyObjectType, domain.TypeInvoice, KeyObjectID, locked.ID)
 			continue
 		}
+		if locked.Sync.SubmissionUncertain || locked.Links.SubmissionUncertain || locked.Sync.Status == domain.SyncSent || locked.Links.Status == domain.SyncSent {
+			return 0, apperr.Conflict("ORD invoice requires reconciliation")
+		}
 		locked.Amount, locked.Items, locked.Type, locked.UpdatedAt = d.Amount, d.Items, rules.InvoiceType(d.Kind), at
+		locked.Finance = d.Finance
 		locked.Sync.Invalidate()
+		locked.Links.Invalidate()
 		if err := store.SaveInvoice(ctx, locked); err != nil {
 			return 0, err
 		}
@@ -342,7 +381,14 @@ func (s *Service) saveInvoices(ctx context.Context, store domain.Reports, period
 		if seen[contract] {
 			continue
 		}
-		if cur.Sync.ExternalID == "" && cur.Sync.Status != domain.SyncSent {
+		locked, err := store.InvoiceForUpdate(ctx, cur.ID)
+		if err != nil {
+			return 0, err
+		}
+		if locked.Sync.SubmissionUncertain || locked.Links.SubmissionUncertain || locked.Sync.Status == domain.SyncSent || locked.Links.Status == domain.SyncSent {
+			return 0, apperr.Conflict("ORD invoice requires reconciliation")
+		}
+		if locked.Sync.ExternalID == "" && locked.Links.ExternalID == "" {
 			if err := store.DeleteInvoice(ctx, cur.ID); err != nil {
 				return 0, err
 			}
@@ -358,12 +404,12 @@ func sameItems(a, b []domain.InvoiceItem) bool {
 	if len(a) != len(b) {
 		return false
 	}
-	m := map[[2]uuid.UUID]int64{}
+	m := map[[2]uuid.UUID]domain.InvoiceItem{}
 	for _, it := range a {
-		m[[2]uuid.UUID{it.CreativeID, it.PlatformID}] = it.Amount
+		m[[2]uuid.UUID{it.CreativeID, it.PlatformID}] = it
 	}
 	for _, it := range b {
-		if v, ok := m[[2]uuid.UUID{it.CreativeID, it.PlatformID}]; !ok || v != it.Amount {
+		if v, ok := m[[2]uuid.UUID{it.CreativeID, it.PlatformID}]; !ok || v != it {
 			return false
 		}
 	}
@@ -406,7 +452,7 @@ func (s *Service) SendReport(ctx context.Context, period domain.Period, adminID 
 			refs = append(refs, st.Ref())
 		}
 		for _, inv := range invoices {
-			refs = append(refs, inv.Ref())
+			refs = append(refs, inv.Ref(), inv.LinksRef())
 		}
 		now := s.Clock.Now()
 		for _, ref := range refs {
@@ -415,8 +461,22 @@ func (s *Service) SendReport(ctx context.Context, period domain.Period, adminID 
 				return err
 			}
 			st := r.state()
+			if st.SubmissionUncertain {
+				return apperr.Conflict("ORD submission requires reconciliation")
+			}
 			switch st.Status {
 			case domain.SyncError:
+				if st.RequestID != "" && domain.ClassifyOrdStatus(st.OrdStatus, true) != domain.ProgressFinalError {
+					st.Status, st.Error, st.SentAt = domain.SyncSent, "", now
+					if err := r.save(ctx, s, now); err != nil {
+						return err
+					}
+					if err := s.enqueuePoll(ctx, ref, now); err != nil {
+						return err
+					}
+					queued++
+					continue
+				}
 				if err := st.Retry(); err != nil {
 					return err
 				}
@@ -510,6 +570,7 @@ func (s *Service) Report(ctx context.Context, period domain.Period) (*ReportView
 		}
 		v.Invoices = append(v.Invoices, row)
 		count(inv.Sync)
+		count(inv.Links)
 	}
 	v.StatisticsCount, v.InvoicesCount = len(v.Statistics), len(v.Invoices)
 	switch {
@@ -621,6 +682,9 @@ func (s *Service) buildStatistics(ctx context.Context, r *statisticsRecord) (*ou
 	if !v.Ready() {
 		return nil, s.wait(ctx, op, r.ref(), v), nil
 	}
+	if !r.v.Finance.Valid(r.v.Amount) {
+		return nil, nil, fmt.Errorf("%w: report financial snapshot missing; rebuild required", domain.ErrPermanent)
+	}
 	req := domain.NewStatisticsRequest(r.v, cr.ExternalID(), pl.ExternalID())
 	hash, err := domain.PayloadHash(req)
 	if err != nil {
@@ -635,6 +699,17 @@ func (s *Service) buildStatistics(ctx context.Context, r *statisticsRecord) (*ou
 
 // buildInvoice — запрос акта: договор, креативы разбивки и площадки готовы (R-22).
 func (s *Service) buildInvoice(ctx context.Context, r *invoiceRecord) (*outgoing, error, error) {
+	return s.invoiceOutgoing(ctx, r, false)
+}
+
+func (s *Service) buildInvoiceLinks(ctx context.Context, r *invoiceLinksRecord) (*outgoing, error, error) {
+	if r.v.Sync.Status != domain.SyncSynced {
+		return nil, job.Postpone(errDependencyWait, s.Config.DependencyWait), nil
+	}
+	return s.invoiceOutgoing(ctx, &r.invoiceRecord, true)
+}
+
+func (s *Service) invoiceOutgoing(ctx context.Context, r *invoiceRecord, links bool) (*outgoing, error, error) {
 	const op = "Marking.Sync"
 	ct, err := s.Contracts.GetForUpdate(ctx, r.v.ContractID)
 	if err != nil {
@@ -652,18 +727,38 @@ func (s *Service) buildInvoice(ctx context.Context, r *invoiceRecord) (*outgoing
 			return nil, nil, err
 		}
 		deps = append(deps, creativeDependency(cr), dependency(domain.NeedPlatform, pl.Ref(), pl.Sync))
-		items = append(items, domain.InvoiceRequestItem{CreativeID: cr.ExternalID(), PlatformID: pl.ExternalID(), Amount: domain.Rubles(it.Amount)})
+		initial, err := s.Contracts.GetForUpdate(ctx, cr.ContractID)
+		if err != nil {
+			return nil, nil, err
+		}
+		deps = append(deps, dependency(domain.NeedContract, initial.Ref(), initial.Sync))
+		items = append(items, domain.InvoiceRequestItem{CreativeID: cr.ExternalID(), PlatformID: pl.ExternalID(), Amount: domain.Rubles(it.Amount), ContractID: initial.ExternalID(), Tax: it.Tax})
 	}
 	if v := domain.DependencyVerdict(deps); !v.Ready() {
 		return nil, s.wait(ctx, op, r.ref(), v), nil
 	}
+	if !r.v.Finance.Valid(r.v.Amount) {
+		return nil, nil, fmt.Errorf("%w: report financial snapshot missing; rebuild required", domain.ErrPermanent)
+	}
 	req := domain.NewInvoiceRequest(r.v, ct.ExternalID(), items)
+	if ct.Kind == domain.ContractInitial {
+		req.ClientRole, req.ContractorRole = "rd", "psr"
+	} else {
+		req.ClientRole, req.ContractorRole = "psr", "rr"
+	}
 	hash, err := domain.PayloadHash(req)
 	if err != nil {
 		return nil, nil, err
 	}
-	return &outgoing{ref: r.ref(), externalID: r.externalID(), hash: hash,
+	ref := r.ref()
+	if links {
+		ref = r.v.LinksRef()
+	}
+	return &outgoing{ref: ref, externalID: r.externalID(), hash: hash,
 		call: func(ctx context.Context, api domain.OrdAPI) (domain.Receipt, error) {
+			if links {
+				return api.UpsertInvoiceCreatives(ctx, req)
+			}
 			return api.UpsertInvoice(ctx, req)
 		},
 	}, nil, nil
@@ -672,7 +767,7 @@ func (s *Service) buildInvoice(ctx context.Context, r *invoiceRecord) (*outgoing
 // creativeDependency — креатив готов для отчётности, когда у него есть erid.
 func creativeDependency(cr domain.Creative) domain.Dependency {
 	d := dependency(domain.NeedCreative, cr.Ref(), cr.Sync)
-	if !cr.HasErid() && d.State.Status != domain.SyncError {
+	if (!cr.HasErid() || cr.Sync.Status != domain.SyncSynced) && d.State.Status != domain.SyncError {
 		d.State.Status = domain.SyncPending
 	}
 	return d

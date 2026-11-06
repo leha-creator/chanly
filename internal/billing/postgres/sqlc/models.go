@@ -487,24 +487,42 @@ type OrdContract struct {
 }
 
 type OrdInvoice struct {
-	ID            uuid.UUID
-	OrdContractID uuid.UUID
-	Period        pgtype.Date
-	Type          string
-	Number        string
-	InvoiceDate   pgtype.Date
-	Amount        int64
-	OrdExternalID *string
-	SyncStatus    string
-	SyncRequestID *string
-	SyncError     *string
-	SyncAttempts  int32
-	SyncedAt      *time.Time
-	PayloadHash   *string
-	OrdStatus     *string
-	SentAt        *time.Time
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
+	ID                  uuid.UUID
+	OrdContractID       uuid.UUID
+	Period              pgtype.Date
+	Type                string
+	Number              string
+	InvoiceDate         pgtype.Date
+	Amount              int64
+	OrdExternalID       *string
+	SyncStatus          string
+	SyncRequestID       *string
+	SyncError           *string
+	SyncAttempts        int32
+	SyncedAt            *time.Time
+	PayloadHash         *string
+	OrdStatus           *string
+	SentAt              *time.Time
+	CreatedAt           time.Time
+	UpdatedAt           time.Time
+	ReportFinance       []byte
+	SubmissionUncertain bool
+}
+
+type OrdInvoiceCreative struct {
+	OrdInvoiceID        uuid.UUID
+	OrdExternalID       *string
+	SyncStatus          string
+	SyncRequestID       *string
+	SyncError           *string
+	SyncAttempts        int32
+	SyncedAt            *time.Time
+	PayloadHash         *string
+	OrdStatus           *string
+	SentAt              *time.Time
+	SubmissionUncertain bool
+	CreatedAt           time.Time
+	UpdatedAt           time.Time
 }
 
 type OrdInvoiceItem struct {
@@ -512,6 +530,7 @@ type OrdInvoiceItem struct {
 	CreativeID    uuid.UUID
 	OrdPlatformID uuid.UUID
 	Amount        int64
+	TaxSnapshot   []byte
 }
 
 type OrdOrganization struct {
@@ -560,26 +579,28 @@ type OrdReport struct {
 }
 
 type OrdStatistic struct {
-	ID            uuid.UUID
-	CreativeID    uuid.UUID
-	OrdPlatformID uuid.UUID
-	PlacementID   uuid.UUID
-	Period        pgtype.Date
-	Impressions   int64
-	ShownFrom     pgtype.Date
-	ShownTo       pgtype.Date
-	Amount        int64
-	OrdExternalID *string
-	SyncStatus    string
-	SyncRequestID *string
-	SyncError     *string
-	SyncAttempts  int32
-	SyncedAt      *time.Time
-	PayloadHash   *string
-	OrdStatus     *string
-	SentAt        *time.Time
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
+	ID                  uuid.UUID
+	CreativeID          uuid.UUID
+	OrdPlatformID       uuid.UUID
+	PlacementID         uuid.UUID
+	Period              pgtype.Date
+	Impressions         int64
+	ShownFrom           pgtype.Date
+	ShownTo             pgtype.Date
+	Amount              int64
+	OrdExternalID       *string
+	SyncStatus          string
+	SyncRequestID       *string
+	SyncError           *string
+	SyncAttempts        int32
+	SyncedAt            *time.Time
+	PayloadHash         *string
+	OrdStatus           *string
+	SentAt              *time.Time
+	CreatedAt           time.Time
+	UpdatedAt           time.Time
+	ReportFinance       []byte
+	SubmissionUncertain bool
 }
 
 type Order struct {
