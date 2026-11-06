@@ -57,7 +57,8 @@ services:
       POSTGRES_APP_PASSWORD: ${POSTGRES_APP_PASSWORD:?POSTGRES_APP_PASSWORD is required (stack.env)}
       POSTGRES_BACKUP_PASSWORD: ${POSTGRES_BACKUP_PASSWORD:?POSTGRES_BACKUP_PASSWORD is required (stack.env)}
     # Архив WAL для восстановления на момент времени (07 §8): сегмент закрывается не реже
-    # раза в минуту, выгрузку в S3 делает backup.
+    # раза в минуту по умолчанию, выгрузку в S3 делает backup. Dev может увеличить
+    # POSTGRES_ARCHIVE_TIMEOUT для ограниченного диска с локальной корзиной копий.
     command:
       - postgres
       - -c
@@ -67,7 +68,7 @@ services:
       - -c
       - archive_command=/usr/local/bin/wal-archive.sh %p %f
       - -c
-      - archive_timeout=60
+      - archive_timeout=${POSTGRES_ARCHIVE_TIMEOUT:-60}
       - -c
       - max_wal_senders=4
       - -c
