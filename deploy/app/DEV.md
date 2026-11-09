@@ -148,3 +148,9 @@ SHA-256: `D26D2D0231B7C39F92CC738512BA54103519E4405D68B5BD703E9788CA8ECF31`.
 поддельного события. Маршруты Webhook и Basic Auth находятся в одном `route`,
 чтобы Caddy не перенёс защиту после обработчиков. Для следующего выпуска
 сохранить изменения `maxim-dev.caddy` и `compose.dev.yml` из master в ветке dev.
+
+### Общий вход на dev.chanly.ru
+
+Пока отсутствует `frontend/landing/current/index.html`, корень обслуживает прежняя SPA. После атомарной активации лендинга точный GET/HEAD `/` за Basic Auth вызывает внутренний GET /api/v1/me с cookie. При 200 Caddy отдаёт frontend/current/index.html, при 401 — landing/current/index.html. Остальные ответы и ошибки соединения требуют повтора. Корень с выбором по сессии возвращает private, no-store. Пути /auth/login и /assets/ обслуживает SPA. Хешированные /landing-assets/ читаются из frontend/landing/shared внутри существующего тома.
+
+Перед включением переходов фронтенда проверьте curl с /opt/maxim-dev/basic-auth.curl для гостя, затем вход и оба кабинета. Под общей блокировкой сохраните действующий /opt/edge/sites/maxim-dev.caddy до изменения. Проверьте caddy validate и выполните caddy reload внутри контейнера edge. Для полного отката сначала верните переходы фронтенда, затем восстановите сохранённый файл, повторите validate, reload и проверьте корень и API. Релиз лендинга переключает только landing/current.

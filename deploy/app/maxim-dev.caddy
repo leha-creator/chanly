@@ -65,6 +65,48 @@ __DOMAIN__ {
                 health_status 200
             }
         }
+        @shared_root {
+            method GET HEAD
+            path /
+            file {
+                root /srv/maxim-dev/landing/current
+                try_files /index.html
+            }
+        }
+        handle @shared_root {
+            header Cache-Control "private, no-store"
+            reverse_proxy __PREFIX__-api-a:8080 __PREFIX__-api-b:8080 {
+                method GET
+                rewrite /api/v1/me?
+                header_up -Authorization
+                header_up -If-None-Match
+                header_up -If-Modified-Since
+                lb_policy first
+                lb_try_duration 5s
+                fail_duration 10s
+                @member status 200
+                handle_response @member {
+                    root * /srv/maxim-dev/current
+                    rewrite * /index.html
+                    file_server
+                }
+                @guest status 401
+                handle_response @guest {
+                    root * /srv/maxim-dev/landing/current
+                    rewrite * /index.html
+                    file_server
+                }
+                handle_response {
+                    header Retry-After 5
+                    respond "Session check failed. Please refresh." 503
+                }
+            }
+        }
+        handle /landing-assets/* {
+            root * /srv/maxim-dev/landing/shared
+            header Cache-Control "public, max-age=31536000, immutable"
+            file_server
+        }
         handle /assets/* {
             root * /srv/maxim-dev/current
             header Cache-Control "public, max-age=31536000, immutable"
