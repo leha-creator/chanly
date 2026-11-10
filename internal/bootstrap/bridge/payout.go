@@ -44,10 +44,10 @@ type PayoutProvider struct {
 }
 
 // unknown — WARN о незнакомом статусе сервиса (R-2): объект продолжают опрашивать.
-func (p PayoutProvider) unknown(ctx context.Context, object, id, raw string) {
+func (p PayoutProvider) unknown(ctx context.Context, object, id, _ string) {
 	if p.Log != nil {
 		p.Log.WarnContext(ctx, "rocketwork unknown status", logx.KeyOp, "RocketWork.Status", "object", object,
-			"external_id", id, "raw_status", raw)
+			"external_id", id, "status", "unknown")
 	}
 }
 

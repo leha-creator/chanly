@@ -12,6 +12,32 @@ import (
 	"github.com/google/uuid"
 )
 
+const contractorIDsAfter = `-- name: ContractorIDsAfter :many
+
+SELECT id FROM rocketwork_contractor WHERE id > $1 ORDER BY id LIMIT 100
+`
+
+// Исполнители Рокет Ворк (04 §7, S-11).
+func (q *Queries) ContractorIDsAfter(ctx context.Context, afterID uuid.UUID) ([]uuid.UUID, error) {
+	rows, err := q.db.Query(ctx, contractorIDsAfter, afterID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []uuid.UUID{}
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const countContractorsByStatus = `-- name: CountContractorsByStatus :many
 SELECT status, count(*)::int AS n FROM rocketwork_contractor GROUP BY status ORDER BY status
 `
@@ -174,7 +200,6 @@ func (q *Queries) GetContractorForUpdate(ctx context.Context, id uuid.UUID) (Roc
 }
 
 const insertContractor = `-- name: InsertContractor :execrows
-
 INSERT INTO rocketwork_contractor (id, organization_id, external_id, status, blocked_reason, onboarding_url,
     status_checked_at, last_error, created_at, updated_at)
 VALUES ($1, $2, $3, $4, $5, $6,
@@ -195,7 +220,6 @@ type InsertContractorParams struct {
 	UpdatedAt       time.Time
 }
 
-// Исполнители Рокет Ворк (04 §7, S-11).
 func (q *Queries) InsertContractor(ctx context.Context, arg InsertContractorParams) (int64, error) {
 	result, err := q.db.Exec(ctx, insertContractor,
 		arg.ID,

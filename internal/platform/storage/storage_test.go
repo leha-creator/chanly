@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"regexp"
@@ -196,9 +197,10 @@ func TestMinioContract(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	client := http.DefaultClient
 	get := func(t *testing.T, url string) (*http.Response, []byte) {
 		t.Helper()
-		resp, err := http.Get(url)
+		resp, err := client.Get(url)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -223,11 +225,24 @@ func TestMinioContract(t *testing.T) {
 		return b, resp.Header.Get("Content-Type")
 	})
 	// Подписанная ссылка на другом адресе того же хранилища (как localhost:9000 вместо minio:9000).
-	host, port, _ := strings.Cut(endpoint, ":")
-	alt := "127.0.0.1:" + port
-	if host == "127.0.0.1" {
-		alt = "localhost:" + port
+	_, port, err := net.SplitHostPort(endpoint)
+	if err != nil {
+		t.Fatal(err)
 	}
+	alt := net.JoinHostPort("presign.example.test", port)
+	// Resolve only this synthetic alias to the container's actual endpoint.
+	// Keeping the Host header intact exercises the signature while also working
+	// when Docker runs outside the test process's network namespace.
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	transport.Proxy = nil // synthetic local alias must not leave the test network
+	transport.DialContext = func(ctx context.Context, network, address string) (net.Conn, error) {
+		if address == alt {
+			address = endpoint
+		}
+		return (&net.Dialer{}).DialContext(ctx, network, address)
+	}
+	client = &http.Client{Transport: transport}
+	t.Cleanup(transport.CloseIdleConnections)
 	popts := opts
 	popts.PresignEndpoint = alt
 	ps, err := storage.NewS3(ctx, popts, clock.System{}, logx.Discard())

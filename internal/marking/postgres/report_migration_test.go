@@ -2,6 +2,9 @@ package postgres
 
 import (
 	"context"
+	"io/fs"
+	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/leha-creator/chanly/internal/marking/domain"
@@ -9,6 +12,7 @@ import (
 	"github.com/leha-creator/chanly/internal/platform/dbtest"
 	"github.com/leha-creator/chanly/internal/platform/ids"
 	"github.com/leha-creator/chanly/internal/platform/logx"
+	"github.com/leha-creator/chanly/migrations"
 )
 
 func TestLegacyInvoiceReceiptMigration(t *testing.T) {
@@ -17,6 +21,25 @@ func TestLegacyInvoiceReceiptMigration(t *testing.T) {
 	migrate := func(command string) error {
 		return db.MigrateURL(ctx, f.d.OwnerURL, dbtest.AppRole, command, logx.Discard())
 	}
+	// This regression targets migration 17, independently of later modules.
+	downLater := func() {
+		files, err := fs.Glob(migrations.FS, "*.sql")
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, name := range files {
+			version, err := strconv.Atoi(strings.SplitN(name, "_", 2)[0])
+			if err != nil {
+				t.Fatal(err)
+			}
+			if version > 17 {
+				if err := migrate(db.MigrateDown); err != nil {
+					t.Fatal(err)
+				}
+			}
+		}
+	}
+	downLater()
 	if err := migrate(db.MigrateDown); err != nil {
 		t.Fatal(err)
 	}
@@ -49,6 +72,7 @@ func TestLegacyInvoiceReceiptMigration(t *testing.T) {
 	if receipt == nil || *receipt != "old-links-receipt" {
 		t.Fatal("legacy links receipt lost")
 	}
+	downLater()
 	if err := migrate(db.MigrateDown); err == nil {
 		t.Fatal("rollback erased receipts")
 	}

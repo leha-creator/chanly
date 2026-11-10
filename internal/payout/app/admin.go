@@ -29,6 +29,19 @@ func (s *Service) Retry(ctx context.Context, payoutID, adminID uuid.UUID, reason
 		if err != nil {
 			return err
 		}
+		if store, ok := s.Store.(domain.WorkflowStore); ok {
+			w, werr := store.Workflow(ctx, p.ID, false)
+			if werr == nil && w.Phase != "canceled" {
+				next = p
+				if err := s.schedule(ctx, job.Job{Kind: KindPollPayout, DedupeKey: PollPayoutKey(p.ID), Payload: PayoutPayload{p.ID}, RunAt: s.Clock.Now(), MaxAttempts: PollAttempts}); err != nil {
+					return err
+				}
+				return s.Audit.Record(ctx, audit.Entry{Action: "payout.reconcile", ObjectType: "payout", ObjectID: p.ID.String(), Reason: &reason, ActorType: audit.ActorAdmin, OrganizationID: &p.BloggerOrganizationID, Data: map[string]any{"identity_preserved": true}})
+			}
+			if werr != nil && !errors.Is(werr, domain.ErrNotFound) {
+				return werr
+			}
+		}
 		latest, err := s.Store.LatestPayout(ctx, p.PlacementID, true)
 		if err != nil {
 			return err

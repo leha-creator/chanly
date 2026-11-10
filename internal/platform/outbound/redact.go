@@ -21,7 +21,10 @@ var DefaultRedact = []string{"token", "access_token", "refresh_token", "authoriz
 // sensitiveHeaders не сохраняются вовсе.
 var sensitiveHeaders = map[string]bool{"authorization": true, "cookie": true, "x-api-key": true, "proxy-authorization": true}
 
-type redactor struct{ keys map[string]bool }
+type redactor struct {
+	keys          map[string]bool
+	sensitiveCall bool
+}
 
 func newRedactor(extra []string) redactor {
 	keys := map[string]bool{}
@@ -38,6 +41,9 @@ func (r redactor) sensitive(key string) bool { return r.keys[strings.ToLower(key
 
 // url убирает значения чувствительных параметров запроса.
 func (r redactor) url(raw string) string {
+	if r.sensitiveCall {
+		return redacted
+	}
 	u, err := url.Parse(raw)
 	if err != nil {
 		return "[invalid url]"
@@ -59,6 +65,9 @@ func (r redactor) url(raw string) string {
 
 func (r redactor) headers(h http.Header) map[string]string {
 	out := map[string]string{}
+	if r.sensitiveCall {
+		return out
+	}
 	for k, v := range h {
 		lk := strings.ToLower(k)
 		if sensitiveHeaders[lk] {
@@ -100,6 +109,9 @@ func (r redactor) value(v any) any {
 func (r redactor) body(b []byte) any {
 	if len(b) == 0 {
 		return nil
+	}
+	if r.sensitiveCall {
+		return redacted
 	}
 	if len(b) > maxStoredBody {
 		return map[string]any{"_truncated": true, "_size": len(b)}
@@ -145,5 +157,5 @@ func (r redactor) with(extra []string) redactor {
 	for _, k := range extra {
 		keys[strings.ToLower(k)] = true
 	}
-	return redactor{keys: keys}
+	return redactor{keys: keys, sensitiveCall: r.sensitiveCall}
 }

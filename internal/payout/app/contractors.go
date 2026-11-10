@@ -16,6 +16,7 @@ import (
 
 // ContractorView — состояние исполнителя для кабинета блогера (getRocketworkStatus).
 type ContractorView struct {
+	NextAction      string
 	Required        bool
 	Status          domain.ContractorStatus
 	OnboardingURL   string
@@ -24,7 +25,22 @@ type ContractorView struct {
 }
 
 func viewOf(c domain.Contractor) ContractorView {
-	return ContractorView{Required: true, Status: c.Status, OnboardingURL: c.OnboardingURL, BlockedReason: c.BlockedReason,
+	action := "complete_registration"
+	switch c.Status {
+	case domain.ContractorActive:
+		action = "none"
+	case domain.ContractorNone:
+		action = "invite"
+	}
+	switch c.BlockedReason {
+	case "need_permissions", "selfemployment_unverified", "provider_permissions_unverified":
+		action = "grant_fns_permissions"
+	case "no_requisites":
+		action = "add_requisites"
+	case "unknown_readiness", "employment_mismatch", "provider_profile_missing_or_ambiguous":
+		action = "contact_support"
+	}
+	return ContractorView{NextAction: action, Required: true, Status: c.Status, OnboardingURL: c.OnboardingURL, BlockedReason: c.BlockedReason,
 		StatusCheckedAt: c.StatusCheckedAt}
 }
 
@@ -35,11 +51,11 @@ func (s *Service) Status(ctx context.Context, orgID uuid.UUID) (ContractorView, 
 		return ContractorView{}, err
 	}
 	if !domain.ContractorRequired(payee.LegalType) {
-		return ContractorView{Required: false, Status: domain.ContractorNone}, nil
+		return ContractorView{NextAction: "none", Required: false, Status: domain.ContractorNone}, nil
 	}
 	c, err := s.Store.ContractorByOrg(ctx, orgID, false)
 	if errors.Is(err, domain.ErrNotFound) {
-		return ContractorView{Required: true, Status: domain.ContractorNone}, nil
+		return ContractorView{NextAction: "invite", Required: true, Status: domain.ContractorNone}, nil
 	}
 	if err != nil {
 		return ContractorView{}, err
@@ -164,6 +180,9 @@ func (s *Service) EnsureContractor(ctx context.Context, orgID uuid.UUID) error {
 	if err != nil {
 		return err
 	}
+	if s.Config.ProviderScope != nil {
+		return s.ensureVerifiedContractor(ctx, c)
+	}
 	if c.Registered() && c.OnboardingURL != "" {
 		return s.schedulePoll(ctx, c)
 	}
@@ -241,10 +260,15 @@ func (s *Service) PollContractor(ctx context.Context, contractorID uuid.UUID) er
 	if err != nil {
 		return err
 	}
-	if !c.Registered() {
+	if !c.Registered() && s.Config.ProviderScope == nil {
 		return s.EnsureContractor(ctx, c.OrganizationID)
 	}
-	pc, err := s.Provider.GetContractor(ctx, c.ExternalID)
+	var pc domain.ProviderContractor
+	if s.Config.ProviderScope != nil {
+		pc, err = s.resolveContractor(ctx, c)
+	} else {
+		pc, err = s.Provider.GetContractor(ctx, c.ExternalID)
+	}
 	if err != nil {
 		return s.providerWait(ctx, op, err)
 	}

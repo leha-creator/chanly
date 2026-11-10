@@ -73,7 +73,11 @@ func (s *Service) withBriefs(ctx context.Context, rows []domain.Payout) ([]Payou
 	}
 	out := make([]PayoutItem, 0, len(rows))
 	for _, p := range rows {
-		out = append(out, PayoutItem{Payout: p, Brief: briefs[p.PlacementID]})
+		view, err := s.workflowView(ctx, p)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, PayoutItem{Payout: p, Brief: briefs[p.PlacementID], Workflow: view})
 	}
 	return out, nil
 }

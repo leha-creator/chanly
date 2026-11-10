@@ -30,6 +30,34 @@ func TestRocketWorkConfigDefaults(t *testing.T) {
 	}
 }
 
+func TestRocketWorkAgreementPolicyIsExplicit(t *testing.T) {
+	env := validWorkerEnv()
+	env["ROCKETWORK_ACT_REQUIRED"] = ""
+	env["ROCKETWORK_TAX_RETENTION"] = ""
+	env["ROCKETWORK_MAX_COMMISSION_KOPECKS"] = ""
+	cfg, err := LoadConfig(env, ModeWorker)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.PayoutAppConfig().AgreementTemplate != nil || cfg.PayoutAppConfig().ProviderScope != nil {
+		t.Fatal("default authorizes workflow")
+	}
+	env["ROCKETWORK_ACT_REQUIRED"] = "false"
+	env["ROCKETWORK_TAX_RETENTION"] = "false"
+	env["ROCKETWORK_MAX_COMMISSION_KOPECKS"] = "0"
+	env["ROCKETWORK_CONTRACT_MODE"] = "manual"
+	env["ROCKETWORK_DOCUMENT_NUMBER"] = "synthetic"
+	env["ROCKETWORK_DOCUMENT_DATE"] = "2026-11-09"
+	cfg, err = LoadConfig(env, ModeWorker)
+	if err != nil {
+		t.Fatal(err)
+	}
+	template := cfg.PayoutAppConfig().AgreementTemplate
+	if template == nil || template.TaxRetention || template.ActRequired || template.MaxCommission != 0 {
+		t.Fatal("explicit false/zero policy lost")
+	}
+}
+
 func TestRocketWorkConfigErrors(t *testing.T) {
 	env := func(extra map[string]string) map[string]string {
 		e := validWorkerEnv()
@@ -60,6 +88,10 @@ func TestRocketWorkConfigErrors(t *testing.T) {
 		"live without secret": {with(live, "ROCKETWORK_WEBHOOK_SECRET", ""), "ROCKETWORK_WEBHOOK_SECRET"},
 		"short secret":        {env(map[string]string{"ROCKETWORK_WEBHOOK_SECRET": "short"}), "ROCKETWORK_WEBHOOK_SECRET"},
 		"bad url":             {with(live, "ROCKETWORK_BASE_URL", "api.rocketwork.ru"), "ROCKETWORK_BASE_URL"},
+		"plain http":          {with(live, "ROCKETWORK_BASE_URL", "http://api.rocketwork.ru"), "ROCKETWORK_BASE_URL"},
+		"url credentials":     {with(live, "ROCKETWORK_BASE_URL", "https://user:secret@api.rocketwork.ru"), "ROCKETWORK_BASE_URL"},
+		"legacy api path":     {with(live, "ROCKETWORK_BASE_URL", "https://api.rocketwork.ru/api/v2"), "ROCKETWORK_BASE_URL"},
+		"nan rate":            {with(live, "ROCKETWORK_RATE", "NaN"), "ROCKETWORK_RATE"},
 		"zero rate":           {with(live, "ROCKETWORK_RATE", "0"), "ROCKETWORK_RATE"},
 		"fast over slow":      {env(map[string]string{"PAYOUT_POLL_FAST": "2h"}), "PAYOUT_POLL_FAST"},
 		"negative tolerance":  {env(map[string]string{"ROCKETWORK_DEPOSIT_TOLERANCE": "-1"}), "ROCKETWORK_DEPOSIT_TOLERANCE"},
@@ -92,5 +124,21 @@ func TestRocketWorkConfigProduction(t *testing.T) {
 	cfg.validateRocketWork(func(field, reason string) { fields = append(fields, field+": "+reason) })
 	if !slices.Contains(fields, "ROCKETWORK_MODE: fake is not allowed in production") {
 		t.Fatalf("fake in production: %v", fields)
+	}
+	fields = nil
+	cfg.RocketWork.Mode = RocketWorkLive
+	cfg.RocketWork.Token = "test-token"
+	cfg.RocketWork.WebhookSecret = "test-secret-123456"
+	cfg.validateRocketWork(func(field, reason string) { fields = append(fields, field+": "+reason) })
+	if len(fields) != 0 || cfg.PayoutAppConfig().ProviderScope != nil {
+		t.Fatalf("read-only live in production must not enable workflow: %v", fields)
+	}
+	cfg.RocketWork.WorkflowEnabled = true
+	cfg.RocketWork.Target = "production"
+	cfg.RocketWork.AccountKey = "synthetic"
+	fields = nil
+	cfg.validateRocketWork(func(field, reason string) { fields = append(fields, field) })
+	if !slices.Contains(fields, "ROCKETWORK_PRODUCTION_APPROVED") || cfg.PayoutAppConfig().ProviderScope != nil {
+		t.Fatal("production automation enabled without separate admission")
 	}
 }

@@ -1,6 +1,9 @@
 package app
 
 import (
+	"crypto/sha256"
+	"fmt"
+
 	"github.com/leha-creator/chanly/internal/payout/domain"
 )
 
@@ -11,5 +14,15 @@ func (s *Service) ParseWebhook(header map[string][]string, body []byte) (domain.
 	if !s.Config.ProviderEnabled {
 		return domain.WebhookEvent{}, domain.ErrProviderDisabled
 	}
-	return s.Provider.ParseWebhook(header, body)
+	e, err := s.Provider.ParseWebhook(header, body)
+	e.ScopeKey = s.WebhookScopeKey()
+	return e, err
+}
+
+func (s *Service) WebhookScopeKey() string {
+	if s.Config.ProviderScope == nil {
+		return ""
+	}
+	scope := s.Config.ProviderScope
+	return fmt.Sprintf("%x", sha256.Sum256([]byte(scope.Environment+"\x00"+scope.Account)))
 }

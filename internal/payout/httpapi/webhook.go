@@ -130,10 +130,13 @@ func (h *Webhook) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		return
 	}
-	payload, _ := json.Marshal(app.EventPayload{ExternalID: ev.ExternalID, EventID: ev.EventID})
+	payload, _ := json.Marshal(app.EventPayload{ExternalID: ev.ExternalID, EventID: ev.EventID, ScopeKey: ev.ScopeKey})
 	key := ev.EventID
 	if key == "" {
 		key = inbound.KeyFromBody(body)
+	}
+	if ev.ScopeKey != "" {
+		key = ev.ScopeKey + ":" + key
 	}
 	dup, err := h.rec.Record(ctx, inbound.Event{Source: inbound.SourceRocketWork, ExternalKey: key,
 		EventType: string(ev.Kind), Payload: payload})

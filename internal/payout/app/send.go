@@ -25,6 +25,9 @@ func (s *Service) Send(ctx context.Context, payoutID uuid.UUID, attempt int) err
 	if err != nil {
 		return err
 	}
+	if s.Config.ProviderScope != nil && p.Method == domain.MethodRocketwork {
+		return s.DrivePayout(ctx, payoutID)
+	}
 	if p.Status != domain.StatusCreated || p.Method != domain.MethodRocketwork {
 		s.log.DebugContext(ctx, "payout send skipped", logx.KeyOp, op, KeyPayoutID, p.ID, "status", p.Status, "method", p.Method)
 		return nil
@@ -163,6 +166,11 @@ func (s *Service) markSent(ctx context.Context, id uuid.UUID, externalID string)
 // сначала поиск по ключу — найдена в сервисе — sent и опрос; не найдена — failed provider_error
 // и оповещение; исход неизвестен — failed не ставится (деньги могли уйти), оповещение о расхождении.
 func (s *Service) SendExhausted(ctx context.Context, payoutID uuid.UUID, cause error) {
+	if s.Config.ProviderScope != nil {
+		s.log.WarnContext(ctx, "rocketwork send attempts exhausted; checkpoint retained", "payout_id", payoutID)
+		_ = s.schedule(ctx, job.Job{Kind: KindPollPayout, DedupeKey: PollPayoutKey(payoutID), Payload: PayoutPayload{payoutID}, RunAt: s.Clock.Now(), MaxAttempts: PollAttempts})
+		return
+	}
 	const op = "Payout.SendExhausted"
 	log := s.log.With(logx.KeyOp, op, KeyPayoutID, payoutID)
 	log.ErrorContext(ctx, "payout send exhausted", logx.KeyError, cause.Error())

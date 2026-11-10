@@ -352,6 +352,7 @@ func ordReport(tx *store.Tx, r *store.OrdReport, period string) api.OrdReport {
 	}
 	for _, i := range r.Invoices {
 		out.Invoices = append(out.Invoices, api.OrdInvoiceRow{Id: i.ID, ContractKind: api.OrdInvoiceRowContractKind(i.ContractKind),
+			LinksStatus:  api.OrdSyncStatus("pending"),
 			Organization: orgRef(tx, i.OrgID), Number: i.Number, InvoiceDate: dateOf(i.InvoiceDate), Amount: i.Amount,
 			ItemsCount: i.ItemsCount, Status: api.OrdSyncStatus(i.Status), Error: strPtr(i.Error), Attempts: i.Attempts})
 	}

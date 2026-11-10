@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -37,7 +36,7 @@ func newClient(t *testing.T, h http.HandlerFunc) (*rocketwork.Client, *dbtest.DB
 		clk.Advance(w)
 		return nil
 	}})
-	return rocketwork.New(out, lim, rocketwork.Options{BaseURL: srv.URL, Token: token, WebhookSecret: []byte("s")}, log), d
+	return rocketwork.New(out, lim, rocketwork.Options{BaseURL: srv.URL, Token: token}, log), d
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {
@@ -46,127 +45,150 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 	_ = json.NewEncoder(w).Encode(v)
 }
 
-func TestEnsureAndGetContractor(t *testing.T) {
-	var gotBody map[string]string
+func TestPublicAPIReads(t *testing.T) {
+	validate := contractValidator(t)
+	checkedResponse := func(w http.ResponseWriter, schema string, body any) {
+		if err := validate("/components/schemas/"+schema, body); err != nil {
+			t.Errorf("HTTP response violates %s: %v", schema, err)
+		}
+		writeJSON(w, 200, body)
+	}
 	c, d := newClient(t, func(w http.ResponseWriter, r *http.Request) {
-		if r.Header.Get("Authorization") != "Bearer "+token {
-			t.Errorf("authorization %q", r.Header.Get("Authorization"))
+		if r.Method != http.MethodGet || r.Header.Get("Authorization") != "Bearer "+token ||
+			r.Header.Get("Accept") != "application/json" || r.Header.Get("User-Agent") == "" {
+			t.Error("invalid request method or headers")
 		}
-		switch {
-		case r.Method == http.MethodPost && r.URL.Path == "/contractors":
-			raw, _ := io.ReadAll(r.Body)
-			_ = json.Unmarshal(raw, &gotBody)
-			writeJSON(w, http.StatusCreated, map[string]string{"id": "c-1", "status": "invited", "onboarding_url": "https://o/c-1"})
-		case r.Method == http.MethodGet && r.URL.Path == "/contractors/c-1":
-			writeJSON(w, http.StatusOK, map[string]string{"id": "c-1", "status": "fns_unbound"})
-		default:
-			http.NotFound(w, r)
+		if r.Header.Get("Idempotency-Key") != "" {
+			t.Error("undocumented idempotency header")
 		}
-	})
-	ctx := context.Background()
-	got, err := c.EnsureContractor(ctx, rocketwork.ContractorRequest{ExternalID: "org-1", INN: "500100732259",
-		FullName: "Иванов Иван", Phone: "+79991234567", LegalForm: rocketwork.LegalFormSelfEmployed})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got.ID != "c-1" || got.Status != rocketwork.ContractorInvited || got.OnboardingURL != "https://o/c-1" {
-		t.Fatalf("contractor %+v", got)
-	}
-	if gotBody["inn"] != "500100732259" || gotBody["legal_form"] != "self_employed" || gotBody["external_id"] != "org-1" {
-		t.Fatalf("request body %v", gotBody)
-	}
-	got, err = c.GetContractor(ctx, "c-1")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got.Status != rocketwork.ContractorBlocked || got.BlockedReason != rocketwork.FailureTaxStatusLost {
-		t.Fatalf("blocked contractor %+v", got)
-	}
-	// В outbound_request ИНН, телефон и ФИО маскированы, токена нет.
-	var recorded string
-	if err := d.Pool.QueryRow(ctx, `SELECT request::text
-		FROM outbound_request WHERE operation = 'RocketWork.EnsureContractor'`).Scan(&recorded); err != nil {
-		t.Fatal(err)
-	}
-	for _, secret := range []string{"500100732259", "+79991234567", "Иванов Иван", token} {
-		if strings.Contains(recorded, secret) {
-			t.Errorf("outbound_request contains %q: %s", secret, recorded)
-		}
-	}
-}
-
-func TestPayouts(t *testing.T) {
-	var key string
-	c, _ := newClient(t, func(w http.ResponseWriter, r *http.Request) {
-		switch {
-		case r.Method == http.MethodGet && r.URL.Path == "/account/balance":
-			writeJSON(w, http.StatusOK, map[string]any{"available_kopecks": 123456, "currency": "RUB"})
-		case r.Method == http.MethodPost && r.URL.Path == "/payments":
-			key = r.Header.Get("Idempotency-Key")
-			writeJSON(w, http.StatusCreated, map[string]any{"id": "p-1", "external_id": "po-1", "status": "processing"})
-		case r.Method == http.MethodGet && r.URL.Path == "/payments/p-1":
-			writeJSON(w, http.StatusOK, map[string]any{"id": "p-1", "status": "paid", "fee_kopecks": 300, "receipt_url": "https://r/1"})
-		case r.Method == http.MethodGet && r.URL.Path == "/payments/p-2":
-			writeJSON(w, http.StatusOK, map[string]any{"id": "p-2", "status": "rejected", "failure_reason": "fns_unbound"})
-		case r.Method == http.MethodGet && r.URL.Path == "/payments/p-3":
-			writeJSON(w, http.StatusOK, map[string]any{"id": "p-3", "status": "on_hold_by_bank"})
-		case r.Method == http.MethodGet && r.URL.Path == "/payments":
-			if r.URL.Query().Get("external_id") == "po-1" {
-				writeJSON(w, http.StatusOK, map[string]any{"items": []any{map[string]any{"id": "p-1", "status": "processing"}}})
-				return
+		switch r.URL.Path {
+		case "/api/account":
+			checkedResponse(w, "AccountDetails", map[string]any{"balance": json.Number("1234.56"), "company_name": "synthetic", "company_inn": "private-inn", "requisites": map[string]string{"account_number": "private-account"}})
+		case "/api/tasks/7":
+			checkedResponse(w, "Task", map[string]any{"task": map[string]any{"id": 7, "type": "OneTime", "amount_gross": "100.00", "status": "paid", "commission": "3.01", "receipt_uri": "https://private-receipt"}})
+		case "/api/tasks":
+			if r.URL.Query().Get("external_ids[]") != "po-1" {
+				t.Error("wrong external id filter")
 			}
-			writeJSON(w, http.StatusOK, map[string]any{"items": []any{}})
+			checkedResponse(w, "Tasks", map[string]any{"meta": map[string]int{"current": 1, "last": 1, "total": 1}, "tasks": []any{map[string]any{"id": 7, "type": "OneTime", "amount_gross": "100.00", "external_id": "po-1", "status": "error"}}})
 		default:
 			http.NotFound(w, r)
 		}
 	})
 	ctx := context.Background()
-	bal, err := c.GetDepositBalance(ctx)
-	if err != nil || bal != 123456 {
-		t.Fatalf("balance %d, %v", bal, err)
+	balance, err := c.GetDepositBalance(ctx)
+	if err != nil || balance != 123456 {
+		t.Fatalf("balance %d: %v", balance, err)
 	}
-	p, err := c.CreatePayout(ctx, rocketwork.PaymentRequest{IdempotencyKey: "rw-payout:po-1", ExternalID: "po-1",
-		ContractorID: "c-1", AmountKopecks: 10000, Purpose: "заказ 1"})
-	if err != nil || p.ID != "p-1" || p.Status != rocketwork.PaymentSent || key != "rw-payout:po-1" {
-		t.Fatalf("create %+v %v key %q", p, err, key)
+	p, err := c.GetPayout(ctx, "7")
+	if err != nil || p.Status != rocketwork.PaymentSucceeded || p.FeeKopecks != 301 {
+		t.Fatalf("payment %+v: %v", p, err)
 	}
-	if p, err = c.GetPayout(ctx, "p-1"); err != nil || p.Status != rocketwork.PaymentSucceeded || p.FeeKopecks != 300 {
-		t.Fatalf("paid %+v %v", p, err)
+	p, found, err := c.FindPayout(ctx, "rw-payout:po-1")
+	if err != nil || !found || p.Status != rocketwork.PaymentSent {
+		t.Fatalf("recover %+v %v: %v", p, found, err)
 	}
-	if p, err = c.GetPayout(ctx, "p-2"); err != nil || p.Status != rocketwork.PaymentFailed || p.FailureCode != rocketwork.FailureTaxStatusLost {
-		t.Fatalf("failed %+v %v", p, err)
+	var recorded string
+	if err := d.Pool.QueryRow(ctx, "SELECT string_agg(response_body::text, ' ') FROM outbound_request").Scan(&recorded); err != nil {
+		t.Fatal(err)
 	}
-	if p, err = c.GetPayout(ctx, "p-3"); err != nil || p.Status != rocketwork.PaymentSent || p.Known {
-		t.Fatalf("unknown status %+v %v", p, err)
-	}
-	if _, found, err := c.FindPayout(ctx, "rw-payout:po-1"); err != nil || !found {
-		t.Fatalf("find %v %v", found, err)
-	}
-	if _, found, err := c.FindPayout(ctx, "rw-payout:po-9"); err != nil || found {
-		t.Fatalf("find missing %v %v", found, err)
-	}
-	if _, err := c.GetPayout(ctx, "p-404"); !errors.Is(err, rocketwork.ErrNotFound) {
-		t.Fatalf("404: %v", err)
+	for _, secret := range []string{token, "private-inn", "private-account", "private-receipt", "private-error"} {
+		if strings.Contains(recorded, secret) {
+			t.Errorf("stored sensitive field %s", secret)
+		}
 	}
 }
 
-func TestErrors(t *testing.T) {
-	status := http.StatusUnprocessableEntity
-	body := map[string]any{"error": map[string]string{"code": "insufficient_funds", "message": "not enough"}}
-	c, _ := newClient(t, func(w http.ResponseWriter, r *http.Request) { writeJSON(w, status, body) })
+func TestLookupFailsClosed(t *testing.T) {
+	var response any
+	c, _ := newClient(t, func(w http.ResponseWriter, r *http.Request) { writeJSON(w, 200, response) })
+	task := map[string]any{"id": 7, "type": "OneTime", "external_id": "po-1", "status": "paying"}
+	for _, v := range []any{
+		map[string]any{}, map[string]any{"tasks": nil},
+		map[string]any{"tasks": []any{task, task}},
+		map[string]any{"tasks": []any{map[string]any{"id": 7, "type": "OneTime", "external_id": "wrong", "status": "paid"}}},
+	} {
+		response = v
+		if _, found, err := c.FindPayout(context.Background(), "rw-payout:po-1"); !errors.Is(err, rocketwork.ErrFormat) || found {
+			t.Fatalf("ambiguous lookup: %v %v", found, err)
+		}
+	}
+	response = map[string]any{"tasks": []any{}, "meta": map[string]int{"current": 1, "last": 1, "total": 0}}
+	if _, found, err := c.FindPayout(context.Background(), "rw-payout:po-1"); err != nil || found {
+		t.Fatalf("empty lookup: %v %v", found, err)
+	}
+}
+
+func TestUnsupportedOperationsNeverCallProvider(t *testing.T) {
+	// Nil dependencies prove that these paths cannot reach the network or database.
+	c := rocketwork.New(nil, nil, rocketwork.Options{}, logx.Discard())
 	ctx := context.Background()
-	req := rocketwork.PaymentRequest{IdempotencyKey: "rw-payout:x", ExternalID: "x", ContractorID: "c", AmountKopecks: 1}
-	_, err := c.CreatePayout(ctx, req)
-	var rej *rocketwork.RejectedError
-	if !errors.As(err, &rej) || rej.Code != rocketwork.FailureInsufficientDeposit {
-		t.Fatalf("422: %v", err)
+	if _, err := c.EnsureContractor(ctx, rocketwork.ContractorRequest{}); !errors.Is(err, rocketwork.ErrDisabled) {
+		t.Fatal(err)
 	}
-	status, body = http.StatusUnauthorized, map[string]any{}
-	if _, err = c.GetDepositBalance(ctx); !errors.As(err, &rej) || rej.Code != rocketwork.FailureProviderError {
-		t.Fatalf("401: %v", err)
+	if _, err := c.GetContractor(ctx, "123"); !errors.Is(err, rocketwork.ErrDisabled) {
+		t.Fatal(err)
 	}
-	status = http.StatusBadGateway
-	if _, err = c.GetDepositBalance(ctx); !errors.Is(err, rocketwork.ErrUnavailable) {
-		t.Fatalf("502: %v", err)
+	for i := 0; i < 2; i++ {
+		if _, err := c.CreatePayout(ctx, rocketwork.PaymentRequest{}); !errors.Is(err, rocketwork.ErrDisabled) {
+			t.Fatal(err)
+		}
+	}
+	body := rocketwork.WebhookPayload("ev", rocketwork.ServiceEventPayment, "7")
+	if _, err := c.ParseWebhook(http.Header{rocketwork.SignatureHeader: {rocketwork.Sign([]byte("secret"), body)}}, body); !errors.Is(err, rocketwork.ErrSignature) {
+		t.Fatal(err)
+	}
+}
+
+func TestReadErrors(t *testing.T) {
+	status := 401
+	c, _ := newClient(t, func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, status, map[string]any{"message": "private-error"})
+	})
+	for _, code := range []int{401, 404, 422, 502} {
+		status = code
+		_, err := c.GetDepositBalance(context.Background())
+		if err == nil || strings.Contains(err.Error(), "private-error") {
+			t.Fatalf("unsafe error: %v", err)
+		}
+		if code == 404 && !errors.Is(err, rocketwork.ErrNotFound) {
+			t.Fatal(err)
+		}
+		if code == 502 && !errors.Is(err, rocketwork.ErrUnavailable) {
+			t.Fatal(err)
+		}
+	}
+}
+
+func TestLookupRejectsDuplicateAcrossPages(t *testing.T) {
+	calls := 0
+	c, _ := newClient(t, func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		page := 1
+		if r.URL.Query().Get("page") == "2" {
+			page = 2
+		}
+		writeJSON(w, 200, map[string]any{"tasks": []any{map[string]any{"id": 7, "type": "OneTime", "status": "paying", "amount_gross": "100.00", "external_id": "same"}}, "meta": map[string]int{"current": page, "last": 2, "total": 2}})
+	})
+	if _, found, err := c.FindPayout(context.Background(), "rw-payout:same"); !errors.Is(err, rocketwork.ErrFormat) || found || calls != 2 {
+		t.Fatalf("duplicate: found=%t calls=%d err=%v", found, calls, err)
+	}
+}
+
+func TestClientRejectsRedirect(t *testing.T) {
+	targetCalls := 0
+	target := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { targetCalls++ }))
+	defer target.Close()
+	redirect := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { http.Redirect(w, r, target.URL, http.StatusFound) }))
+	defer redirect.Close()
+	client := rocketwork.NewHTTPClient()
+	defer client.CloseIdleConnections()
+	resp, err := client.Get(redirect.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusFound || targetCalls != 0 {
+		t.Fatal("redirect followed")
 	}
 }

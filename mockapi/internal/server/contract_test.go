@@ -174,6 +174,7 @@ var cases = map[string]opCase{
 	"getBloggerPayoutSummary": {user: blg},
 	"getRocketworkStatus":     {user: blg},
 	"inviteRocketwork":        {user: blg, noBody: true},
+	"requestRocketworkAction": {user: blg, body: map[string]any{"action": "invite"}},
 	"refreshRocketworkStatus": {user: blg, noBody: true},
 
 	// администратор

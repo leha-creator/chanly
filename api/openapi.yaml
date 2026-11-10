@@ -1724,11 +1724,11 @@ paths:
       operationId: inviteRocketwork
       summary: Начать онбординг в Рокет Ворк (S-11)
       description: |
-        Принимает запрос: исполнитель создаётся в Рокет Ворк заданием, ссылка на регистрацию
-        появится в `getRocketworkStatus` (`onboarding_url`). Повтор — то же состояние. Юрлицу
+        Принимает запрос: задание проверяет исполнителя и при необходимости отправляет SMS-приглашение.
+        Ссылка на регистрацию не гарантируется; интерфейс использует `next_action`. Повтор — то же состояние. Юрлицу
         Рокет Ворк не нужен — `409` с `details.reason = contractor_not_required`. Сервис не
         подключён — `503` с `details.reason = rocketwork_unavailable`. Не больше 10 запросов
-        пользователя в час. Тестовый сервер сразу делает исполнителя `active`.
+        пользователя в час.
       responses:
         '202':
           description: Запрос принят, состояние исполнителя
@@ -1766,6 +1766,39 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '409':
           description: Рокет Ворк не нужен (юрлицо)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '503': { $ref: '#/components/responses/ServiceUnavailable' }
+
+  /blogger/rocketwork/actions:
+    post:
+      tags: [blogger-payouts]
+      operationId: requestRocketworkAction
+      summary: Явное действие подключения исполнителя своей организации
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [action]
+              properties:
+                action: { type: string, enum: [invite, register, update, rebind] }
+                first_name: { type: string, maxLength: 100 }
+                last_name: { type: string, maxLength: 100 }
+                second_name: { type: string, maxLength: 100 }
+      responses:
+        '202':
+          description: Действие поставлено в очередь; повтор сохраняет контрольную точку
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RocketworkStatus' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409':
+          description: Действие недопустимо либо требует сверки
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
@@ -3600,16 +3633,16 @@ paths:
       operationId: rocketworkWebhook
       summary: События Рокет Ворк
       description: |
-        Подпись — заголовок `X-Rocketwork-Signature: sha256=<hex>`, HMAC-SHA256 тела общим секретом
-        (предположение, Q-12). Нет заголовка или секрета — `401`. Событие с верной подписью, но
-        неразобранное или неизвестное — `200`: повтор того же тела ничего не исправит.
+        Public API v1: Authorization Bearer с секретом подписки. Нет корректного секрета — `401`.
+        Событие запускает чтение актуального состояния; денежный статус из тела не применяется.
+        Неизвестные события сохраняются и получают `200`. HMAC используется только локальным fake.
       security: []
       requestBody:
         required: true
         content:
           application/json:
             schema: { $ref: '#/components/schemas/WebhookPayload' }
-            example: { id: rwe-1, event: payment.status_changed, object_id: rwp-1, occurred_at: "2026-10-20T09:00:00Z" }
+            example: { id: 19, event: task.paid, data: { id: 7 }, happened_at: "2026-11-09T09:00:00Z" }
       responses:
         '200': { description: Событие принято }
         '400': { description: Тело не прочитано }
@@ -4915,6 +4948,8 @@ components:
       type: object
       required: [id, placement_id, order_number, channel, amount, status, method, attempt, created_at]
       properties:
+        workflow: { $ref: '#/components/schemas/RocketworkWorkflow' }
+        reconciliation_required: { type: boolean }
         id: { $ref: '#/components/schemas/Uuid' }
         placement_id: { $ref: '#/components/schemas/Uuid' }
         order_number: { type: integer, format: int64 }
@@ -4932,6 +4967,7 @@ components:
       type: object
       required: [status, required]
       properties:
+        next_action: { type: string, description: 'invite, complete_registration, grant_fns_permissions, add_requisites, contact_support или none' }
         status: { $ref: '#/components/schemas/RocketworkContractorStatus' }
         required: { type: boolean, description: Нужен ли Рокет Ворк (не нужен юрлицу) }
         onboarding_url: { type: string, format: uri }
@@ -4942,6 +4978,22 @@ components:
           type: string
           format: date-time
           description: Когда статус последний раз сверен с Рокет Ворк
+    RocketworkDocument:
+      type: object
+      required: [kind, url]
+      properties:
+        kind: { type: string }
+        url: { type: string, format: uri }
+    RocketworkWorkflow:
+      type: object
+      required: [stage, provider_status, next_action, documents]
+      properties:
+        stage: { type: string }
+        provider_status: { type: string }
+        next_action: { type: string, description: 'sign_agreement, sign_act, submit_receipt, wait_receipt, wait_payment, wait_financial_details, wait_cancellation, contact_support, wait или none' }
+        documents:
+          type: array
+          items: { $ref: '#/components/schemas/RocketworkDocument' }
     PayoutSummary:
       type: object
       required: [received_amount, in_progress_amount, count]

@@ -36,6 +36,9 @@ func runAdmin(ctx context.Context, cfg Config, log *slog.Logger, args []string, 
 	if args[0] == "payout" {
 		return runAdminPayout(ctx, cfg, log, args[1:], out)
 	}
+	if args[0] == "rocketwork" {
+		return runAdminRocketWork(ctx, cfg, log, args[1:], out)
+	}
 	if args[0] == "dispute" {
 		return runAdminDispute(ctx, cfg, log, args[1:], out)
 	}

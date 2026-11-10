@@ -188,7 +188,8 @@ func (s *Store) ContractorCounts(ctx context.Context) (map[domain.ContractorStat
 
 func payoutOf(r sqlc.Payout) domain.Payout {
 	p := domain.Payout{
-		ID: r.ID, PlacementID: r.PlacementID, BloggerOrganizationID: r.BloggerOrganizationID, Method: domain.Method(r.Method),
+		ReconciliationRequired: r.ReconciliationRequired,
+		ID:                     r.ID, PlacementID: r.PlacementID, BloggerOrganizationID: r.BloggerOrganizationID, Method: domain.Method(r.Method),
 		ContractorID: uuidOf(r.RocketworkContractorID), Amount: money.Kopecks(r.Amount), Attempt: int(r.Attempt),
 		Status: domain.Status(r.Status), ExternalID: str(r.ExternalID), ReceiptURL: str(r.ReceiptUrl),
 		BankReference: str(r.BankReference), FailureCode: domain.FailureCode(str(r.FailureCode)),

@@ -2,12 +2,14 @@ package rocketwork
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -17,40 +19,39 @@ import (
 	"github.com/leha-creator/chanly/internal/platform/ratelimit"
 )
 
-// Адрес и лимит по умолчанию.
-//
-// ПРЕДПОЛОЖЕНИЕ (Q-10): базовый адрес API и версия; 5 запросов в секунду на заказчика.
+// Public API v1: roketwork_openapi.json. Rate is a local limit, not a provider SLA.
 const (
-	DefaultBaseURL = "https://api.rocketwork.ru/api/v2"
-	DefaultRate    = 5.0
-)
-
-// Операции адаптера: имена в outbound_request.
-const (
+	DefaultBaseURL     = "https://api.rocketwork.ru"
+	DefaultRate        = 5.0
 	OpEnsureContractor = "EnsureContractor"
 	OpGetContractor    = "GetContractor"
 	OpGetDeposit       = "GetDepositBalance"
 	OpCreatePayout     = "CreatePayout"
 	OpGetPayout        = "GetPayout"
 	OpFindPayout       = "FindPayout"
+	busyRetry          = 30 * time.Second
 )
 
-// busyRetry — через сколько повторить задание, если ограничитель занят.
-const busyRetry = 30 * time.Second
-
-// Options — подключение к Рокет Ворк.
 type Options struct {
 	BaseURL string
-	// Token — токен кабинета заказчика (секрет, 07 §4).
-	Token string
-	// WebhookSecret — ключ подписи вебхуков (ROCKETWORK_WEBHOOK_SECRET).
-	WebhookSecret []byte
-	Rate          float64
+	Token   string
+	// Bearer credential configured in the postback subscription; HMAC is fake-only.
+	WebhookSecret         []byte
+	PreviousWebhookSecret []byte
+	Rate                  float64
 }
 
-// Client — HTTP-клиент Рокет Ворк по предполагаемому контракту (ROCKETWORK_MODE=live).
-// Каждый запрос проходит общий ограничитель (rocketwork:global) и platform/outbound: повторы,
-// предохранитель, outbound_request с маскированными ИНН, ФИО и телефоном.
+// NewHTTPClient keeps credentials on the configured origin and requires TLS 1.2.
+func NewHTTPClient() *http.Client {
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	transport.TLSClientConfig = &tls.Config{MinVersion: tls.VersionTLS12}
+	client := outbound.NewHTTPClient(transport)
+	client.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
+	return client
+}
+
+// Client implements Public API v1 reads and explicit writes. The application
+// owns authorization, immutable terms, checkpoints and production admission.
 type Client struct {
 	out     *outbound.Client
 	limiter *ratelimit.Limiter
@@ -58,7 +59,6 @@ type Client struct {
 	log     *slog.Logger
 }
 
-// New создаёт клиент. out — клиент outbound системы rocketwork.
 func New(out *outbound.Client, limiter *ratelimit.Limiter, opts Options, log *slog.Logger) *Client {
 	if opts.BaseURL == "" {
 		opts.BaseURL = DefaultBaseURL
@@ -70,263 +70,163 @@ func New(out *outbound.Client, limiter *ratelimit.Limiter, opts Options, log *sl
 	return &Client{out: out, limiter: limiter, opts: opts, log: log.With(logx.KeyComponent, "rocketwork")}
 }
 
-// ---------------------------------------------------------------- формат сервиса
-
-// ПРЕДПОЛОЖЕНИЕ (Q-10): тело исполнителя {id, status, onboarding_url, blocked_reason}.
-type contractorDTO struct {
-	ID            string `json:"id"`
-	Status        string `json:"status"`
-	OnboardingURL string `json:"onboarding_url"`
-	BlockedReason string `json:"blocked_reason"`
-}
-
-// ПРЕДПОЛОЖЕНИЕ (Q-10): запрос создания исполнителя.
-type contractorCreateDTO struct {
-	ExternalID string `json:"external_id"`
-	INN        string `json:"inn"`
-	Phone      string `json:"phone"`
-	FullName   string `json:"full_name"`
-	LegalForm  string `json:"legal_form"`
-}
-
-// ПРЕДПОЛОЖЕНИЕ (Q-10): тело выплаты.
-type paymentDTO struct {
-	ID             string `json:"id"`
-	ExternalID     string `json:"external_id"`
-	Status         string `json:"status"`
-	AmountKopecks  int64  `json:"amount_kopecks"`
-	FeeKopecks     int64  `json:"fee_kopecks"`
-	ReceiptURL     string `json:"receipt_url"`
-	FailureReason  string `json:"failure_reason"`
-	FailureMessage string `json:"failure_message"`
-}
-
-// ПРЕДПОЛОЖЕНИЕ (Q-10): запрос создания выплаты.
-type paymentCreateDTO struct {
-	ContractorID  string `json:"contractor_id"`
-	AmountKopecks int64  `json:"amount_kopecks"`
-	Purpose       string `json:"purpose"`
-	ExternalID    string `json:"external_id"`
-}
-
-// ПРЕДПОЛОЖЕНИЕ (Q-10): тело ошибки {error: {code, message}}.
-type errorDTO struct {
-	Error struct {
-		Code    string `json:"code"`
-		Message string `json:"message"`
-	} `json:"error"`
-}
-
-func (d contractorDTO) ours() Contractor {
-	status, reason, known := ContractorStatusFrom(d.Status)
-	if status == ContractorBlocked && d.BlockedReason != "" && reason != FailureTaxStatusLost {
-		reason = d.BlockedReason
-	}
-	return Contractor{ID: d.ID, Status: status, BlockedReason: reason, OnboardingURL: d.OnboardingURL,
-		RawStatus: d.Status, Known: known}
-}
-
-func (d paymentDTO) ours() Payment {
-	status, known := PaymentStatusFrom(d.Status)
-	p := Payment{ID: d.ID, ExternalID: d.ExternalID, Status: status, FeeKopecks: d.FeeKopecks, ReceiptURL: d.ReceiptURL,
-		FailureMessage: d.FailureMessage, RawStatus: d.Status, Known: known}
-	if status == PaymentFailed {
-		p.FailureCode = FailureCodeFrom(d.FailureReason)
-	}
-	return p
-}
-
-// ---------------------------------------------------------------- вызовы
-
-type request struct {
-	operation string
-	method    string
-	path      string
-	query     url.Values
-	body      any
-	key       string
-	objectID  string
-	create    bool
-	check     func(ctx context.Context) (bool, error)
-}
-
-func (c *Client) bucket() ratelimit.Bucket {
-	return ratelimit.Bucket{Key: "rocketwork:global", Rate: c.opts.Rate, Burst: c.opts.Rate}
-}
-
-// do выполняет вызов и раскладывает результат в out; ошибки — в наших терминах (classify).
-func (c *Client) do(ctx context.Context, r request, out any) error {
-	if err := c.limiter.Wait(ctx, c.bucket(), ratelimit.PriorityPublish); err != nil {
+func (c *Client) read(ctx context.Context, op, path string, query url.Values, result any) error {
+	c.log.DebugContext(ctx, "rocketwork read started", logx.KeyOp, "RocketWork."+op)
+	if err := c.limiter.Wait(ctx, ratelimit.Bucket{Key: "rocketwork:global", Rate: c.opts.Rate, Burst: c.opts.Rate}, ratelimit.PriorityPublish); err != nil {
 		if errors.Is(err, ratelimit.ErrBusy) {
 			return job.Retry(err, busyRetry)
 		}
 		return err
 	}
-	u := c.opts.BaseURL + r.path
-	if len(r.query) > 0 {
-		u += "?" + r.query.Encode()
+	u := c.opts.BaseURL + path
+	if len(query) > 0 {
+		u += "?" + query.Encode()
 	}
-	call := outbound.Call{
-		Operation: "RocketWork." + r.operation,
-		Method:    r.method,
-		URL:       u,
-		// ПРЕДПОЛОЖЕНИЕ (Q-10): постоянный токен кабинета заказчика в Authorization: Bearer.
-		Header:     http.Header{"Authorization": {"Bearer " + c.opts.Token}},
-		Body:       r.body,
-		ObjectType: r.operation,
-		ObjectID:   r.objectID,
-		Create:     r.create, CheckExisting: r.check,
-	}
-	if r.key != "" {
-		// ПРЕДПОЛОЖЕНИЕ (Q-10): ключ идемпотентности в заголовке Idempotency-Key.
-		call.IdempotencyKey, call.IdempotencyHeader = r.key, "Idempotency-Key"
-	}
-	if r.body != nil {
-		call.RecordBody = recordBody(r.body)
-	}
-	resp, err := c.out.Do(ctx, call)
+	resp, err := c.out.Do(ctx, outbound.Call{
+		Operation: "RocketWork." + op, Method: http.MethodGet, URL: u,
+		Header: http.Header{"Authorization": {"Bearer " + c.opts.Token}, "Accept": {"application/json"}, "Content-Type": {"application/json"}, "User-Agent": {"maxim-rocketwork/1"}},
+		Redact: RedactFields, Sensitive: true,
+	})
 	if err != nil {
-		return classify(resp, err)
+		c.log.WarnContext(ctx, "rocketwork read failed", logx.KeyOp, "RocketWork."+op, "status", resp.Status)
+		if _, ok := job.RetryAfter(err); ok {
+			return err
+		}
+		if resp.Status == http.StatusNotFound {
+			return ErrNotFound
+		}
+		// Provider error text can contain requisites and personal data.
+		if job.IsPermanent(err) {
+			return &RejectedError{Code: FailureProviderError, Message: fmt.Sprintf("HTTP %d", resp.Status)}
+		}
+		return fmt.Errorf("%w: read failed", ErrUnavailable)
 	}
-	if resp.Recovered {
-		// Объект создан, но тело ответа потеряно: вызывающий найдёт его FindPayout.
-		return fmt.Errorf("%w: %s recovered after timeout", ErrUnavailable, r.operation)
+	if err := json.Unmarshal(resp.Body, result); err != nil {
+		c.log.WarnContext(ctx, "rocketwork invalid response", logx.KeyOp, "RocketWork."+op, "status", resp.Status)
+		return fmt.Errorf("%w: invalid response", ErrFormat)
 	}
-	c.log.DebugContext(ctx, "rocketwork response", logx.KeyOp, "RocketWork."+r.operation, "status", resp.Status,
-		"body", string(redactJSON(resp.Body)))
-	if out == nil {
-		return nil
-	}
-	if err := json.Unmarshal(resp.Body, out); err != nil {
-		return fmt.Errorf("%w: decode %s response: %v", ErrFormat, r.operation, err)
-	}
+	c.log.DebugContext(ctx, "rocketwork read completed", logx.KeyOp, "RocketWork."+op, "status", resp.Status)
 	return nil
 }
 
-// classify переводит ошибку outbound в наши (05 §1, 05 §4.3): 404 — ErrNotFound; отказ 4xx
-// с кодом — RejectedError; прочие 4xx — RejectedError provider_error; 5xx, 429, сеть —
-// ErrUnavailable (повтор задания, outbound уже повторил внутри).
-//
-// ПРЕДПОЛОЖЕНИЕ (Q-10): 422 insufficient_funds, 409 contractor_not_active, 404 — объекта нет.
-func classify(resp outbound.Response, err error) error {
-	if _, ok := job.RetryAfter(err); ok {
-		return err
-	}
-	if !job.IsPermanent(err) {
-		return fmt.Errorf("%w: %v", ErrUnavailable, err)
-	}
-	if resp.Status == http.StatusNotFound {
-		return ErrNotFound
-	}
-	var body errorDTO
-	_ = json.Unmarshal(resp.Body, &body)
-	code := FailureProviderError
-	if body.Error.Code != "" {
-		code = FailureCodeFrom(body.Error.Code)
-	}
-	msg := body.Error.Message
-	if msg == "" {
-		msg = fmt.Sprintf("status %d", resp.Status)
-	}
-	// ПРЕДПОЛОЖЕНИЕ (Q-10): 409 без делового кода — запрос с тем же ключом ещё выполняется; исход
-	// неизвестен, а не отказ: задание ищет выплату по ключу и повторяет (R-6).
-	if resp.Status == http.StatusConflict && code == FailureProviderError {
-		return fmt.Errorf("%w: conflict: %s", ErrUnavailable, msg)
-	}
-	return &RejectedError{Code: code, Message: msg}
+func (c *Client) blocked(ctx context.Context, op string) error {
+	c.log.WarnContext(ctx, "rocketwork operation blocked", logx.KeyOp, "RocketWork."+op, "reason", "workflow_unconfigured")
+	return fmt.Errorf("%w: %s requires a configured executor and agreement workflow", ErrDisabled, op)
 }
 
-// EnsureContractor — POST /contractors; повтор с тем же ИНН возвращает существующего.
-//
-// ПРЕДПОЛОЖЕНИЕ (Q-10): метод и идемпотентность по ИНН.
-func (c *Client) EnsureContractor(ctx context.Context, r ContractorRequest) (Contractor, error) {
-	var d contractorDTO
-	err := c.do(ctx, request{operation: OpEnsureContractor, method: http.MethodPost, path: "/contractors",
-		objectID: r.ExternalID, key: "rw-contractor:" + r.ExternalID,
-		body: contractorCreateDTO{ExternalID: r.ExternalID, INN: r.INN, Phone: r.Phone, FullName: r.FullName, LegalForm: r.LegalForm}}, &d)
-	if err != nil {
-		return Contractor{}, err
-	}
-	out := d.ours()
-	c.log.InfoContext(ctx, "rocketwork contractor ensured", logx.KeyOp, "RocketWork.EnsureContractor",
-		"external_id", out.ID, "status", out.Status)
-	return out, nil
+// Registration needs passport data; invite sends SMS and does not return an
+// onboarding URL. Neither can implement the existing port by guessing fields.
+func (c *Client) EnsureContractor(ctx context.Context, _ ContractorRequest) (Contractor, error) {
+	return Contractor{}, c.blocked(ctx, OpEnsureContractor)
 }
 
-// GetContractor — GET /contractors/{id}.
-func (c *Client) GetContractor(ctx context.Context, id string) (Contractor, error) {
-	var d contractorDTO
-	if err := c.do(ctx, request{operation: OpGetContractor, method: http.MethodGet,
-		path: "/contractors/" + url.PathEscape(id), objectID: id}, &d); err != nil {
-		return Contractor{}, err
-	}
-	return d.ours(), nil
+// GET /api/executors/{id} accepts phone/INN/email, not the numeric executor ID
+// stored by the old adapter. An explicit identity migration is required.
+func (c *Client) GetContractor(ctx context.Context, _ string) (Contractor, error) {
+	return Contractor{}, c.blocked(ctx, OpGetContractor)
 }
 
-// GetDepositBalance — GET /account/balance.
-//
-// ПРЕДПОЛОЖЕНИЕ (Q-10): {available_kopecks, currency}.
 func (c *Client) GetDepositBalance(ctx context.Context) (int64, error) {
-	var d struct {
-		Available int64  `json:"available_kopecks"`
-		Currency  string `json:"currency"`
-	}
-	if err := c.do(ctx, request{operation: OpGetDeposit, method: http.MethodGet, path: "/account/balance"}, &d); err != nil {
+	var d accountDTO
+	if err := c.read(ctx, OpGetDeposit, "/api/account", nil, &d); err != nil {
 		return 0, err
 	}
-	if d.Currency != "" && d.Currency != "RUB" {
-		return 0, fmt.Errorf("%w: deposit currency %s", ErrFormat, d.Currency)
-	}
-	return d.Available, nil
+	return rublesToKopecks(string(d.Balance))
 }
 
-// CreatePayout — POST /payments с Idempotency-Key; при таймауте outbound проверяет выплату
-// FindPayout (R-6).
-func (c *Client) CreatePayout(ctx context.Context, r PaymentRequest) (Payment, error) {
-	var d paymentDTO
-	err := c.do(ctx, request{operation: OpCreatePayout, method: http.MethodPost, path: "/payments",
-		key: r.IdempotencyKey, objectID: r.ExternalID, create: true,
-		check: func(ctx context.Context) (bool, error) {
-			_, found, err := c.FindPayout(ctx, r.IdempotencyKey)
-			return found, err
-		},
-		body: paymentCreateDTO{ContractorID: r.ContractorID, AmountKopecks: r.AmountKopecks, Purpose: r.Purpose,
-			ExternalID: r.ExternalID}}, &d)
-	if err != nil {
-		return Payment{}, err
-	}
-	return d.ours(), nil
+// Creating a task is not a payout: the agreement, employment kind, acceptance
+// and tax settings must be explicit. Never send the old /payments request.
+func (c *Client) CreatePayout(ctx context.Context, _ PaymentRequest) (Payment, error) {
+	return Payment{}, c.blocked(ctx, OpCreatePayout)
 }
 
-// GetPayout — GET /payments/{id}.
 func (c *Client) GetPayout(ctx context.Context, id string) (Payment, error) {
-	var d paymentDTO
-	if err := c.do(ctx, request{operation: OpGetPayout, method: http.MethodGet,
-		path: "/payments/" + url.PathEscape(id), objectID: id}, &d); err != nil {
+	n, err := strconv.ParseInt(id, 10, 64)
+	if err != nil || n <= 0 || strconv.FormatInt(n, 10) != id {
+		return Payment{}, fmt.Errorf("%w: invalid task id", ErrFormat)
+	}
+	var d struct {
+		Task *taskDTO `json:"task"`
+	}
+	if err := c.read(ctx, OpGetPayout, "/api/tasks/"+id, nil, &d); err != nil {
 		return Payment{}, err
 	}
-	return d.ours(), nil
+	if d.Task == nil || d.Task.ID != n {
+		return Payment{}, fmt.Errorf("%w: task identity mismatch", ErrFormat)
+	}
+	return d.Task.payment()
 }
 
-// FindPayout — GET /payments?external_id=… по нашему идентификатору попытки (ключ rw-payout:<id>).
-//
-// ПРЕДПОЛОЖЕНИЕ (Q-10): поиск по external_id, ответ {items: […]}.
 func (c *Client) FindPayout(ctx context.Context, key string) (Payment, bool, error) {
-	ext := strings.TrimPrefix(key, "rw-payout:")
-	var d struct {
-		Items []paymentDTO `json:"items"`
+	ext, ok := strings.CutPrefix(key, "rw-payout:")
+	if !ok || strings.TrimSpace(ext) == "" {
+		return Payment{}, false, ErrFormat
 	}
-	if err := c.do(ctx, request{operation: OpFindPayout, method: http.MethodGet, path: "/payments",
-		query: url.Values{"external_id": {ext}}, objectID: ext}, &d); err != nil {
+	d, err := c.findTaskDTO(ctx, ext)
+	if err != nil || d == nil {
 		return Payment{}, false, err
 	}
-	if len(d.Items) == 0 {
-		return Payment{}, false, nil
-	}
-	return d.Items[0].ours(), true, nil
+	p, err := d.payment()
+	return p, err == nil, err
 }
 
-// ParseWebhook проверяет подпись (WebhookSecret) и разбирает тело.
+func (c *Client) FindTask(ctx context.Context, externalID string) (TaskSnapshot, bool, error) {
+	if strings.TrimSpace(externalID) == "" {
+		return TaskSnapshot{}, false, ErrFormat
+	}
+	d, err := c.findTaskDTO(ctx, externalID)
+	if err != nil || d == nil {
+		return TaskSnapshot{}, false, err
+	}
+	t, err := d.snapshot()
+	return t, err == nil, err
+}
+
+func (c *Client) findTaskDTO(ctx context.Context, ext string) (*taskDTO, error) {
+	var match *taskDTO
+	total, last, received := -1, -1, 0
+	for page := 1; page <= 1000; page++ {
+		var d struct {
+			Tasks *[]taskDTO `json:"tasks"`
+			Meta  *pageDTO   `json:"meta"`
+		}
+		if err := c.read(ctx, OpFindPayout, "/api/tasks", url.Values{"external_ids[]": {ext}, "per_page": {"25"}, "page": {strconv.Itoa(page)}}, &d); err != nil {
+			return nil, err
+		}
+		if d.Tasks == nil {
+			return nil, fmt.Errorf("%w: missing tasks", ErrFormat)
+		}
+		if err := d.Meta.validate(page, len(*d.Tasks)); err != nil {
+			return nil, err
+		}
+		if page == 1 {
+			total, last = d.Meta.Total, d.Meta.Last
+		}
+		if d.Meta.Total != total || d.Meta.Last != last || (page < last && len(*d.Tasks) == 0) {
+			return nil, fmt.Errorf("%w: changing task collection", ErrFormat)
+		}
+		for _, task := range *d.Tasks {
+			if match != nil || task.ExternalID != ext {
+				return nil, fmt.Errorf("%w: ambiguous task lookup", ErrFormat)
+			}
+			copy := task
+			match = &copy
+			received++
+		}
+		if page == last {
+			if received != total {
+				return nil, fmt.Errorf("%w: incomplete task collection", ErrFormat)
+			}
+			if match == nil {
+				return nil, nil
+			}
+			return match, nil
+		}
+	}
+	return nil, fmt.Errorf("%w: pagination limit", ErrFormat)
+}
+
+// Task callbacks only trigger an authoritative GET; payload status is not applied.
 func (c *Client) ParseWebhook(header map[string][]string, body []byte) (Event, error) {
-	return ParseWebhook(c.opts.WebhookSecret, header, body)
+	return parsePostbackSecrets([][]byte{c.opts.WebhookSecret, c.opts.PreviousWebhookSecret}, header, body)
 }

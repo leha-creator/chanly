@@ -1,0 +1,15 @@
+[
+  {"pointer":"/components/securitySchemes/Bearer/type","issue":"https is not an OpenAPI security type","policy":"test loader only: http; retain scheme=bearer"},
+  {"pointer":"/components/schemas/BankCardParams/anyOf/0/properties/card_number/required","issue":"property-local required boolean","policy":"test loader: move field name to parent required array"},
+  {"pointer":"/components/schemas/TaskCreateParams/allOf/0/properties/description/required","issue":"property-local required boolean","policy":"test loader: move field name to parent required array"},
+  {"pointer":"/components/schemas/TaskCreateParams/allOf/1/properties/title/required","issue":"property-local required boolean","policy":"test loader: move field name to parent required array"},
+  {"pointer":"/components/schemas/TaskCreateParams","issue":"mandatory employment kind and agreement conditions exist in prose, not required arrays; signature_form described outside request properties","policy":"independent semantic assertions; never assume schema validation proves agreement policy"},
+  {"pointer":"/components/schemas/ExecutorCreateParams/anyOf","issue":"branches overlap and executor wrapper is not required by parent","policy":"validate selected entrepreneur branch AND explicit business requirements; do not rely on anyOf alone"},
+  {"pointer":"/components/schemas/TaskProperties","issue":"many monetary/status fields not required by schema","policy":"strict semantic checks for identity, gross and final commission; missing/null is not zero"},
+  {"pointer":"/paths/~1api~1tasks/get/parameters","issue":"executor_phones[] appears nested in external_ids[] x-example, not parameters","policy":"only actual parameters may be sent"},
+  {"pointer":"/paths/~1api~1tasks~1{task_id}~1sign_act/patch","issue":"example status differs from prose completed","policy":"read authoritative task after write; do not fabricate finality"},
+  {"pointer":"/paths/~1api~1tasks~1{task_id}~1cancel/patch","issue":"example signatures conflict with unsigned precondition","policy":"conservative precondition; uncertain response requires GET"},
+  {"pointer":"/components/schemas/Postback","issue":"history requires status; live callback example omits it; data may be flat or wrapped","policy":"separate delivery/history DTO; callbacks trigger authoritative reads"},
+  {"pointer":"/components/schemas/PostbackSubscriptionCreateParams","issue":"version appears in response example but is not a request property","policy":"do not send version"},
+  {"pointer":"/paths/~1api~1tasks~1{task_id}~1refund/post","issue":"refund_amount integer unit unspecified; acquiring-only refund","policy":"unsupported for payout reversal; do not infer units or receipt annulment"}
+]

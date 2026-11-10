@@ -1,0 +1,599 @@
+{
+  "source": "roketwork_openapi.json",
+  "sha256": "cb6e842ac2f683be2e942ea92f5f20919cfcad8e4512b39af4d0d706414694ff",
+  "version": "1.0",
+  "operations": [
+    {
+      "method": "GET",
+      "path": "/api/account",
+      "pointer": "/paths/~1api~1account/get",
+      "request": "/paths/~1api~1account/get",
+      "responses": {
+        "200": "/paths/~1api~1account/get/responses/200",
+        "401": "/paths/~1api~1account/get/responses/401"
+      },
+      "money": "rubles: JSON number on input/account, decimal strings on tasks; service *_cents: integer kopecks",
+      "effect": "none",
+      "reconciliation": "read account identity/balance",
+      "task": 15,
+      "coverage": "contract-checked-selected-flow",
+      "reason": "platform payout workflow",
+      "live_verified": false,
+      "tests": [
+        "internal/bootstrap/integration_check_rocketwork_test.go",
+        "internal/integration/rocketwork/rocketworktest/emulator.go"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/executors",
+      "pointer": "/paths/~1api~1executors/get",
+      "request": "/paths/~1api~1executors/get/parameters",
+      "responses": {
+        "200": "/paths/~1api~1executors/get/responses/200"
+      },
+      "money": "none",
+      "effect": "none",
+      "reconciliation": "exact verified INN/phone/email lookup; never numeric executor id; no automatic repeat writes",
+      "task": 4,
+      "coverage": "contract-checked-selected-flow",
+      "reason": "platform payout workflow",
+      "live_verified": false,
+      "tests": [
+        "internal/integration/rocketwork/executors_test.go",
+        "internal/integration/rocketwork/onboarding_test.go",
+        "internal/payout/app/contract_workflow_test.go"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/executors",
+      "pointer": "/paths/~1api~1executors/post",
+      "request": "/paths/~1api~1executors/post/requestBody",
+      "responses": {
+        "200": "/paths/~1api~1executors/post/responses/200",
+        "400": "/paths/~1api~1executors/post/responses/400",
+        "429": "/paths/~1api~1executors/post/responses/429"
+      },
+      "money": "none",
+      "effect": "register/update executor",
+      "reconciliation": "exact verified INN/phone/email lookup; never numeric executor id; no automatic repeat writes",
+      "task": 5,
+      "coverage": "contract-checked-selected-flow",
+      "reason": "entrepreneur registration/update only; selfemployed uses invitation without collecting passport data",
+      "live_verified": false,
+      "tests": [
+        "internal/integration/rocketwork/executors_test.go",
+        "internal/integration/rocketwork/onboarding_test.go",
+        "internal/payout/app/contract_workflow_test.go"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/executors/{id}",
+      "pointer": "/paths/~1api~1executors~1{id}/get",
+      "request": "/paths/~1api~1executors~1{id}/get/parameters",
+      "responses": {
+        "200": "/paths/~1api~1executors~1{id}/get/responses/200",
+        "400": "/paths/~1api~1executors~1{id}/get/responses/400",
+        "404": "/paths/~1api~1executors~1{id}/get/responses/404"
+      },
+      "money": "none",
+      "effect": "none",
+      "reconciliation": "exact verified INN/phone/email lookup; never numeric executor id; no automatic repeat writes",
+      "task": 4,
+      "coverage": "contract-checked-selected-flow",
+      "reason": "platform payout workflow",
+      "live_verified": false,
+      "tests": [
+        "internal/integration/rocketwork/executors_test.go",
+        "internal/integration/rocketwork/onboarding_test.go",
+        "internal/payout/app/contract_workflow_test.go"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/executors/rebind",
+      "pointer": "/paths/~1api~1executors~1rebind/post",
+      "request": "/paths/~1api~1executors~1rebind/post/requestBody",
+      "responses": {
+        "200": "/paths/~1api~1executors~1rebind/post/responses/200",
+        "400": "/paths/~1api~1executors~1rebind/post/responses/400"
+      },
+      "money": "none",
+      "effect": "FNS permissions request",
+      "reconciliation": "exact verified INN/phone/email lookup; never numeric executor id; no automatic repeat writes",
+      "task": 5,
+      "coverage": "contract-checked-selected-flow",
+      "reason": "platform payout workflow",
+      "live_verified": false,
+      "tests": [
+        "internal/integration/rocketwork/executors_test.go",
+        "internal/integration/rocketwork/onboarding_test.go",
+        "internal/payout/app/contract_workflow_test.go"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/executors/invite",
+      "pointer": "/paths/~1api~1executors~1invite/post",
+      "request": "/paths/~1api~1executors~1invite/post/requestBody",
+      "responses": {
+        "200": "/paths/~1api~1executors~1invite/post/responses/200",
+        "400": "/paths/~1api~1executors~1invite/post/responses/400"
+      },
+      "money": "none",
+      "effect": "SMS invitation",
+      "reconciliation": "exact verified INN/phone/email lookup; never numeric executor id; no automatic repeat writes",
+      "task": 5,
+      "coverage": "contract-checked-selected-flow",
+      "reason": "platform payout workflow",
+      "live_verified": false,
+      "tests": [
+        "internal/integration/rocketwork/executors_test.go",
+        "internal/integration/rocketwork/onboarding_test.go",
+        "internal/payout/app/contract_workflow_test.go"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/ping",
+      "pointer": "/paths/~1api~1ping/get",
+      "request": "/paths/~1api~1ping/get",
+      "responses": {
+        "200": "/paths/~1api~1ping/get/responses/200"
+      },
+      "money": "none",
+      "effect": "none",
+      "reconciliation": "read account identity/balance",
+      "task": 15,
+      "coverage": "contract-checked-selected-flow",
+      "reason": "platform payout workflow",
+      "live_verified": false,
+      "tests": [
+        "internal/bootstrap/integration_check_rocketwork_test.go",
+        "internal/integration/rocketwork/rocketworktest/emulator.go"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/postback_subscriptions",
+      "pointer": "/paths/~1api~1postback_subscriptions/get",
+      "request": "/paths/~1api~1postback_subscriptions/get",
+      "responses": {
+        "200": "/paths/~1api~1postback_subscriptions/get/responses/200"
+      },
+      "money": "none",
+      "effect": "none",
+      "reconciliation": "list owned subscriptions; history cursor and authoritative object GET",
+      "task": 10,
+      "coverage": "contract-checked-selected-flow",
+      "reason": "platform payout workflow",
+      "live_verified": false,
+      "tests": [
+        "internal/integration/rocketwork/subscriptions_test.go",
+        "internal/integration/rocketwork/postback_test.go",
+        "internal/payout/app/event_control_test.go",
+        "internal/payout/app/contract_workflow_test.go"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/postback_subscriptions",
+      "pointer": "/paths/~1api~1postback_subscriptions/post",
+      "request": "/paths/~1api~1postback_subscriptions/post/requestBody",
+      "responses": {
+        "201": "/paths/~1api~1postback_subscriptions/post/responses/201"
+      },
+      "money": "none",
+      "effect": "subscription configuration",
+      "reconciliation": "list owned subscriptions; history cursor and authoritative object GET",
+      "task": 10,
+      "coverage": "contract-checked-selected-flow",
+      "reason": "platform payout workflow",
+      "live_verified": false,
+      "tests": [
+        "internal/integration/rocketwork/subscriptions_test.go",
+        "internal/integration/rocketwork/postback_test.go",
+        "internal/payout/app/event_control_test.go",
+        "internal/payout/app/contract_workflow_test.go"
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/postback_subscriptions/{id}",
+      "pointer": "/paths/~1api~1postback_subscriptions~1{id}/delete",
+      "request": "/paths/~1api~1postback_subscriptions~1{id}/delete",
+      "responses": {
+        "200": "/paths/~1api~1postback_subscriptions~1{id}/delete/responses/200"
+      },
+      "money": "none",
+      "effect": "subscription configuration",
+      "reconciliation": "list owned subscriptions; history cursor and authoritative object GET",
+      "task": 10,
+      "coverage": "contract-checked-selected-flow",
+      "reason": "platform payout workflow",
+      "live_verified": false,
+      "tests": [
+        "internal/integration/rocketwork/subscriptions_test.go",
+        "internal/integration/rocketwork/postback_test.go",
+        "internal/payout/app/event_control_test.go",
+        "internal/payout/app/contract_workflow_test.go"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/postbacks",
+      "pointer": "/paths/~1api~1postbacks/get",
+      "request": "/paths/~1api~1postbacks/get/parameters",
+      "responses": {
+        "200": "/paths/~1api~1postbacks/get/responses/200"
+      },
+      "money": "none",
+      "effect": "none",
+      "reconciliation": "list owned subscriptions; history cursor and authoritative object GET",
+      "task": 10,
+      "coverage": "contract-checked-selected-flow",
+      "reason": "platform payout workflow",
+      "live_verified": false,
+      "tests": [
+        "internal/integration/rocketwork/subscriptions_test.go",
+        "internal/integration/rocketwork/postback_test.go",
+        "internal/payout/app/event_control_test.go",
+        "internal/payout/app/contract_workflow_test.go"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/tasks",
+      "pointer": "/paths/~1api~1tasks/get",
+      "request": "/paths/~1api~1tasks/get/parameters",
+      "responses": {
+        "200": "/paths/~1api~1tasks/get/responses/200"
+      },
+      "money": "rubles: JSON number on input/account, decimal strings on tasks; service *_cents: integer kopecks",
+      "effect": "none",
+      "reconciliation": "exact external_id list plus pagination; GET same task and compare immutable terms; unknown outcome cannot create new identity",
+      "task": 9,
+      "coverage": "contract-checked-selected-flow",
+      "reason": "platform payout workflow",
+      "live_verified": false,
+      "tests": [
+        "internal/integration/rocketwork/tasks_test.go",
+        "internal/integration/rocketwork/task_actions_test.go",
+        "internal/integration/rocketwork/withdrawal_test.go",
+        "internal/integration/rocketwork/scenario_test.go",
+        "internal/payout/app/contract_workflow_test.go"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/tasks",
+      "pointer": "/paths/~1api~1tasks/post",
+      "request": "/paths/~1api~1tasks/post/requestBody",
+      "responses": {
+        "200": "/paths/~1api~1tasks/post/responses/200",
+        "400": "/paths/~1api~1tasks/post/responses/400"
+      },
+      "money": "rubles: JSON number on input/account, decimal strings on tasks; service *_cents: integer kopecks",
+      "effect": "customer contract signature; Withdrawal separately gated",
+      "reconciliation": "exact external_id list plus pagination; GET same task and compare immutable terms; unknown outcome cannot create new identity",
+      "task": 6,
+      "coverage": "contract-checked-selected-flow",
+      "reason": "explicit OneTime agreement workflow and own-funds Withdrawal only; other task branches outside scope",
+      "live_verified": false,
+      "tests": [
+        "internal/integration/rocketwork/tasks_test.go",
+        "internal/integration/rocketwork/task_actions_test.go",
+        "internal/integration/rocketwork/withdrawal_test.go",
+        "internal/integration/rocketwork/scenario_test.go",
+        "internal/payout/app/contract_workflow_test.go"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/tasks/{id}",
+      "pointer": "/paths/~1api~1tasks~1{id}/get",
+      "request": "/paths/~1api~1tasks~1{id}/get/parameters",
+      "responses": {
+        "200": "/paths/~1api~1tasks~1{id}/get/responses/200",
+        "404": "/paths/~1api~1tasks~1{id}/get/responses/404"
+      },
+      "money": "rubles: JSON number on input/account, decimal strings on tasks; service *_cents: integer kopecks",
+      "effect": "none",
+      "reconciliation": "exact external_id list plus pagination; GET same task and compare immutable terms; unknown outcome cannot create new identity",
+      "task": 9,
+      "coverage": "contract-checked-selected-flow",
+      "reason": "platform payout workflow",
+      "live_verified": false,
+      "tests": [
+        "internal/integration/rocketwork/tasks_test.go",
+        "internal/integration/rocketwork/task_actions_test.go",
+        "internal/integration/rocketwork/withdrawal_test.go",
+        "internal/integration/rocketwork/scenario_test.go",
+        "internal/payout/app/contract_workflow_test.go"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/tasks/{task_id}/refund",
+      "pointer": "/paths/~1api~1tasks~1{task_id}~1refund/post",
+      "request": "/paths/~1api~1tasks~1{task_id}~1refund/post/requestBody",
+      "responses": {
+        "200": "/paths/~1api~1tasks~1{task_id}~1refund/post/responses/200"
+      },
+      "money": "rubles: JSON number on input/account, decimal strings on tasks; service *_cents: integer kopecks",
+      "effect": "acquiring customer refund; not payout reversal",
+      "reconciliation": "unsupported in payout adapter",
+      "task": 11,
+      "coverage": "excluded",
+      "reason": "acquiring customer refund; not payout reversal",
+      "live_verified": false,
+      "verification": "explicitly outside payout scope; refund rejected by payout service"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/tasks/{task_id}/sign_act",
+      "pointer": "/paths/~1api~1tasks~1{task_id}~1sign_act/patch",
+      "request": "/paths/~1api~1tasks~1{task_id}~1sign_act/patch/parameters",
+      "responses": {
+        "200": "/paths/~1api~1tasks~1{task_id}~1sign_act/patch/responses/200",
+        "400": "/paths/~1api~1tasks~1{task_id}~1sign_act/patch/responses/400",
+        "404": "/paths/~1api~1tasks~1{task_id}~1sign_act/patch/responses/404"
+      },
+      "money": "rubles: JSON number on input/account, decimal strings on tasks; service *_cents: integer kopecks",
+      "effect": "sign_act",
+      "reconciliation": "exact external_id list plus pagination; GET same task and compare immutable terms; unknown outcome cannot create new identity",
+      "task": 7,
+      "coverage": "contract-checked-selected-flow",
+      "reason": "platform payout workflow",
+      "live_verified": false,
+      "tests": [
+        "internal/integration/rocketwork/tasks_test.go",
+        "internal/integration/rocketwork/task_actions_test.go",
+        "internal/integration/rocketwork/withdrawal_test.go",
+        "internal/integration/rocketwork/scenario_test.go",
+        "internal/payout/app/contract_workflow_test.go"
+      ]
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/tasks/{task_id}/complete",
+      "pointer": "/paths/~1api~1tasks~1{task_id}~1complete/patch",
+      "request": "/paths/~1api~1tasks~1{task_id}~1complete/patch/parameters",
+      "responses": {
+        "200": "/paths/~1api~1tasks~1{task_id}~1complete/patch/responses/200",
+        "400": "/paths/~1api~1tasks~1{task_id}~1complete/patch/responses/400"
+      },
+      "money": "rubles: JSON number on input/account, decimal strings on tasks; service *_cents: integer kopecks",
+      "effect": "complete",
+      "reconciliation": "exact external_id list plus pagination; GET same task and compare immutable terms; unknown outcome cannot create new identity",
+      "task": 7,
+      "coverage": "contract-checked-selected-flow",
+      "reason": "platform payout workflow",
+      "live_verified": false,
+      "tests": [
+        "internal/integration/rocketwork/tasks_test.go",
+        "internal/integration/rocketwork/task_actions_test.go",
+        "internal/integration/rocketwork/withdrawal_test.go",
+        "internal/integration/rocketwork/scenario_test.go",
+        "internal/payout/app/contract_workflow_test.go"
+      ]
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/tasks/{task_id}/pay",
+      "pointer": "/paths/~1api~1tasks~1{task_id}~1pay/patch",
+      "request": "/paths/~1api~1tasks~1{task_id}~1pay/patch/parameters",
+      "responses": {
+        "200": "/paths/~1api~1tasks~1{task_id}~1pay/patch/responses/200",
+        "400": "/paths/~1api~1tasks~1{task_id}~1pay/patch/responses/400"
+      },
+      "money": "rubles: JSON number on input/account, decimal strings on tasks; service *_cents: integer kopecks",
+      "effect": "pay",
+      "reconciliation": "exact external_id list plus pagination; GET same task and compare immutable terms; unknown outcome cannot create new identity",
+      "task": 7,
+      "coverage": "contract-checked-selected-flow",
+      "reason": "platform payout workflow",
+      "live_verified": false,
+      "tests": [
+        "internal/integration/rocketwork/tasks_test.go",
+        "internal/integration/rocketwork/task_actions_test.go",
+        "internal/integration/rocketwork/withdrawal_test.go",
+        "internal/integration/rocketwork/scenario_test.go",
+        "internal/payout/app/contract_workflow_test.go"
+      ]
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/tasks/{task_id}/cancel",
+      "pointer": "/paths/~1api~1tasks~1{task_id}~1cancel/patch",
+      "request": "/paths/~1api~1tasks~1{task_id}~1cancel/patch/parameters",
+      "responses": {
+        "200": "/paths/~1api~1tasks~1{task_id}~1cancel/patch/responses/200",
+        "400": "/paths/~1api~1tasks~1{task_id}~1cancel/patch/responses/400"
+      },
+      "money": "rubles: JSON number on input/account, decimal strings on tasks; service *_cents: integer kopecks",
+      "effect": "cancel",
+      "reconciliation": "exact external_id list plus pagination; GET same task and compare immutable terms; unknown outcome cannot create new identity",
+      "task": 7,
+      "coverage": "contract-checked-selected-flow",
+      "reason": "platform payout workflow",
+      "live_verified": false,
+      "tests": [
+        "internal/integration/rocketwork/tasks_test.go",
+        "internal/integration/rocketwork/task_actions_test.go",
+        "internal/integration/rocketwork/withdrawal_test.go",
+        "internal/integration/rocketwork/scenario_test.go",
+        "internal/payout/app/contract_workflow_test.go"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/vacancies/{vacancy_id}/applications",
+      "pointer": "/paths/~1api~1v1~1vacancies~1{vacancy_id}~1applications/get",
+      "request": "/paths/~1api~1v1~1vacancies~1{vacancy_id}~1applications/get/parameters",
+      "responses": {
+        "200": "/paths/~1api~1v1~1vacancies~1{vacancy_id}~1applications/get/responses/200"
+      },
+      "money": "none",
+      "effect": "recruitment; outside platform payout scope",
+      "reconciliation": "unsupported in payout adapter",
+      "task": 1,
+      "coverage": "excluded",
+      "reason": "recruitment; outside platform payout scope",
+      "live_verified": false,
+      "verification": "explicitly outside payout scope; refund rejected by payout service"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/vacancies/{vacancy_id}/applications",
+      "pointer": "/paths/~1api~1v1~1vacancies~1{vacancy_id}~1applications/post",
+      "request": "/paths/~1api~1v1~1vacancies~1{vacancy_id}~1applications/post/requestBody",
+      "responses": {
+        "200": "/paths/~1api~1v1~1vacancies~1{vacancy_id}~1applications/post/responses/200",
+        "400": "/paths/~1api~1v1~1vacancies~1{vacancy_id}~1applications/post/responses/400"
+      },
+      "money": "none",
+      "effect": "recruitment; outside platform payout scope",
+      "reconciliation": "unsupported in payout adapter",
+      "task": 1,
+      "coverage": "excluded",
+      "reason": "recruitment; outside platform payout scope",
+      "live_verified": false,
+      "verification": "explicitly outside payout scope; refund rejected by payout service"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/vacancies/{vacancy_id}/applications/{application_id}",
+      "pointer": "/paths/~1api~1v1~1vacancies~1{vacancy_id}~1applications~1{application_id}/get",
+      "request": "/paths/~1api~1v1~1vacancies~1{vacancy_id}~1applications~1{application_id}/get/parameters",
+      "responses": {
+        "200": "/paths/~1api~1v1~1vacancies~1{vacancy_id}~1applications~1{application_id}/get/responses/200",
+        "404": "/paths/~1api~1v1~1vacancies~1{vacancy_id}~1applications~1{application_id}/get/responses/404"
+      },
+      "money": "none",
+      "effect": "recruitment; outside platform payout scope",
+      "reconciliation": "unsupported in payout adapter",
+      "task": 1,
+      "coverage": "excluded",
+      "reason": "recruitment; outside platform payout scope",
+      "live_verified": false,
+      "verification": "explicitly outside payout scope; refund rejected by payout service"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/vacancies",
+      "pointer": "/paths/~1api~1v1~1vacancies/get",
+      "request": "/paths/~1api~1v1~1vacancies/get/parameters",
+      "responses": {
+        "200": "/paths/~1api~1v1~1vacancies/get/responses/200"
+      },
+      "money": "none",
+      "effect": "recruitment; outside platform payout scope",
+      "reconciliation": "unsupported in payout adapter",
+      "task": 1,
+      "coverage": "excluded",
+      "reason": "recruitment; outside platform payout scope",
+      "live_verified": false,
+      "verification": "explicitly outside payout scope; refund rejected by payout service"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/vacancies",
+      "pointer": "/paths/~1api~1v1~1vacancies/post",
+      "request": "/paths/~1api~1v1~1vacancies/post/requestBody",
+      "responses": {
+        "200": "/paths/~1api~1v1~1vacancies/post/responses/200",
+        "400": "/paths/~1api~1v1~1vacancies/post/responses/400"
+      },
+      "money": "none",
+      "effect": "recruitment; outside platform payout scope",
+      "reconciliation": "unsupported in payout adapter",
+      "task": 1,
+      "coverage": "excluded",
+      "reason": "recruitment; outside platform payout scope",
+      "live_verified": false,
+      "verification": "explicitly outside payout scope; refund rejected by payout service"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/vacancies/{id}",
+      "pointer": "/paths/~1api~1v1~1vacancies~1{id}/get",
+      "request": "/paths/~1api~1v1~1vacancies~1{id}/get/parameters",
+      "responses": {
+        "200": "/paths/~1api~1v1~1vacancies~1{id}/get/responses/200",
+        "404": "/paths/~1api~1v1~1vacancies~1{id}/get/responses/404"
+      },
+      "money": "none",
+      "effect": "recruitment; outside platform payout scope",
+      "reconciliation": "unsupported in payout adapter",
+      "task": 1,
+      "coverage": "excluded",
+      "reason": "recruitment; outside platform payout scope",
+      "live_verified": false,
+      "verification": "explicitly outside payout scope; refund rejected by payout service"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/vacancies/{id}",
+      "pointer": "/paths/~1api~1v1~1vacancies~1{id}/patch",
+      "request": "/paths/~1api~1v1~1vacancies~1{id}/patch/requestBody",
+      "responses": {
+        "200": "/paths/~1api~1v1~1vacancies~1{id}/patch/responses/200"
+      },
+      "money": "none",
+      "effect": "recruitment; outside platform payout scope",
+      "reconciliation": "unsupported in payout adapter",
+      "task": 1,
+      "coverage": "excluded",
+      "reason": "recruitment; outside platform payout scope",
+      "live_verified": false,
+      "verification": "explicitly outside payout scope; refund rejected by payout service"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/vacancies/{id}/archive",
+      "pointer": "/paths/~1api~1v1~1vacancies~1{id}~1archive/post",
+      "request": "/paths/~1api~1v1~1vacancies~1{id}~1archive/post/parameters",
+      "responses": {
+        "200": "/paths/~1api~1v1~1vacancies~1{id}~1archive/post/responses/200",
+        "404": "/paths/~1api~1v1~1vacancies~1{id}~1archive/post/responses/404"
+      },
+      "money": "none",
+      "effect": "recruitment; outside platform payout scope",
+      "reconciliation": "unsupported in payout adapter",
+      "task": 1,
+      "coverage": "excluded",
+      "reason": "recruitment; outside platform payout scope",
+      "live_verified": false,
+      "verification": "explicitly outside payout scope; refund rejected by payout service"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/vacancies/{id}/suspend",
+      "pointer": "/paths/~1api~1v1~1vacancies~1{id}~1suspend/post",
+      "request": "/paths/~1api~1v1~1vacancies~1{id}~1suspend/post/parameters",
+      "responses": {
+        "200": "/paths/~1api~1v1~1vacancies~1{id}~1suspend/post/responses/200",
+        "404": "/paths/~1api~1v1~1vacancies~1{id}~1suspend/post/responses/404"
+      },
+      "money": "none",
+      "effect": "recruitment; outside platform payout scope",
+      "reconciliation": "unsupported in payout adapter",
+      "task": 1,
+      "coverage": "excluded",
+      "reason": "recruitment; outside platform payout scope",
+      "live_verified": false,
+      "verification": "explicitly outside payout scope; refund rejected by payout service"
+    }
+  ],
+  "excluded_variants": [
+    "anonymous tasks: no identified platform recipient",
+    "acquiring tasks/refund: customer payment, not blogger payout",
+    "wallet: outside platform payout model",
+    "passport-based executor registration: passports remain at provider"
+  ],
+  "verification_date": "2026-11-10",
+  "fixtures": "synthetic/OpenAPI-derived; no live provider responses"
+}

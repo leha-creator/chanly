@@ -700,6 +700,7 @@ type Payout struct {
 	CreatedBy              *uuid.UUID
 	CreatedAt              time.Time
 	UpdatedAt              time.Time
+	ReconciliationRequired bool
 }
 
 type Placement struct {
@@ -850,6 +851,98 @@ type RocketworkContractor struct {
 	LastError       *string
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
+}
+
+type RocketworkEventCommand struct {
+	ID             uuid.UUID
+	Environment    string
+	AccountKey     string
+	Action         string
+	PayloadHash    string
+	SubscriptionID int64
+	State          string
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+}
+
+type RocketworkEventCursor struct {
+	Environment string
+	AccountKey  string
+	ThroughAt   time.Time
+}
+
+type RocketworkExecutorBinding struct {
+	Environment    string
+	AccountKey     string
+	OrganizationID uuid.UUID
+	ExecutorID     int64
+	LookupKind     string
+	LookupValue    string
+	EmploymentKind string
+	VerifiedAt     time.Time
+}
+
+type RocketworkOnboarding struct {
+	Environment    string
+	AccountKey     string
+	OrganizationID uuid.UUID
+	Action         string
+	State          string
+	Payload        []byte
+	PayloadHash    string
+	CorrelationID  uuid.UUID
+	Result         string
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+}
+
+type RocketworkOperation struct {
+	PayoutID      uuid.UUID
+	Action        string
+	State         string
+	PayloadHash   string
+	CorrelationID uuid.UUID
+	Evidence      string
+	UpdatedAt     time.Time
+}
+
+type RocketworkReturnEvidence struct {
+	ID          uuid.UUID
+	PayoutID    uuid.UUID
+	DocumentID  uuid.UUID
+	AdminID     uuid.UUID
+	ApproverID  uuid.UUID
+	Amount      int64
+	Destination string
+	Reason      string
+	ReceivedAt  time.Time
+}
+
+type RocketworkWithdrawal struct {
+	ID          uuid.UUID
+	Environment string
+	AccountKey  string
+	Terms       []byte
+	TermsHash   string
+	TaskID      *int64
+	State       string
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+}
+
+type RocketworkWorkflow struct {
+	PayoutID       uuid.UUID
+	Environment    string
+	AccountKey     string
+	ExternalID     string
+	TaskID         *int64
+	ObservedStatus string
+	Terms          []byte
+	TermsHash      string
+	Documents      []byte
+	Phase          string
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
 }
 
 type Session struct {

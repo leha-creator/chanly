@@ -76,10 +76,11 @@ func (c FailureCode) NeedsAdmin() bool {
 
 // Payout — одна попытка выплаты по размещению.
 type Payout struct {
-	ID                    uuid.UUID
-	PlacementID           uuid.UUID
-	BloggerOrganizationID uuid.UUID
-	Method                Method
+	ReconciliationRequired bool
+	ID                     uuid.UUID
+	PlacementID            uuid.UUID
+	BloggerOrganizationID  uuid.UUID
+	Method                 Method
 	// ContractorID — пусто при bank_transfer.
 	ContractorID   uuid.UUID
 	Amount         money.Kopecks
@@ -122,6 +123,9 @@ func NewPayout(id, placementID, bloggerOrgID uuid.UUID, method Method, contracto
 
 // NextAttempt — новая попытка после failed (R-9): новая строка, новый ключ.
 func (p Payout) NextAttempt(id, contractorID, adminID uuid.UUID, now time.Time) (Payout, error) {
+	if p.ReconciliationRequired {
+		return Payout{}, fmt.Errorf("%w: provider reconciliation required", ErrPayoutNotRetryable)
+	}
 	if p.Status != StatusFailed {
 		return Payout{}, fmt.Errorf("%w: attempt %d is %s", ErrPayoutNotRetryable, p.Attempt, p.Status)
 	}

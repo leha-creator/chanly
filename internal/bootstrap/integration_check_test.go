@@ -51,8 +51,8 @@ func TestIntegrationCheckPreflight(t *testing.T) {
 		{"publish needs state", nil, []string{"--system", "max", "--scenario", "publish", "--execute"}, 2},
 		{"ord fake", nil, []string{"--system", "ord"}, 1},
 		{"ord production url", map[string]string{"ORD_OAUTH_TOKEN": "private-test-token", "ORD_API_URL": "https://ord.yandex.net"}, []string{"--system", "ord"}, 1},
-		{"rw disabled", nil, []string{"--system", "rocketwork"}, 1},
-		{"rw unverified live", map[string]string{"ROCKETWORK_MODE": "live", "ROCKETWORK_TOKEN": "private-test-token"}, []string{"--system", "rocketwork"}, 1},
+		{"rw missing manifest", nil, []string{"--system", "rocketwork"}, 2},
+		{"rw unverified live", map[string]string{"ROCKETWORK_MODE": "live", "ROCKETWORK_TOKEN": "private-test-token"}, []string{"--system", "rocketwork"}, 2},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

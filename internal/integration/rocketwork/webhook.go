@@ -14,8 +14,8 @@ const MaxWebhookBody = 1 << 20
 
 // SignatureHeader — заголовок подписи вебхука.
 //
-// ПРЕДПОЛОЖЕНИЕ (Q-12): Рокет Ворк подписывает тело HMAC-SHA256 общим секретом и передаёт
-// подпись в X-Rocketwork-Signature в виде «sha256=<hex>».
+// Только локальный fake: HMAC-SHA256 в X-Rocketwork-Signature.
+// Public API v1 использует Authorization подписки; Client этот формат не принимает.
 const SignatureHeader = "X-Rocketwork-Signature"
 
 const signaturePrefix = "sha256="
@@ -40,7 +40,7 @@ func VerifySignature(secret []byte, header string, body []byte) error {
 
 // webhookBody — тело события.
 //
-// ПРЕДПОЛОЖЕНИЕ (Q-12): {id, event, object_id, occurred_at}; событие несёт только
+// Протокол fake: {id, event, object_id}; событие несёт только
 // идентификатор объекта, состояние запрашивается GetContractor / GetPayout.
 type webhookBody struct {
 	ID       string `json:"id"`
@@ -89,7 +89,7 @@ func WebhookPayload(eventID, serviceEvent, objectID string) []byte {
 
 // Имена событий сервиса (для подделки).
 //
-// ПРЕДПОЛОЖЕНИЕ (Q-12): см. EventKindFrom.
+// Только локальные сценарии; см. EventKindFrom.
 const (
 	ServiceEventContractor = "contractor.status_changed"
 	ServiceEventPayment    = "payment.status_changed"

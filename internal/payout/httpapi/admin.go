@@ -91,6 +91,7 @@ func adminPayoutOf(r adminref.Refs, it app.PayoutItem) apigen.AdminPayout {
 	base := payoutOf(it)
 	o := r.Org(it.BloggerOrganizationID)
 	return apigen.AdminPayout{Id: base.Id, PlacementId: base.PlacementId, OrderNumber: base.OrderNumber, Channel: base.Channel,
+		Workflow: base.Workflow, ReconciliationRequired: base.ReconciliationRequired,
 		Amount: base.Amount, Status: base.Status, Method: base.Method, Attempt: base.Attempt, ReceiptUrl: base.ReceiptUrl,
 		FailureCode: base.FailureCode, FailureMessage: base.FailureMessage, CreatedAt: base.CreatedAt.UTC(),
 		CompletedAt: base.CompletedAt, BankReference: opt(it.BankReference),

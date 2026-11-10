@@ -450,9 +450,21 @@ func (h *Handlers) GetBloggerPayoutSummary(ctx context.Context, req api.GetBlogg
 
 func rocketworkStatus(tx *store.Tx, o *store.Organization) api.RocketworkStatus {
 	out := api.RocketworkStatus{Status: "none", Required: o.LegalType != "legal_entity"}
+	out.NextAction = strPtr("invite")
+	if !out.Required {
+		out.NextAction = strPtr("none")
+	}
 	if rw := tx.D.Rocketwork[o.ID]; rw != nil {
 		out.Status = api.RocketworkContractorStatus(rw.Status)
 		out.OnboardingUrl = strPtr(rw.OnboardingURL)
+		switch rw.Status {
+		case "active":
+			out.NextAction = strPtr("none")
+		case "blocked":
+			out.NextAction = strPtr("grant_fns_permissions")
+		case "invited", "pending":
+			out.NextAction = strPtr("complete_registration")
+		}
 		if out.Status != "none" {
 			at := tx.Now
 			out.StatusCheckedAt = &at
@@ -493,7 +505,7 @@ func (h *Handlers) InviteRocketwork(ctx context.Context, req api.InviteRocketwor
 	if rw.Status != "active" {
 		// Онбординг в Рокет Ворк заглушка проходит сразу.
 		rw.Status = "active"
-		rw.OnboardingURL = fmt.Sprintf("https://rocketwork.example.test/onboarding/%s", o.ID)
+		rw.OnboardingURL = ""
 		h.logger(ctx).Info("rocketwork contractor activated", "op", "Rocketwork.Invite", "organization_id", o.ID)
 	}
 	return api.InviteRocketwork202JSONResponse(rocketworkStatus(tx, o)), nil
@@ -511,6 +523,37 @@ func (h *Handlers) RefreshRocketworkStatus(ctx context.Context, req api.RefreshR
 		return nil, store.ConflictReason("contractor_not_required", "rocketwork is not required", nil)
 	}
 	return api.RefreshRocketworkStatus200JSONResponse(rocketworkStatus(tx, o)), nil
+}
+
+func (h *Handlers) RequestRocketworkAction(ctx context.Context, req api.RequestRocketworkActionRequestObject) (api.RequestRocketworkActionResponseObject, error) {
+	tx, done := h.st.Begin(ctx)
+	defer done()
+	_, o, err := blogger(ctx, tx)
+	if err != nil {
+		return nil, err
+	}
+	if o.LegalType == "legal_entity" {
+		return nil, store.ConflictReason("contractor_not_required", "rocketwork is not required", nil)
+	}
+	if req.Body == nil {
+		return nil, store.ConflictReason("invalid_action", "action is required", nil)
+	}
+	action := string(req.Body.Action)
+	if action == "register" || action == "update" {
+		if o.LegalType != "sole_proprietor" || req.Body.FirstName == nil || *req.Body.FirstName == "" || req.Body.LastName == nil || *req.Body.LastName == "" {
+			return nil, store.ConflictReason("invalid_action", "entrepreneur names are required", nil)
+		}
+	}
+	rw := tx.D.Rocketwork[o.ID]
+	if rw == nil {
+		rw = &store.RocketworkContractor{Status: "pending"}
+		tx.D.Rocketwork[o.ID] = rw
+	}
+	if rw.Status != "active" {
+		rw.Status = "pending"
+	}
+	rw.OnboardingURL = ""
+	return api.RequestRocketworkAction202JSONResponse(rocketworkStatus(tx, o)), nil
 }
 
 // linkCodeAlphabet — символы кода подключения без похожих знаков (R-1).

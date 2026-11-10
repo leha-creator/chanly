@@ -2,9 +2,9 @@
 // Контракт адаптера — 05 §4.2 в наших терминах; приведение статусов и кодов сервиса к нашим
 // делается здесь (R-2), модуль выплат форматов сервиса не знает.
 //
-// Документации API нет (Q-10, Q-11, Q-12): HTTP-формат придуман и каждое допущение помечено
-// «ПРЕДПОЛОЖЕНИЕ (Q-NN)». Сводный список — .ai-factory/plans/rocketwork-payouts.md,
-// раздел «Допущения о внешних данных».
+// Live-чтение и callbacks сделок сверены с roketwork_openapi.json (Public API v1). Запись
+// заблокированы до настройки договоров и идентификации исполнителей (Q-10–12).
+// Legacy status helpers ниже используются только локальной подделкой и её тестами.
 //
 // Реализации: Client (ROCKETWORK_MODE=live), Disabled (disabled), rocketworkfake (fake).
 package rocketwork
@@ -77,15 +77,17 @@ type PaymentRequest struct {
 
 // Payment — выплата в наших терминах.
 type Payment struct {
-	ID             string
-	ExternalID     string
-	Status         string
-	FeeKopecks     int64
-	ReceiptURL     string
-	FailureCode    string
-	FailureMessage string
-	RawStatus      string
-	Known          bool
+	AmountKopecks         int64
+	ExecutorAmountKopecks *int64
+	ID                    string
+	ExternalID            string
+	Status                string
+	FeeKopecks            int64
+	ReceiptURL            string
+	FailureCode           string
+	FailureMessage        string
+	RawStatus             string
+	Known                 bool
 }
 
 // Виды событий вебхука в наших терминах.
@@ -127,7 +129,7 @@ func (e *RejectedError) Error() string {
 // ContractorStatusFrom приводит статус исполнителя сервиса к нашему (R-2).
 // Неизвестный — pending и known=false: объект продолжают опрашивать.
 //
-// ПРЕДПОЛОЖЕНИЕ (Q-11): перечень статусов исполнителя Рокет Ворк.
+// Локальная модель fake; это не payment_readiness из Public API v1.
 func ContractorStatusFrom(raw string) (status, blockedReason string, known bool) {
 	switch raw {
 	case "invited":
@@ -146,7 +148,7 @@ func ContractorStatusFrom(raw string) (status, blockedReason string, known bool)
 
 // PaymentStatusFrom приводит статус выплаты сервиса к нашему (R-2). Неизвестный — sent.
 //
-// ПРЕДПОЛОЖЕНИЕ (Q-11): перечень статусов выплаты Рокет Ворк.
+// Локальная модель fake; live использует taskDTO.payment.
 func PaymentStatusFrom(raw string) (status string, known bool) {
 	switch raw {
 	case "new", "processing":
@@ -161,7 +163,7 @@ func PaymentStatusFrom(raw string) (status string, known bool) {
 
 // FailureCodeFrom приводит причину отказа сервиса к нашему коду (05 §4.3).
 //
-// ПРЕДПОЛОЖЕНИЕ (Q-11): коды причин отказа выплаты Рокет Ворк.
+// Локальные сценарии отказов fake; live не выводит бизнес-код из свободного текста.
 func FailureCodeFrom(raw string) string {
 	switch raw {
 	case "contractor_not_active", "contractor_blocked":
@@ -178,7 +180,7 @@ func FailureCodeFrom(raw string) string {
 
 // EventKindFrom приводит вид события сервиса к нашему.
 //
-// ПРЕДПОЛОЖЕНИЕ (Q-12): имена событий вебхука Рокет Ворк.
+// Локальные события fake; это не стримы Public API v1.
 func EventKindFrom(raw string) (string, bool) {
 	switch raw {
 	case "contractor.status_changed":

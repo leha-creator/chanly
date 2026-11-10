@@ -46,7 +46,7 @@ func (q *Queries) AdminCountPayouts(ctx context.Context, arg AdminCountPayoutsPa
 }
 
 const adminListPayouts = `-- name: AdminListPayouts :many
-SELECT id, placement_id, blogger_organization_id, method, rocketwork_contractor_id, amount, attempt, status, external_id, provider_fee, receipt_url, bank_reference, failure_code, failure_message, sent_at, completed_at, idempotency_key, lock_version, created_by, created_at, updated_at FROM payout
+SELECT id, placement_id, blogger_organization_id, method, rocketwork_contractor_id, amount, attempt, status, external_id, provider_fee, receipt_url, bank_reference, failure_code, failure_message, sent_at, completed_at, idempotency_key, lock_version, created_by, created_at, updated_at, reconciliation_required FROM payout
 WHERE ($1::text = '' OR status = $1)
   AND (NOT $2::bool OR blogger_organization_id = $3)
   AND (NOT $4::bool OR created_at >= $5)
@@ -106,6 +106,7 @@ func (q *Queries) AdminListPayouts(ctx context.Context, arg AdminListPayoutsPara
 			&i.CreatedBy,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.ReconciliationRequired,
 		); err != nil {
 			return nil, err
 		}
@@ -118,7 +119,7 @@ func (q *Queries) AdminListPayouts(ctx context.Context, arg AdminListPayoutsPara
 }
 
 const adminPagePayouts = `-- name: AdminPagePayouts :many
-SELECT id, placement_id, blogger_organization_id, method, rocketwork_contractor_id, amount, attempt, status, external_id, provider_fee, receipt_url, bank_reference, failure_code, failure_message, sent_at, completed_at, idempotency_key, lock_version, created_by, created_at, updated_at FROM payout
+SELECT id, placement_id, blogger_organization_id, method, rocketwork_contractor_id, amount, attempt, status, external_id, provider_fee, receipt_url, bank_reference, failure_code, failure_message, sent_at, completed_at, idempotency_key, lock_version, created_by, created_at, updated_at, reconciliation_required FROM payout
 WHERE ($1::text = '' OR status = $1)
   AND (NOT $2::bool OR blogger_organization_id = $3)
   AND (NOT $4::bool OR created_at >= $5)
@@ -181,6 +182,7 @@ func (q *Queries) AdminPagePayouts(ctx context.Context, arg AdminPagePayoutsPara
 			&i.CreatedBy,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.ReconciliationRequired,
 		); err != nil {
 			return nil, err
 		}
@@ -225,7 +227,7 @@ func (q *Queries) AdminPayoutTotals(ctx context.Context) ([]AdminPayoutTotalsRow
 }
 
 const getLatestPayout = `-- name: GetLatestPayout :one
-SELECT id, placement_id, blogger_organization_id, method, rocketwork_contractor_id, amount, attempt, status, external_id, provider_fee, receipt_url, bank_reference, failure_code, failure_message, sent_at, completed_at, idempotency_key, lock_version, created_by, created_at, updated_at FROM payout WHERE placement_id = $1 ORDER BY attempt DESC LIMIT 1
+SELECT id, placement_id, blogger_organization_id, method, rocketwork_contractor_id, amount, attempt, status, external_id, provider_fee, receipt_url, bank_reference, failure_code, failure_message, sent_at, completed_at, idempotency_key, lock_version, created_by, created_at, updated_at, reconciliation_required FROM payout WHERE placement_id = $1 ORDER BY attempt DESC LIMIT 1
 `
 
 func (q *Queries) GetLatestPayout(ctx context.Context, placementID uuid.UUID) (Payout, error) {
@@ -253,12 +255,13 @@ func (q *Queries) GetLatestPayout(ctx context.Context, placementID uuid.UUID) (P
 		&i.CreatedBy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ReconciliationRequired,
 	)
 	return i, err
 }
 
 const getLatestPayoutForUpdate = `-- name: GetLatestPayoutForUpdate :one
-SELECT id, placement_id, blogger_organization_id, method, rocketwork_contractor_id, amount, attempt, status, external_id, provider_fee, receipt_url, bank_reference, failure_code, failure_message, sent_at, completed_at, idempotency_key, lock_version, created_by, created_at, updated_at FROM payout WHERE placement_id = $1 ORDER BY attempt DESC LIMIT 1 FOR UPDATE
+SELECT id, placement_id, blogger_organization_id, method, rocketwork_contractor_id, amount, attempt, status, external_id, provider_fee, receipt_url, bank_reference, failure_code, failure_message, sent_at, completed_at, idempotency_key, lock_version, created_by, created_at, updated_at, reconciliation_required FROM payout WHERE placement_id = $1 ORDER BY attempt DESC LIMIT 1 FOR UPDATE
 `
 
 func (q *Queries) GetLatestPayoutForUpdate(ctx context.Context, placementID uuid.UUID) (Payout, error) {
@@ -286,12 +289,13 @@ func (q *Queries) GetLatestPayoutForUpdate(ctx context.Context, placementID uuid
 		&i.CreatedBy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ReconciliationRequired,
 	)
 	return i, err
 }
 
 const getPayout = `-- name: GetPayout :one
-SELECT id, placement_id, blogger_organization_id, method, rocketwork_contractor_id, amount, attempt, status, external_id, provider_fee, receipt_url, bank_reference, failure_code, failure_message, sent_at, completed_at, idempotency_key, lock_version, created_by, created_at, updated_at FROM payout WHERE id = $1
+SELECT id, placement_id, blogger_organization_id, method, rocketwork_contractor_id, amount, attempt, status, external_id, provider_fee, receipt_url, bank_reference, failure_code, failure_message, sent_at, completed_at, idempotency_key, lock_version, created_by, created_at, updated_at, reconciliation_required FROM payout WHERE id = $1
 `
 
 func (q *Queries) GetPayout(ctx context.Context, id uuid.UUID) (Payout, error) {
@@ -319,12 +323,13 @@ func (q *Queries) GetPayout(ctx context.Context, id uuid.UUID) (Payout, error) {
 		&i.CreatedBy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ReconciliationRequired,
 	)
 	return i, err
 }
 
 const getPayoutByExternalID = `-- name: GetPayoutByExternalID :one
-SELECT id, placement_id, blogger_organization_id, method, rocketwork_contractor_id, amount, attempt, status, external_id, provider_fee, receipt_url, bank_reference, failure_code, failure_message, sent_at, completed_at, idempotency_key, lock_version, created_by, created_at, updated_at FROM payout WHERE external_id = $1
+SELECT id, placement_id, blogger_organization_id, method, rocketwork_contractor_id, amount, attempt, status, external_id, provider_fee, receipt_url, bank_reference, failure_code, failure_message, sent_at, completed_at, idempotency_key, lock_version, created_by, created_at, updated_at, reconciliation_required FROM payout WHERE external_id = $1
 `
 
 func (q *Queries) GetPayoutByExternalID(ctx context.Context, externalID *string) (Payout, error) {
@@ -352,12 +357,13 @@ func (q *Queries) GetPayoutByExternalID(ctx context.Context, externalID *string)
 		&i.CreatedBy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ReconciliationRequired,
 	)
 	return i, err
 }
 
 const getPayoutByExternalIDForUpdate = `-- name: GetPayoutByExternalIDForUpdate :one
-SELECT id, placement_id, blogger_organization_id, method, rocketwork_contractor_id, amount, attempt, status, external_id, provider_fee, receipt_url, bank_reference, failure_code, failure_message, sent_at, completed_at, idempotency_key, lock_version, created_by, created_at, updated_at FROM payout WHERE external_id = $1 FOR UPDATE
+SELECT id, placement_id, blogger_organization_id, method, rocketwork_contractor_id, amount, attempt, status, external_id, provider_fee, receipt_url, bank_reference, failure_code, failure_message, sent_at, completed_at, idempotency_key, lock_version, created_by, created_at, updated_at, reconciliation_required FROM payout WHERE external_id = $1 FOR UPDATE
 `
 
 func (q *Queries) GetPayoutByExternalIDForUpdate(ctx context.Context, externalID *string) (Payout, error) {
@@ -385,12 +391,13 @@ func (q *Queries) GetPayoutByExternalIDForUpdate(ctx context.Context, externalID
 		&i.CreatedBy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ReconciliationRequired,
 	)
 	return i, err
 }
 
 const getPayoutForUpdate = `-- name: GetPayoutForUpdate :one
-SELECT id, placement_id, blogger_organization_id, method, rocketwork_contractor_id, amount, attempt, status, external_id, provider_fee, receipt_url, bank_reference, failure_code, failure_message, sent_at, completed_at, idempotency_key, lock_version, created_by, created_at, updated_at FROM payout WHERE id = $1 FOR UPDATE
+SELECT id, placement_id, blogger_organization_id, method, rocketwork_contractor_id, amount, attempt, status, external_id, provider_fee, receipt_url, bank_reference, failure_code, failure_message, sent_at, completed_at, idempotency_key, lock_version, created_by, created_at, updated_at, reconciliation_required FROM payout WHERE id = $1 FOR UPDATE
 `
 
 func (q *Queries) GetPayoutForUpdate(ctx context.Context, id uuid.UUID) (Payout, error) {
@@ -418,6 +425,7 @@ func (q *Queries) GetPayoutForUpdate(ctx context.Context, id uuid.UUID) (Payout,
 		&i.CreatedBy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ReconciliationRequired,
 	)
 	return i, err
 }
@@ -483,7 +491,7 @@ func (q *Queries) InsertPayout(ctx context.Context, arg InsertPayoutParams) erro
 }
 
 const listPayouts = `-- name: ListPayouts :many
-SELECT id, placement_id, blogger_organization_id, method, rocketwork_contractor_id, amount, attempt, status, external_id, provider_fee, receipt_url, bank_reference, failure_code, failure_message, sent_at, completed_at, idempotency_key, lock_version, created_by, created_at, updated_at FROM payout
+SELECT id, placement_id, blogger_organization_id, method, rocketwork_contractor_id, amount, attempt, status, external_id, provider_fee, receipt_url, bank_reference, failure_code, failure_message, sent_at, completed_at, idempotency_key, lock_version, created_by, created_at, updated_at, reconciliation_required FROM payout
 WHERE blogger_organization_id = $1
   AND (NOT $2::bool OR (created_at, id) < ($3::timestamptz, $4::uuid))
 ORDER BY created_at DESC, id DESC
@@ -535,6 +543,7 @@ func (q *Queries) ListPayouts(ctx context.Context, arg ListPayoutsParams) ([]Pay
 			&i.CreatedBy,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.ReconciliationRequired,
 		); err != nil {
 			return nil, err
 		}
@@ -547,7 +556,7 @@ func (q *Queries) ListPayouts(ctx context.Context, arg ListPayoutsParams) ([]Pay
 }
 
 const listPlacementPayouts = `-- name: ListPlacementPayouts :many
-SELECT id, placement_id, blogger_organization_id, method, rocketwork_contractor_id, amount, attempt, status, external_id, provider_fee, receipt_url, bank_reference, failure_code, failure_message, sent_at, completed_at, idempotency_key, lock_version, created_by, created_at, updated_at FROM payout WHERE placement_id = $1 ORDER BY attempt DESC
+SELECT id, placement_id, blogger_organization_id, method, rocketwork_contractor_id, amount, attempt, status, external_id, provider_fee, receipt_url, bank_reference, failure_code, failure_message, sent_at, completed_at, idempotency_key, lock_version, created_by, created_at, updated_at, reconciliation_required FROM payout WHERE placement_id = $1 ORDER BY attempt DESC
 `
 
 // Попытки выплаты размещения для карточки администратора, новые сверху.
@@ -582,6 +591,7 @@ func (q *Queries) ListPlacementPayouts(ctx context.Context, placementID uuid.UUI
 			&i.CreatedBy,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.ReconciliationRequired,
 		); err != nil {
 			return nil, err
 		}

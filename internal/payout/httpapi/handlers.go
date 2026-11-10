@@ -55,6 +55,10 @@ func toAPIError(err error) error {
 			WithDetail("reason", "rocketwork_unavailable").WithCause(err)
 	case errors.Is(err, domain.ErrNotFound):
 		return apperr.NotFound("not found").WithCause(err)
+	case errors.Is(err, domain.ErrUnsupported):
+		return apperr.Conflict("operation is not supported").WithDetail("reason", "unsupported").WithCause(err)
+	case errors.Is(err, domain.ErrInvalidPayout), errors.Is(err, domain.ErrInvalidPayoutState):
+		return apperr.Conflict("operation requires reconciliation").WithDetail("reason", "reconciliation_required").WithCause(err)
 	}
 	return err
 }
@@ -77,19 +81,47 @@ func deref[T any](p *T) T {
 
 func statusOf(v app.ContractorView) apigen.RocketworkStatus {
 	return apigen.RocketworkStatus{
-		Status: apigen.RocketworkContractorStatus(v.Status), Required: v.Required,
+		NextAction: opt(v.NextAction),
+		Status:     apigen.RocketworkContractorStatus(v.Status), Required: v.Required,
 		OnboardingUrl: opt(v.OnboardingURL), BlockedReason: opt(v.BlockedReason), StatusCheckedAt: v.StatusCheckedAt,
 	}
 }
 
 func payoutOf(it app.PayoutItem) apigen.Payout {
 	p := it.Payout
+	reconcile := p.ReconciliationRequired
+	if it.Workflow != nil && (it.Workflow.Stage == "complete" || it.Workflow.Stage == "canceled") {
+		reconcile = false
+	}
 	out := apigen.Payout{
-		Id: p.ID, PlacementId: p.PlacementID, OrderNumber: it.Brief.OrderNumber,
+		ReconciliationRequired: &reconcile,
+		Id:                     p.ID, PlacementId: p.PlacementID, OrderNumber: it.Brief.OrderNumber,
 		Channel: apigen.ChannelRef{Id: it.Brief.ChannelID, Title: it.Brief.ChannelTitle},
 		Amount:  int64(p.Amount), Status: apigen.PayoutStatus(p.Status), Method: apigen.PayoutMethod(p.Method),
 		Attempt: p.Attempt, ReceiptUrl: opt(p.ReceiptURL), FailureMessage: opt(p.FailureMessage),
 		CreatedAt: p.CreatedAt, CompletedAt: p.CompletedAt,
+	}
+	if it.Workflow != nil {
+		v := it.Workflow
+		out.Workflow = &apigen.RocketworkWorkflow{Stage: v.Stage, ProviderStatus: v.ProviderStatus, NextAction: v.NextAction, Documents: []apigen.RocketworkDocument{}}
+		add := func(kind, url string) {
+			if url != "" {
+				out.Workflow.Documents = append(out.Workflow.Documents, apigen.RocketworkDocument{Kind: kind, Url: url})
+			}
+		}
+		d := v.Documents
+		add("agreement", d.AgreementURL)
+		add("agreement_signing", d.AgreementSigningURL)
+		add("act", d.AcceptanceURL)
+		add("act_signing", d.AcceptanceSigningURL)
+		add("receipt", d.ReceiptURL)
+		add("manual_receipt_form", d.ManualFormURL)
+		for _, r := range d.FNS {
+			add("fns_receipt", r.URL)
+		}
+		for _, r := range d.Fiscal {
+			add("fiscal_receipt", r.URL)
+		}
 	}
 	if p.FailureCode != "" {
 		code := apigen.PayoutFailureCode(p.FailureCode)
@@ -163,4 +195,19 @@ func (h *Handlers) RefreshRocketworkStatus(ctx context.Context, _ apigen.Refresh
 		return nil, toAPIError(err)
 	}
 	return apigen.RefreshRocketworkStatus200JSONResponse(statusOf(v)), nil
+}
+
+func (h *Handlers) RequestRocketworkAction(ctx context.Context, req apigen.RequestRocketworkActionRequestObject) (apigen.RequestRocketworkActionResponseObject, error) {
+	org, user, err := blogger(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if req.Body == nil {
+		return nil, apperr.Validation("body", "required")
+	}
+	v, err := h.svc.OnboardingFromCabinet(ctx, org, user, string(req.Body.Action), domain.RegistrationNames{FirstName: deref(req.Body.FirstName), LastName: deref(req.Body.LastName), SecondName: deref(req.Body.SecondName)})
+	if err != nil {
+		return nil, toAPIError(err)
+	}
+	return apigen.RequestRocketworkAction202JSONResponse(statusOf(v)), nil
 }

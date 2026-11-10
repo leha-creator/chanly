@@ -94,6 +94,11 @@ func organizationObject(orgID uuid.UUID) string  { return "organization:" + orgI
 
 // Config — параметры модуля (07 §8).
 type Config struct {
+	WithdrawalDestination *domain.WithdrawalDestination
+	AgreementTemplate     *domain.AgreementTerms
+	// ProviderScope enables verified OpenAPI identity/workflow handling. Nil
+	// retains the legacy fake port while bootstrap migrates its configuration.
+	ProviderScope *domain.ProviderScope
 	// ProviderEnabled — Рокет Ворк подключён (ROCKETWORK_MODE ≠ disabled, R-1).
 	ProviderEnabled bool
 	// PollFast, PollSlow — опрос: первый час и дальше (PAYOUT_POLL_FAST, PAYOUT_POLL_SLOW, R-10).
@@ -270,6 +275,7 @@ func (s *Service) schedule(ctx context.Context, j job.Job) error {
 // EventPayload — тело inbound_event Рокет Ворк: подпись уже проверена, формат сервиса разобран
 // адаптером, хранится только идентификатор объекта (R-10).
 type EventPayload struct {
+	ScopeKey   string `json:"scope_key,omitempty"`
 	ExternalID string `json:"external_id"`
 	EventID    string `json:"event_id,omitempty"`
 }

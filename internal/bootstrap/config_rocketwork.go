@@ -1,11 +1,13 @@
 package bootstrap
 
 import (
+	"math"
 	"net/url"
 	"strings"
 	"time"
 
 	payoutapp "github.com/leha-creator/chanly/internal/payout/app"
+	payoutdomain "github.com/leha-creator/chanly/internal/payout/domain"
 	"github.com/leha-creator/chanly/internal/platform/money"
 )
 
@@ -15,22 +17,42 @@ const (
 	RocketWorkFake = "fake"
 	// RocketWorkDisabled — сервис не подключён: онбординг недоступен, задания откладываются.
 	RocketWorkDisabled = "disabled"
-	// RocketWorkLive — HTTP-клиент по предполагаемому контракту (Q-10 … Q-12).
+	// RocketWorkLive — Public API v1; workflow requires explicit configuration.
 	RocketWorkLive = "live"
 )
 
 // RocketWorkConfig — Рокет Ворк и выплаты блогерам (05 §4, 06 §2.3, этап «Выплаты блогерам»).
 type RocketWorkConfig struct {
+	ProductionApproved   bool   `env:"ROCKETWORK_PRODUCTION_APPROVED"`
+	WithdrawalCompanyINN string `env:"ROCKETWORK_WITHDRAWAL_COMPANY_INN"`
+	WithdrawalBIC        string `env:"ROCKETWORK_WITHDRAWAL_BIC"`
+	WithdrawalAccount    string `env:"ROCKETWORK_WITHDRAWAL_ACCOUNT"`
+	WithdrawalExecutorID int64  `env:"ROCKETWORK_WITHDRAWAL_EXECUTOR_ID"`
+	TaskTitle            string `env:"ROCKETWORK_TASK_TITLE"`
+	TaskDescription      string `env:"ROCKETWORK_TASK_DESCRIPTION"`
+	WorkflowEnabled      bool   `env:"ROCKETWORK_WORKFLOW_ENABLED"`
+	Target               string `env:"ROCKETWORK_TARGET"`
+	AccountKey           string `env:"ROCKETWORK_ACCOUNT_KEY"`
+	ContractMode         string `env:"ROCKETWORK_CONTRACT_MODE"`
+	DocumentName         string `env:"ROCKETWORK_DOCUMENT_NAME"`
+	DocumentNumber       string `env:"ROCKETWORK_DOCUMENT_NUMBER"`
+	DocumentDate         string `env:"ROCKETWORK_DOCUMENT_DATE"`
+	PeriodFrom           string `env:"ROCKETWORK_PERIOD_FROM"`
+	PeriodTo             string `env:"ROCKETWORK_PERIOD_TO"`
+	ActRequired          *bool  `env:"ROCKETWORK_ACT_REQUIRED"`
+	TaxRetention         *bool  `env:"ROCKETWORK_TAX_RETENTION"`
+	MaxCommission        *int64 `env:"ROCKETWORK_MAX_COMMISSION_KOPECKS"`
 	// Mode — fake | disabled | live; пусто — fake вне production и disabled в production.
 	Mode string `env:"ROCKETWORK_MODE"`
-	// BaseURL — адрес API; пусто — rocketwork.DefaultBaseURL (ПРЕДПОЛОЖЕНИЕ (Q-10)).
+	// BaseURL — адрес API; пусто — https://api.rocketwork.ru из OpenAPI.
 	BaseURL string `env:"ROCKETWORK_BASE_URL"`
 	// Token — токен кабинета заказчика (секрет); обязателен при live.
 	Token string `env:"ROCKETWORK_TOKEN"`
 	// Rate — запросов в секунду на все экземпляры (корзина rocketwork:global).
 	Rate float64 `env:"ROCKETWORK_RATE" envDefault:"5"`
-	// WebhookSecret — ключ подписи вебхуков (секрет); обязателен при live, с fake — ключ разработки.
-	WebhookSecret string `env:"ROCKETWORK_WEBHOOK_SECRET"`
+	// WebhookSecret — Bearer-токен подписки в live; с fake — HMAC-ключ разработки.
+	WebhookSecret         string `env:"ROCKETWORK_WEBHOOK_SECRET"`
+	PreviousWebhookSecret string `env:"ROCKETWORK_PREVIOUS_WEBHOOK_SECRET"`
 	// FakeStatePath — общий файл состояния rocketworkfake для api и worker (разработка).
 	FakeStatePath string `env:"ROCKETWORK_FAKE_STATE_PATH"`
 	// DepositCheckInterval — check_rocketwork_deposit (R-12).
@@ -71,18 +93,59 @@ func (c Config) RocketWorkWebhookSecret() []byte {
 // PayoutAppConfig — параметры модуля выплат.
 func (c Config) PayoutAppConfig() payoutapp.Config {
 	r := c.RocketWork
-	return payoutapp.Config{
+	result := payoutapp.Config{
 		ProviderEnabled: c.RocketWorkMode() != RocketWorkDisabled,
 		PollFast:        r.PollFast, PollSlow: r.PollSlow, ContractorPollMaxAge: r.ContractorPollMaxAge,
 		DepositTolerance: money.Kopecks(r.DepositTolerance), NPDAnnualLimit: money.Kopecks(r.NPDAnnualLimit),
 		SecondApproval: money.Kopecks(c.Billing.ManualSecondApproval),
 	}
+	origin := r.BaseURL
+	if origin == "" {
+		origin = "https://api.rocketwork.ru"
+	}
+	if c.RocketWorkMode() == RocketWorkLive && r.WorkflowEnabled && rwOrigin(r.Target, origin) && r.AccountKey != "" && (r.Target != "production" || r.ProductionApproved) {
+		result.ProviderScope = &payoutdomain.ProviderScope{Environment: r.Target, Account: r.AccountKey}
+		if r.WithdrawalCompanyINN != "" && r.WithdrawalBIC != "" && r.WithdrawalAccount != "" && r.WithdrawalExecutorID > 0 {
+			result.WithdrawalDestination = &payoutdomain.WithdrawalDestination{CompanyINN: r.WithdrawalCompanyINN, BIC: r.WithdrawalBIC, AccountNumber: r.WithdrawalAccount, ExecutorID: r.WithdrawalExecutorID}
+		}
+	}
+	if r.ActRequired != nil && r.TaxRetention != nil && r.MaxCommission != nil {
+		result.AgreementTemplate = &payoutdomain.AgreementTerms{Currency: "RUB", Title: r.TaskTitle, Description: r.TaskDescription, SignatureForm: r.ContractMode, DocumentName: r.DocumentName, DocumentNumber: r.DocumentNumber, DocumentDate: r.DocumentDate, PeriodFrom: r.PeriodFrom, PeriodTo: r.PeriodTo, ActRequired: *r.ActRequired, TaxRetention: *r.TaxRetention, MaxCommission: money.Kopecks(*r.MaxCommission)}
+	}
+	return result
 }
 
 // validateRocketWork — параметры выплат режимов api и worker (R-1).
 func (c Config) validateRocketWork(add func(field, reason string)) {
 	r := c.RocketWork
 	mode := c.RocketWorkMode()
+	if r.WorkflowEnabled {
+		if mode != RocketWorkLive {
+			add("ROCKETWORK_WORKFLOW_ENABLED", "requires live adapter")
+		}
+		origin := r.BaseURL
+		if origin == "" {
+			origin = "https://api.rocketwork.ru"
+		}
+		if !rwOrigin(r.Target, origin) {
+			add("ROCKETWORK_TARGET", "target must match provider origin")
+		}
+		if r.Target == "production" && !r.ProductionApproved {
+			add("ROCKETWORK_PRODUCTION_APPROVED", "workflow requires separate production admission after live acceptance")
+		}
+		if strings.TrimSpace(r.AccountKey) == "" {
+			add("ROCKETWORK_ACCOUNT_KEY", "required for workflow identity")
+		}
+		if r.ActRequired == nil || r.TaxRetention == nil || r.MaxCommission == nil {
+			add("ROCKETWORK_CONTRACT_MODE", "explicit act, tax and commission policy required")
+		}
+		if template := c.PayoutAppConfig().AgreementTemplate; template != nil {
+			template.Amount, template.ExecutorID, template.EmploymentKind = 1, 1, "selfemployed"
+			if template.Validate() != nil {
+				add("ROCKETWORK_CONTRACT_MODE", "complete, valid agreement template required")
+			}
+		}
+	}
 	switch mode {
 	case RocketWorkFake, RocketWorkDisabled, RocketWorkLive:
 	default:
@@ -98,11 +161,12 @@ func (c Config) validateRocketWork(add func(field, reason string)) {
 		}
 		if r.BaseURL != "" {
 			u, err := url.Parse(r.BaseURL)
-			if err != nil || u.Host == "" || (u.Scheme != "https" && c.Env == EnvProduction) || u.Scheme == "" {
-				add("ROCKETWORK_BASE_URL", "must be an absolute (https in production) URL")
+			local := r.Target == "local-emulator" && rwOrigin(r.Target, r.BaseURL)
+			if err != nil || u.Host == "" || (u.Scheme != "https" && !local) || u.User != nil || u.RawQuery != "" || u.Fragment != "" || (u.Path != "" && u.Path != "/") {
+				add("ROCKETWORK_BASE_URL", "must be an HTTPS origin without credentials, path, query or fragment")
 			}
 		}
-		if r.Rate <= 0 {
+		if r.Rate <= 0 || math.IsNaN(r.Rate) || math.IsInf(r.Rate, 0) {
 			add("ROCKETWORK_RATE", "must be positive")
 		}
 	}

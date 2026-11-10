@@ -64,10 +64,11 @@ type Call struct {
 
 // state — сохраняемая часть подделки.
 type state struct {
-	Seq         int                    `json:"seq"`
-	Deposit     int64                  `json:"deposit_kopecks"`
-	Contractors map[string]*Contractor `json:"contractors"`
-	Payments    map[string]*Payment    `json:"payments"`
+	Tasks       map[int64]rocketwork.TaskSnapshot `json:"tasks,omitempty"`
+	Seq         int                               `json:"seq"`
+	Deposit     int64                             `json:"deposit_kopecks"`
+	Contractors map[string]*Contractor            `json:"contractors"`
+	Payments    map[string]*Payment               `json:"payments"`
 	// AutoActivate — исполнитель сразу active (разработка без ручных шагов).
 	AutoActivate bool `json:"auto_activate"`
 }
@@ -81,9 +82,11 @@ type Fake struct {
 	log    *slog.Logger
 	calls  []Call
 
-	failNext    map[string]error
-	timeoutNext map[string]bool
-	unknownNext bool
+	failNext          map[string]error
+	timeoutNext       map[string]bool
+	unknownNext       bool
+	hiddenTaskLookups int
+	loseTaskWrites    map[string]bool
 }
 
 // Option — настройка подделки.

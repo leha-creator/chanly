@@ -1,5 +1,8 @@
 -- Исполнители Рокет Ворк (04 §7, S-11).
 
+-- name: ContractorIDsAfter :many
+SELECT id FROM rocketwork_contractor WHERE id > @after_id ORDER BY id LIMIT 100;
+
 -- name: InsertContractor :execrows
 INSERT INTO rocketwork_contractor (id, organization_id, external_id, status, blocked_reason, onboarding_url,
     status_checked_at, last_error, created_at, updated_at)

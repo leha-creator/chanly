@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "run_id": "68f9b598-bd15-472a-9907-71b36077ad23",
+  "target": "local-emulator",
+  "origin": "http://127.0.0.1:18080",
+  "account_key": "synthetic",
+  "company_inn": "000000000000",
+  "executor": {
+    "Kind": "inn",
+    "Value": "000000000000",
+    "ExpectedID": 7,
+    "INN": "",
+    "Phone": "",
+    "ExternalID": "",
+    "EmploymentKind": "selfemployed"
+  },
+  "task_id": 0,
+  "terms": {
+    "ExternalID": "integration-check:68f9b598-bd15-472a-9907-71b36077ad23",
+    "ExecutorINN": "000000000000",
+    "EmploymentKind": "selfemployed",
+    "AmountKopecks": 10000,
+    "Title": "Synthetic",
+    "Description": "Synthetic service",
+    "SignatureForm": "online",
+    "DocumentName": "Synthetic agreement",
+    "DocumentNumber": "",
+    "DocumentDate": "",
+    "PeriodFrom": "2026-11-01",
+    "PeriodTo": "2026-11-30",
+    "ActRequired": true,
+    "TaxRetention": false,
+    "Autosignable": false,
+    "Autocomplete": false,
+    "Autopayable": false
+  },
+  "terms_sha256": "7c04c77609997c7a50993fa7c7f0a0f36ce5de35fb3621159d09fef33dfd890a",
+  "max_commission_kopecks": 100,
+  "actions": [
+    "create",
+    "complete",
+    "sign_act",
+    "pay"
+  ]
+}

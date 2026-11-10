@@ -21,6 +21,7 @@ const (
 
 // PayoutItem — строка blg/payouts: попытка, заказ и канал.
 type PayoutItem struct {
+	Workflow *WorkflowView
 	domain.Payout
 	Brief domain.PlacementBrief
 }
@@ -86,7 +87,11 @@ func (s *Service) List(ctx context.Context, orgID uuid.UUID, cursor string, limi
 		return PayoutPage{}, fmt.Errorf("payout list briefs: %w", err)
 	}
 	for _, p := range rows {
-		page.Items = append(page.Items, PayoutItem{Payout: p, Brief: briefs[p.PlacementID]})
+		view, err := s.workflowView(ctx, p)
+		if err != nil {
+			return PayoutPage{}, err
+		}
+		page.Items = append(page.Items, PayoutItem{Payout: p, Brief: briefs[p.PlacementID], Workflow: view})
 	}
 	sum, err := s.Store.Summary(ctx, orgID)
 	if err != nil {

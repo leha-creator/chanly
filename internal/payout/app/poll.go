@@ -23,6 +23,9 @@ func (s *Service) PollPayout(ctx context.Context, payoutID uuid.UUID) error {
 	if err != nil {
 		return err
 	}
+	if s.Config.ProviderScope != nil && p.Method == domain.MethodRocketwork {
+		return s.DrivePayout(ctx, payoutID)
+	}
 	if p.Status.Final() || p.ExternalID == "" {
 		s.log.DebugContext(ctx, "payout poll stopped", logx.KeyOp, op, KeyPayoutID, p.ID, "status", p.Status)
 		return nil
@@ -52,6 +55,9 @@ func (s *Service) ApplyPayout(ctx context.Context, externalID string) error {
 	p, err := s.Store.PayoutByExternalID(ctx, externalID, false)
 	if err != nil {
 		return err
+	}
+	if s.Config.ProviderScope != nil && p.Method == domain.MethodRocketwork {
+		return s.DrivePayout(ctx, p.ID)
 	}
 	if p.Status.Final() {
 		s.log.DebugContext(ctx, "payout event for final payout", logx.KeyOp, op, KeyPayoutID, p.ID, "status", p.Status)

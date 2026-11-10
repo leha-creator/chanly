@@ -120,6 +120,9 @@ func (c *Client) System() string { return c.opts.System }
 
 // Call — один вызов внешней системы.
 type Call struct {
+	// Sensitive suppresses bodies and URL (including path identifiers) in logs,
+	// errors and persistence. The caller still receives the original response.
+	Sensitive bool
 	// NoRetry forbids inline replay for a write whose outcome must be reconciled
 	// by its durable workflow. It can only strengthen Options.NoRetry.
 	NoRetry bool
@@ -200,6 +203,11 @@ type attemptResult struct {
 
 // Do выполняет вызов с повторами по 05 §1.
 func (c *Client) Do(ctx context.Context, call Call) (Response, error) {
+	// Per-call redaction must also cover errors/logs, not only database records.
+	scoped := *c
+	scoped.redactor = c.redactor.with(call.Redact)
+	scoped.redactor.sensitiveCall = call.Sensitive
+	c = &scoped
 	log := c.log.With(logx.KeyOp, "Outbound."+call.Operation, "system", c.opts.System, "operation", call.Operation)
 	if wait, open, err := c.circuit.check(ctx); err != nil {
 		return Response{}, err
@@ -289,11 +297,19 @@ func (c *Client) attempt(ctx context.Context, log *slog.Logger, call Call, attem
 
 	req, body, err := c.build(actx, call)
 	if err != nil {
+		if call.Sensitive {
+			err = errors.New("invalid sensitive request")
+		}
 		return attemptResult{err: fmt.Errorf("build request: %w", err)}
 	}
 	log.DebugContext(ctx, "outbound call started", "attempt", attempt, "method", call.Method, "url", c.redactor.url(call.URL))
 	started := c.clock.Now()
 	res := c.send(req, call)
+	if call.Sensitive && res.err != nil {
+		// Transport errors may embed a URL, body fragment or remote text. Keep
+		// retry/timeout classification while removing that text before recording.
+		res.err = fmt.Errorf("sensitive request failed (HTTP %d, timeout=%t)", res.resp.Status, res.timeout)
+	}
 	dur := c.clock.Now().Sub(started)
 	if res.err != nil && ctx.Err() != nil { // отменён context задания: не повторять
 		res.retryable, res.systemFailure = false, false

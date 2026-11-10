@@ -342,6 +342,10 @@ func (unimplemented) GetRocketworkStatus(context.Context, apigen.GetRocketworkSt
 	return nil, apperr.NotImplemented("getRocketworkStatus")
 }
 
+func (unimplemented) RequestRocketworkAction(context.Context, apigen.RequestRocketworkActionRequestObject) (apigen.RequestRocketworkActionResponseObject, error) {
+	return nil, apperr.NotImplemented("requestRocketworkAction")
+}
+
 func (unimplemented) InviteRocketwork(context.Context, apigen.InviteRocketworkRequestObject) (apigen.InviteRocketworkResponseObject, error) {
 	return nil, apperr.NotImplemented("inviteRocketwork")
 }

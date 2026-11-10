@@ -31,6 +31,13 @@ type Options struct {
 // оповещение. Нехватка депозита и режим disabled откладывают задание без траты попытки.
 // poll_payout и poll_contractor — без предела, расписание — job.Postpone из app.
 func Register(w *job.Worker, d *inbound.Dispatcher, svc *app.Service, opts Options) {
+	w.Register(app.KindOnboardExecutor, func(ctx context.Context, r job.Running) error {
+		var p app.OnboardingPayload
+		if err := decode(r, &p); err != nil {
+			return err
+		}
+		return svc.RunOnboarding(ctx, p.OrganizationID, p.Action)
+	}, job.HandlerOptions{})
 	w.Register(app.KindSendPayout, func(ctx context.Context, r job.Running) error {
 		p, err := decodePayout(r)
 		if err != nil {
@@ -100,6 +107,27 @@ func Register(w *job.Worker, d *inbound.Dispatcher, svc *app.Service, opts Optio
 func RegisterEvents(d *inbound.Dispatcher, svc *app.Service) {
 	d.Handle(inbound.SourceRocketWork, string(domain.WebhookContractorStatus), event(svc, svc.ApplyContractor))
 	d.Handle(inbound.SourceRocketWork, string(domain.WebhookPayoutStatus), event(svc, svc.ApplyPayout))
+	for _, kind := range []string{"executor_refresh", "deposit_refresh", "unknown"} {
+		d.Handle(inbound.SourceRocketWork, kind, func(ctx context.Context, e inbound.Event) error {
+			var p app.EventPayload
+			if json.Unmarshal(e.Payload, &p) != nil {
+				return job.Permanent(domain.ErrWebhookFormat)
+			}
+			if p.ScopeKey != svc.WebhookScopeKey() {
+				return inbound.ErrIgnore
+			}
+			switch e.EventType {
+			case "deposit_refresh":
+				_, err := svc.CheckDeposit(ctx)
+				return err
+			case "executor_refresh":
+				return svc.RefreshExecutors(ctx)
+			default:
+				svc.Log.WarnContext(ctx, "unknown rocketwork event retained", "event_id", p.EventID)
+				return inbound.ErrIgnore
+			}
+		})
+	}
 }
 
 // event разбирает тело события; неизвестный объект — ignored (app.ErrIgnored).
@@ -110,8 +138,14 @@ func event(svc *app.Service, apply func(ctx context.Context, externalID string) 
 		if err := json.Unmarshal(e.Payload, &p); err != nil || p.ExternalID == "" {
 			return job.Permanent(fmt.Errorf("decode rocketwork event: %v", err))
 		}
+		if p.ScopeKey != svc.WebhookScopeKey() {
+			return inbound.ErrIgnore
+		}
 		err := apply(ctx, p.ExternalID)
 		if errors.Is(err, domain.ErrNotFound) {
+			if p.ScopeKey != "" {
+				return job.Postpone(errors.New("rocketwork object binding pending"), time.Minute)
+			}
 			svc.Log.DebugContext(ctx, "rocketwork event ignored", logx.KeyOp, op, "event_type", e.EventType,
 				"external_id", p.ExternalID)
 			return inbound.ErrIgnore

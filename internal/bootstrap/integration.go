@@ -163,7 +163,7 @@ func (in *infra) integrationMetrics() (*outbound.Metrics, *ratelimit.Metrics) {
 
 // connectRocketWork подключает адаптер Рокет Ворк по ROCKETWORK_MODE (R-1): rocketworkfake
 // (в разработке — с общим файлом состояния для api и worker), заглушка disabled или
-// HTTP-клиент по предполагаемому контракту (live).
+// HTTP-клиент чтения Public API v1 (live).
 func (in *infra) connectRocketWork(ctx context.Context, cfg Config) error {
 	const op = "Bootstrap.ConnectRocketWork"
 	log := in.log.With(logx.KeyModule, "rocketwork")
@@ -179,15 +179,15 @@ func (in *infra) connectRocketWork(ctx context.Context, cfg Config) error {
 	case RocketWorkLive:
 		outMetrics, limitMetrics := in.integrationMetrics()
 		out := outbound.New(in.pool, in.clock, log, outbound.Options{
-			System: outbound.SystemRocketWork, Alerter: in.alerter, Metrics: outMetrics,
+			System: outbound.SystemRocketWork, Alerter: in.alerter, Metrics: outMetrics, HTTP: rocketwork.NewHTTPClient(),
 			// R-18: ПДн и ссылки онбординга и чека не сохраняются в outbound_request (запрос и ответ).
 			Redact: rocketwork.RedactFields,
 		})
 		limiter := ratelimit.New(in.pool, in.clock, log, ratelimit.Options{Metrics: limitMetrics})
 		in.rocketwork = rocketwork.New(out, limiter, rocketwork.Options{BaseURL: cfg.RocketWork.BaseURL,
-			Token: cfg.RocketWork.Token, WebhookSecret: cfg.RocketWorkWebhookSecret(), Rate: cfg.RocketWork.Rate}, log)
-		log.WarnContext(ctx, "rocketwork live client uses an unverified contract", logx.KeyOp, op, "mode", mode,
-			"base_url", cfg.RocketWork.BaseURL, "questions", "Q-10, Q-11, Q-12")
+			Token: cfg.RocketWork.Token, WebhookSecret: cfg.RocketWorkWebhookSecret(), PreviousWebhookSecret: []byte(cfg.RocketWork.PreviousWebhookSecret), Rate: cfg.RocketWork.Rate}, log)
+		log.InfoContext(ctx, "rocketwork adapter connected", logx.KeyOp, op, "mode", mode,
+			"contract", "Public API v1", "workflow_enabled", cfg.PayoutAppConfig().ProviderScope != nil, "live_verified", false)
 	default:
 		in.rocketwork = rocketwork.NewDisabled(log, in.clock.Now)
 		log.InfoContext(ctx, "rocketwork adapter connected", logx.KeyOp, op, "mode", RocketWorkDisabled)

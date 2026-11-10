@@ -38,6 +38,7 @@ const (
 
 // WebhookEvent — проверенное и разобранное событие вебхука.
 type WebhookEvent struct {
+	ScopeKey   string
 	Kind       WebhookKind
 	ExternalID string
 	// EventID — идентификатор события сервиса; пусто — ключ из тела (inbound.KeyFromBody).

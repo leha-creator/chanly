@@ -27,9 +27,10 @@ import (
 )
 
 type integrationCheckOptions struct {
-	system, scenario, runDir string
-	chatID                   int64
-	execute                  bool
+	system, scenario, runDir       string
+	chatID                         int64
+	execute                        bool
+	target, manifest, approvedHash string
 }
 
 func parseIntegrationCheck(args []string) (integrationCheckOptions, error) {
@@ -42,6 +43,9 @@ func parseIntegrationCheck(args []string) (integrationCheckOptions, error) {
 	f.StringVar(&o.runDir, "run-dir", "", "private directory for this run")
 	f.Int64Var(&o.chatID, "chat", 0, "dedicated test channel")
 	f.BoolVar(&o.execute, "execute", false, "allow explicit scenario execution")
+	f.StringVar(&o.target, "target", "", "provider target: local-emulator, sandbox or production")
+	f.StringVar(&o.manifest, "manifest", "", "reviewed RocketWork run manifest")
+	f.StringVar(&o.approvedHash, "approved-manifest-sha256", "", "explicit approval of manifest SHA256")
 	if f.Parse(args) != nil || f.NArg() != 0 {
 		return o, errUsage
 	}
@@ -49,6 +53,17 @@ func parseIntegrationCheck(args []string) (integrationCheckOptions, error) {
 	case "max", "ord", "rocketwork":
 	default:
 		return o, errUsage
+	}
+	if o.system == "rocketwork" {
+		switch o.scenario {
+		case "fingerprint", "preflight", "inspect", "execute", "resume", "reconcile":
+		default:
+			return o, errUsage
+		}
+		if o.manifest == "" || o.runDir == "" || o.target == "" || (o.scenario == "preflight" && o.execute) || ((o.scenario == "execute" || o.scenario == "resume") && !o.execute) {
+			return o, errUsage
+		}
+		return o, nil
 	}
 	switch o.scenario {
 	case "preflight":
@@ -76,6 +91,10 @@ func parseIntegrationCheck(args []string) (integrationCheckOptions, error) {
 // Preflight deliberately does not open a database or call a provider. A pass is
 // configuration readiness only, never evidence of live API compatibility.
 func integrationCheckPreflight(c Config, vars map[string]string, o *integrationCheckOptions) error {
+	if o.system == "rocketwork" {
+		_, _, err := loadRWCheckManifest(c, *o)
+		return err
+	}
 	if c.Env != EnvDevelopment {
 		return errors.New("integration checks require APP_ENV=development; test uses fakes and production is forbidden")
 	}
@@ -124,7 +143,10 @@ func integrationCheckPreflight(c Config, vars map[string]string, o *integrationC
 			return fmt.Errorf("ORD configuration incomplete: %s", strings.Join(bad, ", "))
 		}
 	case "rocketwork":
-		return errors.New("rocketwork checks blocked: Q-10/Q-12 API and sandbox contract are unverified")
+		if c.RocketWorkMode() != RocketWorkLive || strings.TrimSpace(c.RocketWork.Token) == "" {
+			return errors.New("ROCKETWORK_MODE=live and ROCKETWORK_TOKEN are required; disabled/fake cannot pass")
+		}
+		return errors.New("rocketwork checks blocked: OpenAPI v1 received; sandbox endpoint, test access and agreement workflow remain unverified (Q-10/Q-12)")
 	}
 	return nil
 }
@@ -154,11 +176,24 @@ func runIntegrationCheck(ctx context.Context, p RunParams) int {
 	log = integrationCheckLogger(p.Stdout, cfg.Level()).With("op", "IntegrationCheck", "system", o.system, "scenario", o.scenario)
 	ctx = logx.WithRequestID(ctx, newCheckRunID())
 	log.DebugContext(ctx, "integration check started")
+	if o.system == "rocketwork" && o.scenario == "fingerprint" {
+		var m rwCheckManifest
+		if o.execute || readRWJSON(o.manifest, &m) != nil {
+			return 2
+		}
+		m.TermsHash = rwDigest(m.Terms)
+		log.InfoContext(ctx, "rocketwork manifest fingerprints; not an approval", "terms_sha256", m.TermsHash, "manifest_sha256", rwDigest(m), "live_verified", false, "network_called", false)
+		return 0
+	}
 	if err := integrationCheckPreflight(cfg, vars, &o); err != nil {
 		log.WarnContext(ctx, "integration check blocked", "reason", err.Error())
 		return 1
 	}
 	if o.scenario == "preflight" {
+		if o.system == "rocketwork" {
+			m, hash, _ := loadRWCheckManifest(cfg, o)
+			log.InfoContext(ctx, "rocketwork reviewed manifest", "manifest_sha256", hash, "terms_sha256", m.TermsHash, "target", m.Target)
+		}
 		log.InfoContext(ctx, "integration preflight passed", "live_verified", false, "network_called", false)
 		return 0
 	}
@@ -178,6 +213,8 @@ func runIntegrationCheck(ctx context.Context, p RunParams) int {
 		} else {
 			err = in.inspectCheckORD(ctx, cfg)
 		}
+	} else if o.system == "rocketwork" {
+		err = in.executeRWCheck(ctx, cfg, o)
 	} else if err = in.connectCheckMAX(cfg); err == nil {
 		err = executeMAXCheck(ctx, in.max, in.clock, log, o)
 	}
