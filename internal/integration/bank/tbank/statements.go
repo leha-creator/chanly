@@ -6,7 +6,6 @@ import (
 	"math/big"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/leha-creator/chanly/internal/billing/domain"
 	"github.com/leha-creator/chanly/internal/platform/money"
@@ -81,22 +80,9 @@ func normalize(r result, q domain.BankQuery, ownINN string) (domain.BankPage, er
 			d := o.ChargeDate.UTC()
 			in.ChargeDate = &d
 		}
-		// The production bank represents a calendar-only document date as Moscow
-		// midnight (21:00Z on the previous day), verified against its payment PDF.
-		// Preserve the timestamp; the identity store uses its Moscow calendar day.
-		// Other ambiguous timestamps still require reconciliation.
-		for i, d := range []*time.Time{in.DocDate, in.ChargeDate} {
-			if d == nil {
-				continue
-			}
-			local := d.In(time.FixedZone("MSK", 3*3600))
-			if i == 0 && local.Hour() == 0 && local.Minute() == 0 && local.Second() == 0 && local.Nanosecond() == 0 {
-				continue
-			}
-			if d.UTC().Format(time.DateOnly) != local.Format(time.DateOnly) {
-				in.IdentityConflict = true
-			}
-		}
+		// A UTC/Moscow day difference is normal after Moscow midnight, including
+		// for chargeDate and operationDate. Preserve all original UTC instants;
+		// the identity store derives their Moscow calendar days for 1C matching.
 		p.Incoming = append(p.Incoming, in)
 	}
 	return p, nil

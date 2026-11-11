@@ -42,7 +42,9 @@ func (s *Store) ResolveIncoming(ctx context.Context, account string, in domain.I
 			dates = append(dates, *in.ChargeDate)
 		}
 		for _, d := range dates {
-			key := clientbank.ExternalID(d, in.DocumentNumber, in.Amount, in.PayerINN, in.PayerAccount)
+			// 1C contains Moscow calendar dates, while T-API contains UTC instants.
+			// Hash the same business day without changing the stored operation time.
+			key := clientbank.ExternalID(d.In(time.FixedZone("MSK", 3*3600)), in.DocumentNumber, in.Amount, in.PayerINN, in.PayerAccount)
 			legacy = append(legacy, key)
 			aliases = append(aliases, "external:"+key)
 		}

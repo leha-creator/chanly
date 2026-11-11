@@ -133,8 +133,8 @@ func TestMoscowCalendarDocumentDate(t *testing.T) {
 		conflict                  bool
 	}{
 		{"Moscow midnight is a calendar date", "2026-10-18T21:00:00Z", "2026-10-19T10:00:00Z", false},
-		{"other boundary timestamp stays quarantined", "2026-10-18T21:01:00Z", "2026-10-19T10:00:00Z", true},
-		{"ambiguous charge date stays quarantined", "2026-10-18T21:00:00Z", "2026-10-18T21:00:00Z", true},
+		{"document timestamp across midnight is valid", "2026-10-18T21:01:00Z", "2026-10-19T10:00:00Z", false},
+		{"charge timestamp across midnight is valid", "2026-10-18T21:00:00Z", "2026-10-18T21:00:00Z", false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			var r result
@@ -152,6 +152,45 @@ func TestMoscowCalendarDocumentDate(t *testing.T) {
 			in := p.Incoming[0]
 			if in.IdentityConflict != tc.conflict || !in.DocDate.Equal(doc) || in.DocDate.Location() != time.UTC {
 				t.Fatalf("calendar handling: %+v", in)
+			}
+		})
+	}
+}
+
+func TestNightPaymentPreservesUTCAndRequiresCompleteIdentity(t *testing.T) {
+	var original result
+	if err := json.Unmarshal([]byte(fixture), &original); err != nil {
+		t.Fatal(err)
+	}
+	paid := time.Date(2026, 10, 19, 22, 45, 57, 0, time.UTC)
+	doc := time.Date(2026, 10, 19, 21, 0, 0, 0, time.UTC)
+	for _, missing := range []string{"", "document number", "document date", "charge date"} {
+		t.Run("missing "+missing, func(t *testing.T) {
+			o := original.Operations[0]
+			o.Date = paid
+			o.DocDate = &doc
+			o.ChargeDate = &paid
+			switch missing {
+			case "document number":
+				o.Number = ""
+			case "document date":
+				o.DocDate = nil
+			case "charge date":
+				o.ChargeDate = nil
+			}
+			p, err := normalize(result{Operations: []operation{o}}, query(), "")
+			if err != nil || len(p.Incoming) != 1 {
+				t.Fatalf("normalize: %+v %v", p, err)
+			}
+			in := p.Incoming[0]
+			if in.IdentityConflict != (missing != "") || !in.OperationDate.Equal(paid) {
+				t.Fatalf("night payment: %+v", in)
+			}
+			if in.DocDate != nil && !in.DocDate.Equal(doc) {
+				t.Fatal("document instant changed")
+			}
+			if in.ChargeDate != nil && !in.ChargeDate.Equal(paid) {
+				t.Fatal("charge instant changed")
 			}
 		})
 	}

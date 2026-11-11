@@ -9,6 +9,7 @@ import (
 	"github.com/leha-creator/chanly/internal/billing/app"
 	"github.com/leha-creator/chanly/internal/billing/domain"
 	"github.com/leha-creator/chanly/internal/billing/postgres"
+	"github.com/leha-creator/chanly/internal/integration/bank/clientbank"
 	"github.com/leha-creator/chanly/internal/platform/logx"
 	"github.com/leha-creator/chanly/internal/platform/money"
 )
@@ -230,6 +231,9 @@ func TestBankCalendarQuarantineCanBeReprocessedOnce(t *testing.T) {
 	in := bankIncoming(e, "7", "Оплата по счету "+inv.Number, "held-calendar")
 	doc := time.Date(2026, 10, 18, 21, 0, 0, 0, time.UTC)
 	in.DocDate = &doc
+	paid := time.Date(2026, 10, 18, 22, 45, 57, 0, time.UTC)
+	in.ChargeDate = &paid
+	in.OperationDate = paid
 	in.IdentityConflict = true
 	e.svc.BankSource = pageFunc(func(context.Context, domain.BankQuery) (domain.BankPage, error) {
 		return domain.BankPage{Incoming: []domain.Incoming{in}}, nil
@@ -251,6 +255,49 @@ func TestBankCalendarQuarantineCanBeReprocessedOnce(t *testing.T) {
 	}
 	if e.count("SELECT count(*) FROM bank_operation_observation WHERE conflict") != 1 {
 		t.Fatal("original quarantine evidence lost")
+	}
+}
+
+func TestNightPaymentDeduplicatesWithMoscowFileDate(t *testing.T) {
+	for _, fileFirst := range []bool{true, false} {
+		t.Run(map[bool]string{true: "file-first", false: "api-first"}[fileFirst], func(t *testing.T) {
+			e := newEnv(t)
+			setupBank(e)
+			inv := e.invoice(500000)
+			purpose := "Оплата по счету " + inv.Number
+			in := bankIncoming(e, "7", purpose, "night-payment")
+			doc := time.Date(2026, 10, 18, 21, 0, 0, 0, time.UTC)
+			paid := time.Date(2026, 10, 18, 22, 45, 57, 0, time.UTC)
+			in.DocDate = &doc
+			in.ChargeDate = &paid
+			in.OperationDate = paid
+			e.svc.BankSource = pageFunc(func(context.Context, domain.BankQuery) (domain.BankPage, error) {
+				return domain.BankPage{Incoming: []domain.Incoming{in}}, nil
+			})
+			file := statementFile(platformAccount, "night-calendar", payment{7, 500000, "7707083893", purpose})
+			if fileFirst {
+				e.importStatement(file)
+			}
+			if _, err := e.svc.SyncBank(context.Background()); err != nil {
+				t.Fatal(err)
+			}
+			if !fileFirst {
+				if res := e.importStatement(file); res.Duplicates != 1 {
+					t.Fatalf("night file result %+v", res)
+				}
+			}
+			if e.balance(e.org) != 500000 || e.count("SELECT count(*) FROM ledger_transaction WHERE kind='deposit'") != 1 {
+				t.Fatal("night payment credited twice")
+			}
+			wrongDayKey := clientbank.ExternalID(paid, in.DocumentNumber, in.Amount, in.PayerINN, in.PayerAccount)
+			if e.count("SELECT count(*) FROM bank_operation_identity WHERE alias=$1", "external:"+wrongDayKey) != 0 {
+				t.Fatal("incorrect previous-day alias persisted")
+			}
+			correctDayKey := clientbank.ExternalID(paid.In(time.FixedZone("MSK", 3*3600)), in.DocumentNumber, in.Amount, in.PayerINN, in.PayerAccount)
+			if e.count("SELECT count(*) FROM bank_operation_identity WHERE alias=$1", "external:"+correctDayKey) != 1 {
+				t.Fatal("Moscow date alias missing")
+			}
+		})
 	}
 }
 func TestBankResumesAfterPageFailure(t *testing.T) {
