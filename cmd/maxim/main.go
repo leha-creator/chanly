@@ -52,6 +52,8 @@ commands:
   dev statement            --invoice MX-… [--amount <rub.kop>] [--out <path>]: statement file paying an invoice
   dev seed                 [--wait 5m] [--orders=true]: demo users, catalog, campaigns and orders; needs a running
                            worker (development and test only)
+  dev channel-metrics      --channel <UUID>: queue an immediate metrics refresh; needs a running worker
+                           (development and test only; updates today's snapshot)
   config check --for <mode>  validate configuration of a mode (api, worker, migrate, legal, admin, dev) and exit
   integration-check        --system max|ord|rocketwork|tbank [--scenario preflight|inspect|sandbox|sync|publish|observe|recover|remove]
                            [--chat ID] [--run-dir PATH] [--execute]: isolated integration checks (development only)

@@ -47,6 +47,9 @@ func runDev(ctx context.Context, cfg Config, log *slog.Logger, args []string, ou
 	if len(args) > 0 && args[0] == "seed" {
 		return runDevSeed(ctx, cfg, log, args[1:], out)
 	}
+	if len(args) > 0 && args[0] == "channel-metrics" {
+		return runDevChannelMetrics(ctx, cfg, log, args[1:], out)
+	}
 	if len(args) == 0 || args[0] != "post-version" {
 		return errUsage
 	}
