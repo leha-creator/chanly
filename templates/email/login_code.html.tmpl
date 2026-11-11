@@ -1,10 +1,40 @@
 <!doctype html>
 <html lang="ru">
-<body style="font-family: Arial, sans-serif; color: #222;">
-  <p>Здравствуйте!</p>
-  <p>Ваш код для входа в Chanly:</p>
-  <p style="font-size: 28px; font-weight: bold; letter-spacing: 4px;">{{.Code}}</p>
-  <p>Код действует {{.ExpiresMinutes}} мин., до {{.ExpiresAtMSK}} МСК.</p>
-  <p style="color: #777;">Если вы не запрашивали код, просто проигнорируйте это письмо.</p>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="format-detection" content="telephone=no,date=no,address=no,email=no">
+  <title>Код для входа в Chanly</title>
+  <style>
+    table { border-collapse: collapse; mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
+    @media screen and (max-width: 600px) {
+      .outer { padding: 16px 8px !important; }
+      .content { padding: 28px 20px !important; }
+      .header { padding: 20px !important; }
+      h1 { font-size: 24px !important; line-height: 32px !important; }
+    }
+  </style>
+</head>
+<body style="margin: 0; padding: 0; width: 100%; background-color: #f6f7fb; color: #182230; font-family: Arial, Helvetica, sans-serif; -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="#f6f7fb">
+    <tr><td class="outer" align="center" style="padding: 32px 16px;">
+      <!--[if mso]><table role="presentation" width="600" align="center"><tr><td><![endif]-->
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width: 100%; max-width: 600px;">
+        <tr><td class="header" bgcolor="#171b30" style="padding: 24px 32px; background-color: #171b30; border-radius: 16px 16px 0 0;">
+          <img src="https://raw.githubusercontent.com/leha-creator/chanly/master/docs/assets/chanly-logo-email.png" width="144" height="44" alt="Chanly" style="display: block; width: 144px; height: 44px; border: 0; color: #ffffff; font-size: 24px; font-weight: bold;">
+        </td></tr>
+        <tr><td class="content" bgcolor="#ffffff" style="padding: 36px 32px; background-color: #ffffff; border-radius: 0 0 16px 16px; overflow-wrap: anywhere; word-wrap: break-word;">
+          <h1 style="margin: 0 0 24px; font-size: 28px; line-height: 36px;">Код для входа</h1>
+          <p style="margin: 0 0 16px; font-size: 16px; line-height: 26px;">Здравствуйте!</p>
+          <p style="margin: 0 0 24px; font-size: 16px; line-height: 26px;">Ваш код для входа в Chanly:</p>
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" bgcolor="#f1f2ff" style="padding: 24px 12px; border: 1px solid #e4e6ff; border-radius: 12px; color: #423fc0; font-family: 'Courier New', monospace; font-size: 32px; line-height: 40px; font-weight: 700; letter-spacing: 6px;">{{.Code}}</td></tr></table>
+          <p style="margin: 24px 0 0; font-size: 16px; line-height: 26px;">Код действует {{.ExpiresMinutes}} мин., до {{.ExpiresAtMSK}} МСК.</p>
+          <p style="margin: 16px 0 0; color: #5d687a; font-size: 14px; line-height: 22px;">Если вы не запрашивали код, просто проигнорируйте это письмо.</p>
+        </td></tr>
+        <tr><td align="center" style="padding: 24px 20px; color: #5d687a; font-size: 13px; line-height: 20px;">Chanly</td></tr>
+      </table>
+      <!--[if mso]></td></tr></table><![endif]-->
+    </td></tr>
+  </table>
 </body>
 </html>

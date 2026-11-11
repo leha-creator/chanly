@@ -130,3 +130,27 @@ func TestEmailEscapesHTML(t *testing.T) {
 		t.Fatalf("html not escaped: %s", html)
 	}
 }
+
+func TestEmailOptionalAction(t *testing.T) {
+	r := newRenderer(t)
+	for _, link := range []string{"", "/adv/orders/1?tab=details&from=email"} {
+		data := sample()
+		data[domain.DataLink] = link
+		_, plain, html, err := r.Email(domain.Notification{Template: "channel.rejected", Payload: data})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if link == "" {
+			if strings.Contains(plain+html, "Открыть в кабинете") || strings.Contains(html, "Если кнопка") {
+				t.Fatal("email without a link contains an action")
+			}
+			continue
+		}
+		if !strings.Contains(plain, "https://cabinet.example.ru"+link) {
+			t.Fatal("plain text lost the original action URL")
+		}
+		if strings.Count(html, `href="https://cabinet.example.ru/adv/orders/1?tab=details&amp;from=email"`) != 2 {
+			t.Fatal("button and fallback must preserve the escaped action URL")
+		}
+	}
+}
