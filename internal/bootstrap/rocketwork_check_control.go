@@ -43,9 +43,9 @@ func runRocketWorkControl(ctx context.Context, p RunParams) int {
 	}
 	owner := false
 	switch command {
-	case "configure-account", "issue", "revoke", "kill", "arm", "reauthorize":
+	case "configure-account", "issue", "revoke", "kill", "arm", "reauthorize", "approve-ui":
 		owner = true
-	case "fingerprint", "prepare", "inspect", "execute", "resume", "reconcile", "status", "import":
+	case "fingerprint", "prepare", "inspect", "execute", "resume", "reconcile", "status", "import", "serve":
 	default:
 		return 2
 	}
@@ -94,6 +94,12 @@ func runRocketWorkControl(ctx context.Context, p RunParams) int {
 	if owner {
 		var policy checkdomain.Policy
 		switch command {
+		case "approve-ui":
+			var run checkdomain.Run
+			run, err = approveRWUI(ctx, store, m, *policyPath, vars["ROCKETWORK_CHECK_ARMING_ID"])
+			if err == nil {
+				err = json.NewEncoder(p.Stdout).Encode(map[string]any{"run_id": run.ID, "write_attempted": false, "next_step": "operator verifies account arming, then configures this run for UI"})
+			}
 		case "configure-account", "issue":
 			if readRWJSON(*policyPath, &policy) != nil || policy.Validate() != nil {
 				return fail()
@@ -138,7 +144,7 @@ func runRocketWorkControl(ctx context.Context, p RunParams) int {
 	}
 	cl := clock.System{}
 	factory := func(auth rocketwork.WriteAuthorizer) *rocketwork.Client {
-		if auth != nil {
+		if auth != nil && command != "serve" {
 			auth = trackedRWAuthorization{delegate: auth, allowed: func() { writeAttempted = true }}
 		}
 		out := outbound.New(pool, cl, log, outbound.Options{System: outbound.SystemRocketWork, HTTP: rocketwork.NewHTTPClient(), NoRetry: true})
@@ -180,6 +186,9 @@ func runRocketWorkControl(ctx context.Context, p RunParams) int {
 	}
 	s := &checkapp.Service{Store: store, Log: log, Tx: tx.NewRunner(pool, log), ArmingID: vars["ROCKETWORK_CHECK_ARMING_ID"], Provider: bridge.CheckProvider{Factory: factory, Origin: origin, Target: target}}
 	s.Ledger = bridge.CheckLedger{Ledger: ledgerapp.New(ledgerapp.Deps{Store: ledgerpg.New(pool, log), Log: log, Clock: cl})}
+	if command == "serve" {
+		return serveRWCheck(ctx, vars, *runID, s, store, log)
+	}
 	switch command {
 	case "prepare":
 		_, err = s.Prepare(ctx, m)

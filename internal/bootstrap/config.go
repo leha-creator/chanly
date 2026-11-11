@@ -362,6 +362,13 @@ func (c Config) Validate(mode string) error {
 	}
 
 	require("DATABASE_URL", c.DatabaseURL)
+	if c.RocketWork.CheckGatewayURL != "" || c.RocketWork.CheckGatewayToken != "" {
+		u, err := url.Parse(c.RocketWork.CheckGatewayURL)
+		if c.Env != EnvDevelopment || err != nil || u == nil || u.Host == "" || u.User != nil || u.RawQuery != "" || u.Fragment != "" || u.Path != "" ||
+			(u.Scheme != "https" && !(u.Scheme == "http" && u.Host == "rocketwork-check-ui:8082")) || len(c.RocketWork.CheckGatewayToken) < 32 {
+			add("ROCKETWORK_CHECK_GATEWAY_URL", "development-only trusted origin and gateway token required")
+		}
+	}
 	if mode == ModeMigrate {
 		require("DB_APP_ROLE", c.DBAppRole)
 		return finish(bad)

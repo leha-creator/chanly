@@ -59,6 +59,9 @@ func TestConfiguredRuntimeRoles(t *testing.T) {
 		t.Fatal("runner issued grant")
 	}
 	r := domain.Run{ID: id, GrantID: grant, ManifestHash: p.ManifestHash, Manifest: json.RawMessage(`{}`), ExternalID: "rw-diagnostic:" + id, Nominal: 1000, FeeCeiling: 100}
+	if _, err = owner.Prepare(ctx, r); err != nil {
+		t.Fatal("policy owner cannot prepare approved immutable run", err)
+	}
 	if _, err = runner.Prepare(ctx, r); err != nil {
 		t.Fatal(err)
 	}

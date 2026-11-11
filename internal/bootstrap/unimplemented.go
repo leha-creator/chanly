@@ -242,6 +242,14 @@ func (unimplemented) AdminRemovePost(context.Context, apigen.AdminRemovePostRequ
 	return nil, apperr.NotImplemented("adminRemovePost")
 }
 
+func (unimplemented) GetAdminRocketworkCheck(context.Context, apigen.GetAdminRocketworkCheckRequestObject) (apigen.GetAdminRocketworkCheckResponseObject, error) {
+	return nil, apperr.NotImplemented("getAdminRocketworkCheck")
+}
+
+func (unimplemented) StartAdminRocketworkCheck(context.Context, apigen.StartAdminRocketworkCheckRequestObject) (apigen.StartAdminRocketworkCheckResponseObject, error) {
+	return nil, apperr.NotImplemented("startAdminRocketworkCheck")
+}
+
 func (unimplemented) BlockUser(context.Context, apigen.BlockUserRequestObject) (apigen.BlockUserResponseObject, error) {
 	return nil, apperr.NotImplemented("blockUser")
 }

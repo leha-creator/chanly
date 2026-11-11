@@ -46,6 +46,25 @@ x-worker: &worker
   networks: [backend]
 
 services:
+  # Narrow internal gateway for the dev UI. Start only after an owner-approved
+  # run is installed. No ports, app.env, policy DSN or Docker socket are exposed.
+  rocketwork-check-ui:
+    profiles: [rocketwork-ui]
+    image: ${MAXIM_IMAGE}:${MAXIM_TAG_NEW:-unset}
+    command: ["rocketwork-check", "serve"]
+    env_file:
+      - path: ./rocketwork-runner.env
+        required: false
+    environment:
+      ROCKETWORK_POLICY_DATABASE_URL: ""
+      ROCKETWORK_CHECK_HTTP_ADDR: ":8082"
+    restart: unless-stopped
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    mem_limit: 128m
+    networks: [backend]
   # Operator-only jobs; intentionally do not inherit x-app/app.env or dev volumes.
   rocketwork-runner:
     profiles: [rocketwork-ops]

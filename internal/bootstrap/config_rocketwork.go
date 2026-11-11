@@ -24,6 +24,8 @@ const (
 
 // RocketWorkConfig — Рокет Ворк и выплаты блогерам (05 §4, 06 §2.3, этап «Выплаты блогерам»).
 type RocketWorkConfig struct {
+	CheckGatewayURL      string `env:"ROCKETWORK_CHECK_GATEWAY_URL"`
+	CheckGatewayToken    string `env:"ROCKETWORK_CHECK_GATEWAY_TOKEN"`
 	ControlDatabaseURL   string `env:"ROCKETWORK_CONTROL_DATABASE_URL"`
 	PolicyDatabaseURL    string `env:"ROCKETWORK_POLICY_DATABASE_URL"`
 	ArmingID             string `env:"ROCKETWORK_CHECK_ARMING_ID"`

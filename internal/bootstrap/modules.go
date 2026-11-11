@@ -321,6 +321,7 @@ func (m *modules) registerJobs(w *job.Worker) {
 // apiImpl — реализация всех операций: обработчики модулей поверх заглушек 501.
 type apiImpl struct {
 	fallback
+	*rwCheckProxy
 	*accounthttp.Handlers
 	*channelHandlers
 	*postHandlers
@@ -344,7 +345,7 @@ func apiHandler(cfg Config, in *infra, m *modules, reg *metrics.Registry) (http.
 		Log:     in.log,
 		Clock:   in.clock,
 		Metrics: reg,
-		Impl: apiImpl{Handlers: m.accountHTTP, channelHandlers: m.channelHTTP, postHandlers: m.postHTTP,
+		Impl: apiImpl{rwCheckProxy: &rwCheckProxy{cfg: cfg, log: log, audit: m.admin.Audit}, Handlers: m.accountHTTP, channelHandlers: m.channelHTTP, postHandlers: m.postHTTP,
 			placementHandlers: m.placementHTTP, billingHandlers: m.billingHTTP, ledgerHandlers: m.ledgerHTTP,
 			payoutHandlers: m.payoutHTTP, notificationHandlers: m.notificationHTTP, adminHandlers: m.adminHTTP,
 			markingHandlers: m.markingHTTP},

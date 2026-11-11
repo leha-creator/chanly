@@ -133,11 +133,11 @@ for dir in "${envs[@]}"; do
     mapfile -t ops_keys < <(keys_of "$ops")
     for k in "${ops_keys[@]}"; do
       case "$kind:$k" in
-        runner:LOG_LEVEL|runner:ROCKETWORK_TARGET|runner:ROCKETWORK_BASE_URL|runner:ROCKETWORK_TOKEN|runner:ROCKETWORK_CONTROL_DATABASE_URL|runner:ROCKETWORK_CHECK_ARMING_ID|policy:LOG_LEVEL|policy:ROCKETWORK_POLICY_DATABASE_URL|policy:ROCKETWORK_CHECK_ARMING_ID) ;;
+        runner:LOG_LEVEL|runner:ROCKETWORK_TARGET|runner:ROCKETWORK_BASE_URL|runner:ROCKETWORK_TOKEN|runner:ROCKETWORK_CONTROL_DATABASE_URL|runner:ROCKETWORK_CHECK_ARMING_ID|runner:ROCKETWORK_CHECK_RUN_ID|runner:ROCKETWORK_CHECK_UI_TOKEN|policy:LOG_LEVEL|policy:ROCKETWORK_POLICY_DATABASE_URL|policy:ROCKETWORK_CHECK_ARMING_ID) ;;
         *) fail unexpected_ops_key env="$env_name" role="$kind" key="$k" ;;
       esac
     done
-    for k in ROCKETWORK_TOKEN ROCKETWORK_CONTROL_DATABASE_URL ROCKETWORK_POLICY_DATABASE_URL ROCKETWORK_CHECK_ARMING_ID; do
+    for k in ROCKETWORK_TOKEN ROCKETWORK_CONTROL_DATABASE_URL ROCKETWORK_POLICY_DATABASE_URL ROCKETWORK_CHECK_ARMING_ID ROCKETWORK_CHECK_RUN_ID ROCKETWORK_CHECK_UI_TOKEN; do
       [[ -z $(value_of "$ops" "$k") ]] || fail ops_template_contains_authority env="$env_name" key="$k"
     done
     if [[ $kind == runner ]]; then

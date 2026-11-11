@@ -2596,6 +2596,41 @@ paths:
         '422': { $ref: '#/components/responses/ValidationFailed' }
 
   # ---------------------------------------------------------------- admin: payouts
+  /admin/rocketwork-check:
+    get:
+      tags: [admin-payouts]
+      operationId: getAdminRocketworkCheck
+      summary: Условия и результат небольшой проверки RocketWork на dev
+      description: 'Роль: senior. Только development. Не меняет состояние бизнес-выплаты. Без настроенного допуска available=false. GET не обращается к провайдеру.'
+      responses:
+        '200':
+          description: Доступность проверки
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RocketworkCheck' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '503': { $ref: '#/components/responses/ServiceUnavailable' }
+    post:
+      tags: [admin-payouts]
+      operationId: startAdminRocketworkCheck
+      summary: Подтвердить заранее разрешённую проверку RocketWork
+      description: 'Роль: senior. Только development. Тело отсутствует: сумма, получатель и допуск установлены оператором. If-Match содержит run_id просмотренных условий; при смене прогона запрос отклоняется. Повтор возвращает тот же прогон, не создаёт новый платёж. После старта доверенный сервис продолжает шаги и сверку автоматически.'
+      parameters:
+        - name: If-Match
+          in: header
+          description: 'Обязателен для запуска; отсутствие проверяется после роли администратора.'
+          schema: { type: string }
+      responses:
+        '200':
+          description: Тот же прогон после подтверждения
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RocketworkCheck' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '503': { $ref: '#/components/responses/ServiceUnavailable' }
   /admin/payouts:
     get:
       tags: [admin-payouts]
@@ -3940,6 +3975,19 @@ components:
             request_id: 0190a000-0000-7000-8000-00000000aaaa
 
   schemas:
+    RocketworkCheck:
+      type: object
+      additionalProperties: false
+      required: [available, state, amount_kopecks, max_commission_kopecks, can_start]
+      properties:
+        available: { type: boolean }
+        state: { type: string, enum: [not_configured, ready, working, reconcile_required, paid, stopped, discrepancy] }
+        run_id: { type: string }
+        recipient: { type: string, description: 'Маскированный ИНН утверждённого получателя' }
+        amount_kopecks: { type: integer, format: int64 }
+        max_commission_kopecks: { type: integer, format: int64 }
+        actual_commission_kopecks: { type: integer, format: int64 }
+        can_start: { type: boolean }
     # ------------------------------------------------ common
     Uuid:
       type: string
