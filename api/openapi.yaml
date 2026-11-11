@@ -1256,6 +1256,30 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '422': { $ref: '#/components/responses/ValidationFailed' }
         '429': { $ref: '#/components/responses/RateLimited' }
+  /invoices/{id}/check-payment:
+    post:
+      tags: [balance]
+      operationId: checkInvoicePayment
+      summary: Проверить поступление оплаты по своему счёту
+      description: |
+        Читает свежую выписку через общий импорт; сам запрос не подтверждает оплату.
+        Общий лимит ручных опросов — раз в минуту на банковский счёт, между пользователями и экземплярами API.
+        Фоновый checkpoint сохраняется. busy — повтор временно ограничен или выписка уже обрабатывается;
+        Период чтения — от создания счёта (не раньше TBANK_IMPORT_FROM), максимум последние 31 сутки.
+        unavailable — банк отключён, недоступен либо проверка не завершилась полностью.
+        checked_at присутствует только после полного чтения свежего периода. Банковские операции других организаций не возвращаются.
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Подтверждённое состояние счёта и результат проверки
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InvoicePaymentCheck' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/InvalidTransition' }
   /invoices/{id}/pdf:
     get:
       tags: [balance]
@@ -4927,6 +4951,14 @@ components:
         pdf_url: { type: string, description: Относительный адрес PDF }
         payment_details: { $ref: '#/components/schemas/InvoicePaymentDetails' }
         created_at: { type: string, format: date-time }
+    InvoicePaymentCheck:
+      type: object
+      required: [invoice, result, retry_after]
+      properties:
+        invoice: { $ref: '#/components/schemas/Invoice' }
+        result: { type: string, enum: [paid, not_found, busy, unavailable] }
+        checked_at: { type: string, format: date-time }
+        retry_after: { type: integer, minimum: 0, description: Через сколько секунд разрешена следующая ручная проверка }
     InvoicePaymentDetails:
       type: object
       description: Реквизиты из того же снимка, что и PDF нового счёта. Возвращаются при создании; для исторических счетов использовать PDF.

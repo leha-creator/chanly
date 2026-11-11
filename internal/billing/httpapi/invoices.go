@@ -41,6 +41,21 @@ func (h *Handlers) CreateInvoice(ctx context.Context, req apigen.CreateInvoiceRe
 	return apigen.CreateInvoice201JSONResponse(toInvoice(inv)), nil
 }
 
+func (h *Handlers) CheckInvoicePayment(ctx context.Context, req apigen.CheckInvoicePaymentRequestObject) (apigen.CheckInvoicePaymentResponseObject, error) {
+	org, _, err := advertiser(ctx)
+	if err != nil {
+		return nil, err
+	}
+	result, err := h.svc.CheckInvoicePayment(ctx, org, req.Id)
+	if err != nil {
+		return nil, err
+	}
+	return apigen.CheckInvoicePayment200JSONResponse{
+		Invoice: toInvoice(result.Invoice), Result: apigen.InvoicePaymentCheckResult(result.Result),
+		CheckedAt: result.CheckedAt, RetryAfter: result.RetryAfter,
+	}, nil
+}
+
 func (h *Handlers) ListInvoices(ctx context.Context, req apigen.ListInvoicesRequestObject) (apigen.ListInvoicesResponseObject, error) {
 	org, _, err := advertiser(ctx)
 	if err != nil {

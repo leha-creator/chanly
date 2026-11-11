@@ -454,6 +454,10 @@ func (unimplemented) CreateInvoice(context.Context, apigen.CreateInvoiceRequestO
 	return nil, apperr.NotImplemented("createInvoice")
 }
 
+func (unimplemented) CheckInvoicePayment(context.Context, apigen.CheckInvoicePaymentRequestObject) (apigen.CheckInvoicePaymentResponseObject, error) {
+	return nil, apperr.NotImplemented("checkInvoicePayment")
+}
+
 func (unimplemented) GetInvoicePdf(context.Context, apigen.GetInvoicePdfRequestObject) (apigen.GetInvoicePdfResponseObject, error) {
 	return nil, apperr.NotImplemented("getInvoicePdf")
 }

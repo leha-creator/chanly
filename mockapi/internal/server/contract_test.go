@@ -149,6 +149,7 @@ var cases = map[string]opCase{
 	"listBalanceTransactions": {user: adv},
 	"listInvoices":            {user: adv},
 	"createInvoice":           {user: adv},
+	"checkInvoicePayment":     {user: adv, params: id(seed.InvoiceIssued), noBody: true},
 	"getInvoicePdf":           {user: adv, params: id(seed.InvoicePaid)},
 	"listClosingActs":         {user: adv},
 	"getClosingActPdf":        {user: adv, params: map[string]string{"id": seed.ClosingActPast.String(), "document": "report"}},

@@ -2,11 +2,14 @@ package domain
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/leha-creator/chanly/internal/platform/money"
 )
+
+var ErrBankSyncBusy = errors.New("bank sync already running")
 
 // BankQuery fixes the UTC interval across all pages of a read.
 type BankQuery struct {
@@ -27,6 +30,7 @@ type BankSource interface {
 
 // BankProgress is durable; a failed page is replayed through the same ingestion path.
 type BankProgress struct {
+	LastManualCheck                    time.Time
 	LedgerDifference                   *money.Kopecks
 	Missing                            int
 	BalanceMismatch                    bool

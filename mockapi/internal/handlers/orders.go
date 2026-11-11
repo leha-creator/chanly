@@ -337,6 +337,30 @@ func (h *Handlers) GetInvoicePdf(ctx context.Context, req api.GetInvoicePdfReque
 	return api.GetInvoicePdf200ApplicationpdfResponse{Body: bytes.NewReader(pdf), ContentLength: int64(len(pdf))}, nil
 }
 
+// The mock can report an already simulated payment, but does not fabricate a
+// successful bank check or mark invoices paid on a user request.
+func (h *Handlers) CheckInvoicePayment(ctx context.Context, req api.CheckInvoicePaymentRequestObject) (api.CheckInvoicePaymentResponseObject, error) {
+	tx, done := h.st.Begin(ctx)
+	defer done()
+	_, org, err := advertiser(ctx, tx)
+	if err != nil {
+		return nil, err
+	}
+	inv, err := tx.Invoice(org.ID, req.Id)
+	if err != nil {
+		return nil, err
+	}
+	result := api.InvoicePaymentCheck{Invoice: invoice(inv), Result: api.InvoicePaymentCheckResultUnavailable, RetryAfter: 60}
+	if inv.Status == "cancelled" {
+		return nil, store.Conflict("invalid_transition", "payment check is not allowed for a cancelled invoice", map[string]any{"transition": "check_payment", "status": inv.Status})
+	}
+	if inv.Status == "paid" {
+		result.Result = api.InvoicePaymentCheckResultPaid
+		result.RetryAfter = 0
+	}
+	return api.CheckInvoicePayment200JSONResponse(result), nil
+}
+
 // invoicePDF собирает одностраничный PDF с одной строкой латиницей.
 func invoicePDF(line string) []byte {
 	objs := []string{

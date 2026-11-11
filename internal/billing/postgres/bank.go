@@ -122,7 +122,7 @@ func (s *Store) WithBankLock(ctx context.Context, account string, fn func(contex
 		return err
 	}
 	if !locked {
-		return errors.New("bank sync already running")
+		return domain.ErrBankSyncBusy
 	}
 	defer func() {
 		cleanup, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
