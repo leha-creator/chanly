@@ -507,11 +507,12 @@ go test ./internal/integration/bank/tbank -run TestFixtureMatchesSuppliedStateme
 ```
 
 Для контейнера `TBANK_CA_CERT_FILE=/etc/maxim/certs/russian_trusted_root_ca.crt`; локально — `deploy/certs/russian_trusted_root_ca.crt`. Режим по умолчанию по-прежнему disabled. Сначала проверьте preflight, затем sandbox; ненулевой код из-за повторного cursor означает отсутствие полной выборки, даже если HTTP-доступ исправен.
-### Подготовка общей dev-проверки с реальными малыми оплатами
+### Реальные dev-пополнения Т-Банка
 
-Подготовлены readonly/controlled/automation Т-Банка, допуск TBANK_DEV_REAL_ENABLED, бюджет на один RUN_ID, организация, лимит платежа, expiry и код в назначении. Суммы по умолчанию — 100 ₽/платёж и 500 ₽/прогон, минимальный controlled-счёт 1 ₽. Реальных платежей в ходе этой подготовки не было. Для реального endpoint CLI требует --target production; обычный worker на dev работает только с controlled, не с неограниченным automation. Выкладка и совместная проверка выполняются после окончания соседней работы Рокет Ворк. Её разрешения исходящих выплат остаются отдельными. Инструкция: deploy/app/README.md, «Ограниченные реальные пополнения на dev».
+Допуск упрощён: TBANK_DEV_REAL_ENABLED=true, TBANK_ACCESS_MODE=controlled и TBANK_DEV_PAYMENT_CODE. Код DEV-TBANK-<код> печатается в новых PDF и проверяется перед автоматическим/ручным deposit. Все организации, счета от 1 ₽ до обычного максимума; ограничения срока и бюджета сняты. Старые TBANK_CONTROLLED_* не используются. Токен только чтения, настоящие реквизиты и свежая дата импорта обязательны; реальный банковский e2e остаётся отдельной проверкой. Инструкция — deploy/app/README.md. Права Рокет Ворк независимы.
 
-Проверка controlled-подготовки 2026-11-11: полный Linux go test -race -p 2 -count=1 -timeout=10m ./... прошёл; после последних изменений повторно прошли billing/app и bootstrap с PostgreSQL и -race, go vet, sqlc vet, mockapi, проверка env и Docker-сборка. Генерация OpenAPI/sqlc воспроизводима. Проверены конкурентный бюджет, rollback, неизменность политики, запрет удаления истории и ручного обхода. Живые реальные оплаты и совместная проверка после объединения веток ещё не выполнялись.
+Упрощённый dev-допуск проверен локально: весь internal/billing/... с PostgreSQL и Linux -race, адресные TestTBank/TestDevBank/TestDevPayment/TestBankReadonly (включая HTTP), go vet, sqlc vet, mockapi, env-check и Docker-сборка прошли. Реальный платёж и выкладка этой правки не выполнялись.
+
 ### Контроль dev-допуска — 2026-11-11
 
 | Проверка | Результат |

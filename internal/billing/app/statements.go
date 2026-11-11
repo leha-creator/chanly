@@ -246,7 +246,7 @@ func (s *Service) importIncoming(ctx context.Context, op string, statementID uui
 // credit — проводка deposit, оплата счёта и уведомление в транзакции вызывающего: уведомление
 // создаётся вместе с зачислением или не создаётся вовсе (I-10).
 func (s *Service) credit(ctx context.Context, bt domain.BankTransaction, inv *domain.Invoice, adminID uuid.UUID, now time.Time) error {
-	if err := s.authorizeBankCredit(ctx, bt, now); err != nil {
+	if err := s.authorizeBankCredit(ctx, bt); err != nil {
 		return err
 	}
 	req := domain.DepositRequest{BankTransactionID: bt.ID, OrganizationID: bt.OrganizationID, Amount: bt.Amount, AdminID: adminID}

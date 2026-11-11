@@ -3,12 +3,11 @@ package bootstrap
 import (
 	"bytes"
 	"context"
-	"github.com/google/uuid"
-	"github.com/leha-creator/chanly/internal/billing/domain"
-	"github.com/leha-creator/chanly/internal/integration/bank/tbank"
 	"strings"
 	"testing"
-	"time"
+
+	"github.com/leha-creator/chanly/internal/billing/domain"
+	"github.com/leha-creator/chanly/internal/integration/bank/tbank"
 )
 
 func TestTBankConfigSafety(t *testing.T) {
@@ -52,11 +51,9 @@ func TestTBankRealAccessMatrix(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	base.TBank.ControlledRunID = uuid.NewString()
+	base.TBank.DevPaymentCode = "dev-server"
 	base.ORD.PlatformINN = devPlatformINN
 	base.ORD.PlatformName = devPlatformName
-	base.TBank.ControlledOrganizationID = uuid.NewString()
-	base.TBank.ControlledExpiresAt = time.Now().Add(time.Hour).UTC().Format(time.RFC3339)
 	cases := []struct {
 		name          string
 		edit          func(*Config)
@@ -67,19 +64,13 @@ func TestTBankRealAccessMatrix(t *testing.T) {
 			c.TBank.Mode = "disabled"
 			c.TBank.AccessMode = domain.BankControlled
 			c.TBank.DevRealEnabled = false
-			c.TBank.ControlledExpiresAt = ""
+			c.TBank.DevPaymentCode = ""
 		}, false, false},
 		{"dev gate off", func(c *Config) { c.TBank.DevRealEnabled = false }, true, false},
 		{"controlled", func(c *Config) { c.TBank.AccessMode = domain.BankControlled }, false, true},
 		{"missing supplier", func(c *Config) { c.TBank.AccessMode = domain.BankControlled; c.ORD.PlatformINN = "" }, true, false},
-		{"missing run", func(c *Config) { c.TBank.AccessMode = domain.BankControlled; c.TBank.ControlledRunID = "" }, true, false},
-		{"invalid budget", func(c *Config) { c.TBank.AccessMode = domain.BankControlled; c.TBank.ControlledMaxTotal = 1 }, true, false},
-		{"missing organization", func(c *Config) { c.TBank.AccessMode = domain.BankControlled; c.TBank.ControlledOrganizationID = "" }, true, false},
-		{"missing expiry", func(c *Config) { c.TBank.AccessMode = domain.BankControlled; c.TBank.ControlledExpiresAt = "" }, true, false},
-		{"expired disables background", func(c *Config) {
-			c.TBank.AccessMode = domain.BankControlled
-			c.TBank.ControlledExpiresAt = time.Now().Add(-time.Hour).UTC().Format(time.RFC3339)
-		}, false, false},
+		{"missing code", func(c *Config) { c.TBank.AccessMode = domain.BankControlled; c.TBank.DevPaymentCode = "" }, true, false},
+		{"invalid code", func(c *Config) { c.TBank.AccessMode = domain.BankControlled; c.TBank.DevPaymentCode = "bad code" }, true, false},
 		{"dev unrestricted denied", func(c *Config) { c.TBank.AccessMode = domain.BankAutomation; c.TBank.ProductionApproved = true }, true, false},
 		{"test real denied", func(c *Config) { c.Env = EnvTest; c.TBank.AccessMode = domain.BankControlled }, true, false},
 		{"production controlled denied", func(c *Config) { c.Env = EnvProduction; c.TBank.AccessMode = domain.BankControlled }, true, false},

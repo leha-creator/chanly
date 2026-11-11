@@ -435,4 +435,4 @@ integration_check_ord.go создаёт клиент с outbound, огранич
 
 ### Ограниченные dev-зачисления Т-Банка
 
-BankCreditPolicy и BankCreditBudget — порты/правила billing/domain; app проверяет источник/организацию/сумму/expiry/код назначения до deposit. postgres резервирует бюджет с FOR UPDATE в той же транзакции, что проводка, invoice и уведомление; таблицы bank_credit_policy/spend (00101), immutable policy hash, расход по bank_transaction_id. Bootstrap отделяет readonly от controlled/automation и не регистрирует фоновый источник в readonly. Режим controlled разрешён только development с отдельным флагом реального endpoint. Исходящие выплаты Рокет Ворк к этим правам не относятся.
+Billing/app проверяет явный dev-флаг и целый токен DEV-TBANK-<код> до deposit, одинаково для API/файла/ручного match. Bootstrap разрешает controlled только development с реальным endpoint и TBANK_DEV_REAL_ENABLED; readonly не подключает фоновый источник. Нет scope по организации, expiry или бюджета. Исторические таблицы bank_credit_policy/spend (00101) больше не используются. Исходящие выплаты Рокет Ворк независимы.

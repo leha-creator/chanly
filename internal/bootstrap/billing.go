@@ -26,7 +26,7 @@ func newBillingService(cfg Config, in *infra, txRunner tx.Runner, auditLog *audi
 	log := in.log.With(logx.KeyModule, "billing")
 	store := billingpg.New(in.pool, log)
 	deps := billingapp.Deps{
-		BankIdentity: store, BankSync: store, BankConfig: cfg.bankSyncConfig(), BankBudget: store,
+		BankIdentity: store, BankSync: store, BankConfig: cfg.bankSyncConfig(),
 		Invoices: store.Invoices(), Statements: store.Statements(), BankTransactions: store.BankTransactions(),
 		ClosingActs: store.ClosingActs(), Ledger: bridge.BillingLedger{Svc: ledger},
 		Notifier:      bridge.BillingNotifier{Svc: notifier},
@@ -52,6 +52,6 @@ func newBillingService(cfg Config, in *infra, txRunner tx.Runner, auditLog *audi
 	}
 	bankConfig := cfg.bankSyncConfig()
 	in.log.Info("billing configured", logx.KeyModule, "billing", "invoice_ttl", cfg.Billing.InvoiceTTL.String(),
-		"check_interval", cfg.Billing.LedgerCheckInterval.String(), "bank_mode", cfg.TBank.Mode, "bank_access", bankConfig.Access, "bank_auto_sync", cfg.bankAutoSyncEnabled(), "controlled_run_id", bankConfig.CreditPolicy.RunID, "controlled_max_payment", cfg.TBank.ControlledMaxPayment, "controlled_max_total", cfg.TBank.ControlledMaxTotal, "controlled_expires_at", bankConfig.CreditPolicy.ExpiresAt)
+		"check_interval", cfg.Billing.LedgerCheckInterval.String(), "bank_mode", cfg.TBank.Mode, "bank_access", bankConfig.Access, "bank_auto_sync", cfg.bankAutoSyncEnabled())
 	return billingapp.New(deps), store
 }

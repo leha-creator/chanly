@@ -8,41 +8,34 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
 	billingapp "github.com/leha-creator/chanly/internal/billing/app"
 	"github.com/leha-creator/chanly/internal/billing/domain"
 	"github.com/leha-creator/chanly/internal/integration/bank/tbank"
 	"github.com/leha-creator/chanly/internal/integration/max"
-	"github.com/leha-creator/chanly/internal/platform/money"
 	"github.com/leha-creator/chanly/internal/platform/outbound"
 	"github.com/leha-creator/chanly/internal/platform/ratelimit"
 )
 
 type TBankConfig struct {
-	AccessMode               string        `env:"TBANK_ACCESS_MODE" envDefault:"readonly"`
-	DevRealEnabled           bool          `env:"TBANK_DEV_REAL_ENABLED"`
-	ProductionApproved       bool          `env:"TBANK_PRODUCTION_APPROVED"`
-	ControlledRunID          string        `env:"TBANK_CONTROLLED_RUN_ID"`
-	ControlledOrganizationID string        `env:"TBANK_CONTROLLED_ORGANIZATION_ID"`
-	ControlledMaxPayment     int64         `env:"TBANK_CONTROLLED_MAX_PAYMENT_KOPECKS" envDefault:"10000"`
-	ControlledMaxTotal       int64         `env:"TBANK_CONTROLLED_MAX_TOTAL_KOPECKS" envDefault:"50000"`
-	ControlledExpiresAt      string        `env:"TBANK_CONTROLLED_EXPIRES_AT"`
-	Mode                     string        `env:"TBANK_MODE" envDefault:"disabled"`
-	BaseURL                  string        `env:"TBANK_API_URL" envDefault:"https://business.tbank.ru/openapi/sandbox"`
-	Token                    string        `env:"TBANK_TOKEN"`
-	CACertFile               string        `env:"TBANK_CA_CERT_FILE"`
-	Start                    string        `env:"TBANK_IMPORT_FROM"`
-	PollInterval             time.Duration `env:"TBANK_POLL_INTERVAL" envDefault:"5m"`
-	Period                   time.Duration `env:"TBANK_PERIOD" envDefault:"24h"`
-	Overlap                  time.Duration `env:"TBANK_OVERLAP" envDefault:"168h"`
-	StaleAfter               time.Duration `env:"TBANK_STALE_AFTER" envDefault:"30m"`
-	Rate                     float64       `env:"TBANK_RATE" envDefault:"5"`
+	AccessMode         string        `env:"TBANK_ACCESS_MODE" envDefault:"readonly"`
+	DevRealEnabled     bool          `env:"TBANK_DEV_REAL_ENABLED"`
+	ProductionApproved bool          `env:"TBANK_PRODUCTION_APPROVED"`
+	DevPaymentCode     string        `env:"TBANK_DEV_PAYMENT_CODE"`
+	Mode               string        `env:"TBANK_MODE" envDefault:"disabled"`
+	BaseURL            string        `env:"TBANK_API_URL" envDefault:"https://business.tbank.ru/openapi/sandbox"`
+	Token              string        `env:"TBANK_TOKEN"`
+	CACertFile         string        `env:"TBANK_CA_CERT_FILE"`
+	Start              string        `env:"TBANK_IMPORT_FROM"`
+	PollInterval       time.Duration `env:"TBANK_POLL_INTERVAL" envDefault:"5m"`
+	Period             time.Duration `env:"TBANK_PERIOD" envDefault:"24h"`
+	Overlap            time.Duration `env:"TBANK_OVERLAP" envDefault:"168h"`
+	StaleAfter         time.Duration `env:"TBANK_STALE_AFTER" envDefault:"30m"`
+	Rate               float64       `env:"TBANK_RATE" envDefault:"5"`
 }
 
 func (c Config) validateTBank(add func(string, string)) {
 	b := c.TBank
-	// The kill switch remains usable with an expired or previously controlled
-	// configuration; no bank capability is carried into the effective service.
+	// Disabled remains usable with stale configuration and carries no bank capability.
 	if b.Mode == "" || b.Mode == "disabled" {
 		return
 	}
@@ -62,17 +55,8 @@ func (c Config) validateTBank(add func(string, string)) {
 		if c.Env != EnvDevelopment || !b.DevRealEnabled || b.Mode != "live" || !checkEndpoint(b.BaseURL, tbank.ProductionURL) {
 			add("TBANK_ACCESS_MODE", "controlled requires development, production bank endpoint and TBANK_DEV_REAL_ENABLED")
 		}
-		if id, err := uuid.Parse(b.ControlledRunID); err != nil || id == uuid.Nil {
-			add("TBANK_CONTROLLED_RUN_ID", "explicit UUID required")
-		}
-		if id, err := uuid.Parse(b.ControlledOrganizationID); err != nil || id == uuid.Nil {
-			add("TBANK_CONTROLLED_ORGANIZATION_ID", "explicit UUID required")
-		}
-		if b.ControlledMaxPayment < int64(domain.MinControlledInvoiceAmount) || b.ControlledMaxTotal < b.ControlledMaxPayment {
-			add("TBANK_CONTROLLED_MAX_TOTAL_KOPECKS", "positive payment limit and covering total budget required")
-		}
-		if until, err := time.Parse(time.RFC3339, b.ControlledExpiresAt); err != nil || until.IsZero() {
-			add("TBANK_CONTROLLED_EXPIRES_AT", "explicit RFC3339 expiry required")
+		if !domain.ValidDevPaymentCode(b.DevPaymentCode) {
+			add("TBANK_DEV_PAYMENT_CODE", "required: 3-48 ASCII letters, digits, underscores or hyphens")
 		}
 	}
 	if access == domain.BankAutomation && b.Mode == "live" {
@@ -142,10 +126,7 @@ func (c Config) bankSyncConfig() billingapp.BankConfig {
 	if c.TBank.Mode == "" || c.TBank.Mode == "disabled" {
 		access = domain.BankReadOnly
 	}
-	run, _ := uuid.Parse(c.TBank.ControlledRunID)
-	org, _ := uuid.Parse(c.TBank.ControlledOrganizationID)
-	until, _ := time.Parse(time.RFC3339, c.TBank.ControlledExpiresAt)
-	return billingapp.BankConfig{Access: access, CreditPolicy: domain.BankCreditPolicy{RunID: run, OrganizationID: org, Account: c.BillingSupplier().BankAccount, Origin: strings.TrimRight(c.TBank.BaseURL, "/"), MaxPayment: money.Kopecks(c.TBank.ControlledMaxPayment), MaxTotal: money.Kopecks(c.TBank.ControlledMaxTotal), ExpiresAt: until.UTC()}, Start: start.UTC(), Period: c.TBank.Period, Overlap: c.TBank.Overlap, StaleAfter: c.TBank.StaleAfter}
+	return billingapp.BankConfig{Access: access, DevRealEnabled: c.TBank.DevRealEnabled, DevPaymentCode: c.TBank.DevPaymentCode, Start: start.UTC(), Period: c.TBank.Period, Overlap: c.TBank.Overlap, StaleAfter: c.TBank.StaleAfter}
 }
 
 func (c Config) TBankAccess() string {
@@ -163,8 +144,8 @@ func (c Config) bankAutoSyncEnabled() bool {
 	}
 	switch c.TBankAccess() {
 	case domain.BankControlled:
-		p := c.bankSyncConfig().CreditPolicy
-		return c.Env == EnvDevelopment && c.TBank.DevRealEnabled && c.ORD.PlatformINN != "" && c.ORD.PlatformName != "" && checkEndpoint(c.TBank.BaseURL, tbank.ProductionURL) && p.Check(p.OrganizationID, domain.MinControlledInvoiceAmount, time.Now()) == nil
+		enabled := c.bankSyncConfig().DevPaymentsEnabled()
+		return c.Env == EnvDevelopment && c.TBank.DevRealEnabled && c.ORD.PlatformINN != "" && c.ORD.PlatformName != "" && checkEndpoint(c.TBank.BaseURL, tbank.ProductionURL) && enabled
 	case domain.BankAutomation:
 		return (c.Env == EnvProduction && c.TBank.ProductionApproved && checkEndpoint(c.TBank.BaseURL, tbank.ProductionURL)) || (c.Env == EnvDevelopment && checkEndpoint(c.TBank.BaseURL, tbank.SandboxURL))
 	default:

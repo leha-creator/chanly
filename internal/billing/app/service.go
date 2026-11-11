@@ -95,7 +95,6 @@ type Deps struct {
 	BankSync         domain.BankSyncStore
 	BankIdentity     domain.BankIdentity
 	BankConfig       BankConfig
-	BankBudget       domain.BankCreditBudget
 	Invoices         domain.Invoices
 	Statements       domain.Statements
 	BankTransactions domain.BankTransactions

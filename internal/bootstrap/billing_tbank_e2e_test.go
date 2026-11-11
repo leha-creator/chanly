@@ -2,7 +2,6 @@ package bootstrap
 
 import (
 	"context"
-	"github.com/google/uuid"
 	"net/http"
 	"testing"
 	"time"
@@ -29,22 +28,22 @@ func TestTBankControlledSmallInvoiceHTTP(t *testing.T) {
 	}
 	svc := a.mods.billing
 	date := a.clk.Now()
-	svc.BankConfig = billingapp.BankConfig{Access: billingdomain.BankControlled, Start: date.Add(-time.Hour), Period: 24 * time.Hour, Overlap: 24 * time.Hour, StaleAfter: time.Hour, CreditPolicy: billingdomain.BankCreditPolicy{RunID: uuid.New(), OrganizationID: org, Account: svc.Config.Supplier.BankAccount, Origin: "https://business.tbank.ru/openapi", MaxPayment: 10000, MaxTotal: 20000, ExpiresAt: date.Add(time.Hour)}}
+	svc.BankConfig = billingapp.BankConfig{Access: billingdomain.BankControlled, Start: date.Add(-time.Hour), Period: 24 * time.Hour, Overlap: 24 * time.Hour, StaleAfter: time.Hour, DevRealEnabled: true, DevPaymentCode: "dev-server"}
 	var inv invoiceView
 	adv.do(http.MethodPost, "/invoices", map[string]any{"amount": 10000}).json(t, &inv)
-	for _, amount := range []int64{99, 10001} {
+	for _, amount := range []int64{99, int64(billingdomain.MaxInvoiceAmount) + 1} {
 		if res := adv.do(http.MethodPost, "/invoices", map[string]any{"amount": amount}); res.status != http.StatusUnprocessableEntity {
 			t.Fatalf("amount accepted %d: %d", amount, res.status)
 		}
 	}
-	if res := other.do(http.MethodPost, "/invoices", map[string]any{"amount": 10000}); res.status != http.StatusUnprocessableEntity {
-		t.Fatal("organization bypass")
+	if res := other.do(http.MethodPost, "/invoices", map[string]any{"amount": 10000}); res.status != http.StatusCreated {
+		t.Fatalf("dev invoice rejected for second organization: %d", res.status)
 	}
 	var inn string
 	if err := a.db.Pool.QueryRow(ctx, "SELECT inn FROM organization WHERE id=$1", org).Scan(&inn); err != nil {
 		t.Fatal(err)
 	}
-	svc.BankSource = bankTestSource{in: billingdomain.Incoming{ExternalID: "controlled-small", BankOperationID: "controlled-small", DocumentNumber: "1", OperationDate: date, DocDate: &date, ChargeDate: &date, Amount: 10000, PayerINN: inn, PayerAccount: "40702810500000000004", Purpose: "Оплата по счету " + inv.Number + " " + svc.BankConfig.CreditPolicy.Marker()}}
+	svc.BankSource = bankTestSource{in: billingdomain.Incoming{ExternalID: "controlled-small", BankOperationID: "controlled-small", DocumentNumber: "1", OperationDate: date, DocDate: &date, ChargeDate: &date, Amount: 10000, PayerINN: inn, PayerAccount: "40702810500000000004", Purpose: "Оплата по счету " + inv.Number + " " + svc.BankConfig.PaymentMarker()}}
 	if res, err := svc.SyncBank(ctx); err != nil || res.Matched != 1 {
 		t.Fatalf("controlled sync %+v %v", res, err)
 	}

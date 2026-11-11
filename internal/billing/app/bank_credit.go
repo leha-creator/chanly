@@ -3,31 +3,18 @@ package app
 import (
 	"context"
 	"errors"
-	"strings"
-	"time"
 
 	"github.com/leha-creator/chanly/internal/billing/domain"
 	"github.com/leha-creator/chanly/internal/platform/apperr"
 )
 
-func (s *Service) authorizeBankCredit(ctx context.Context, bt domain.BankTransaction, now time.Time) error {
+func (s *Service) authorizeBankCredit(ctx context.Context, bt domain.BankTransaction) error {
 	var err error
 	if s.BankConfig.Access == domain.BankControlled {
-		p := s.BankConfig.CreditPolicy
-		if p.Account != s.Config.Supplier.BankAccount {
-			err = domain.DenyBankCredit("account_not_allowed")
-		} else {
-			err = p.Check(bt.OrganizationID, bt.Amount, now)
-		}
-		if err == nil && !strings.Contains(strings.ToLower(bt.Purpose), strings.ToLower(p.Marker())) {
-			err = domain.DenyBankCredit("run_marker_missing")
-		}
-		if err == nil {
-			if s.BankBudget == nil {
-				err = domain.DenyBankCredit("budget_unavailable")
-			} else {
-				err = s.BankBudget.ReserveBankCredit(ctx, p, bt.ID, bt.Amount, now)
-			}
+		if !s.BankConfig.DevPaymentsEnabled() {
+			err = domain.DenyBankCredit("dev_real_disabled")
+		} else if !domain.HasDevPaymentMarker(bt.Purpose, s.BankConfig.DevPaymentCode) {
+			err = domain.DenyBankCredit("dev_marker_missing")
 		}
 	} else if s.BankConfig.Access != domain.BankAutomation {
 		statement, e := s.Statements.Get(ctx, bt.StatementID)

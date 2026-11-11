@@ -30,12 +30,9 @@ type InvoicePage struct {
 func (s *Service) CreateInvoice(ctx context.Context, orgID, userID uuid.UUID, amount money.Kopecks, ip *netip.Addr) (domain.Invoice, error) {
 	const op = "Billing.CreateInvoice"
 	minimum, maximum := domain.MinInvoiceAmount, domain.MaxInvoiceAmount
-	controlled := s.BankConfig.Access == domain.BankControlled && s.BankConfig.CreditPolicy.Check(orgID, domain.MinControlledInvoiceAmount, s.Clock.Now()) == nil
+	controlled := s.BankConfig.DevPaymentsEnabled()
 	if controlled {
 		minimum = domain.MinControlledInvoiceAmount
-		if s.BankConfig.CreditPolicy.MaxPayment < maximum {
-			maximum = s.BankConfig.CreditPolicy.MaxPayment
-		}
 	}
 	if amount < minimum || amount > maximum {
 		return domain.Invoice{}, apperr.Validation("amount", "out_of_range").
@@ -61,7 +58,7 @@ func (s *Service) CreateInvoice(ctx context.Context, orgID, userID uuid.UUID, am
 	inv.PDFStorageKey = "invoices/" + inv.ID.String() + ".pdf"
 	paymentPurpose := ""
 	if controlled {
-		paymentPurpose = "Пополнение баланса по счёту № " + inv.Number + ". " + s.BankConfig.CreditPolicy.Marker()
+		paymentPurpose = "Пополнение баланса по счёту № " + inv.Number + ". " + s.BankConfig.PaymentMarker()
 	}
 	pdf, err := s.Renderer.Invoice(domain.InvoiceDoc{
 		PaymentPurpose: paymentPurpose,

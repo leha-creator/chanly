@@ -18,10 +18,16 @@ const KindSyncBank = "sync_bank_statements"
 
 type BankConfig struct {
 	Access                      string
-	CreditPolicy                domain.BankCreditPolicy
+	DevRealEnabled              bool
+	DevPaymentCode              string
 	Start                       time.Time
 	Period, Overlap, StaleAfter time.Duration
 }
+
+func (c BankConfig) DevPaymentsEnabled() bool {
+	return c.Access == domain.BankControlled && c.DevRealEnabled && domain.ValidDevPaymentCode(c.DevPaymentCode)
+}
+func (c BankConfig) PaymentMarker() string { return domain.DevPaymentMarker(c.DevPaymentCode) }
 
 // SyncBank reads at most one fixed period per scheduled run. Backlog is resumed
 // on subsequent runs; a page checkpoint is written only after every operation.
@@ -29,7 +35,7 @@ func (s *Service) SyncBank(ctx context.Context) (res ImportResult, err error) {
 	if s.BankSource == nil || s.BankSync == nil || s.BankIdentity == nil {
 		return res, errors.New("bank sync disabled")
 	}
-	if s.BankConfig.Access != domain.BankControlled && s.BankConfig.Access != domain.BankAutomation {
+	if !s.BankConfig.DevPaymentsEnabled() && s.BankConfig.Access != domain.BankAutomation {
 		return res, domain.DenyBankCredit("sync_requires_credit_access")
 	}
 	if s.BankConfig.Period <= 0 || s.BankConfig.Overlap < 0 || s.BankConfig.Start.IsZero() {
@@ -203,7 +209,7 @@ func (s *Service) SyncBank(ctx context.Context) (res ImportResult, err error) {
 // PrepareBankReplay preserves the high-water mark and records a fixed historic
 // interval before network activity. A pending different interval cannot be replaced.
 func (s *Service) PrepareBankReplay(ctx context.Context, from, to time.Time) error {
-	if s.BankConfig.Access != domain.BankControlled && s.BankConfig.Access != domain.BankAutomation {
+	if !s.BankConfig.DevPaymentsEnabled() && s.BankConfig.Access != domain.BankAutomation {
 		return domain.DenyBankCredit("replay_requires_credit_access")
 	}
 	if s.BankSource == nil || s.BankSync == nil || s.BankIdentity == nil || !from.Before(to) || from.Before(s.BankConfig.Start) || to.After(s.Clock.Now()) {
