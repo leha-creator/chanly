@@ -46,7 +46,7 @@ func (s *Service) SetPrices(ctx context.Context, orgID, channelID uuid.UUID, pri
 			return err
 		}
 		before := priceMap(c.Prices)
-		if err := c.SetPrices(prices, formats, s.Clock.Now()); err != nil {
+		if err := c.SetPricesWithMinimum(prices, formats, s.Clock.Now(), s.Config.MinPriceAmount); err != nil {
 			reason := "not_editable"
 			var re *domain.RuleError
 			if errors.As(err, &re) {
@@ -77,7 +77,7 @@ func (s *Service) SetPrices(ctx context.Context, orgID, channelID uuid.UUID, pri
 		}); err != nil {
 			return err
 		}
-		s.log.InfoContext(ctx, "channel prices updated", logx.KeyOp, op, KeyChannelID, c.ID, "enabled_formats", c.EnabledFormats())
+		s.log.InfoContext(ctx, "[FIX] channel prices updated", logx.KeyOp, op, KeyChannelID, c.ID, "enabled_formats", c.EnabledFormats())
 		out = c
 		return nil
 	})

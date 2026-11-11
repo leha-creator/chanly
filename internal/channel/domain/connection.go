@@ -20,6 +20,7 @@ var ErrChannelAccessDenied = errors.New("MAX channel access denied")
 type Connection struct {
 	ID, OrganizationID, UserID uuid.UUID
 	TokenHash                  string
+	ChannelName                string
 	MaxUserID                  *int64
 	TokenUsedAt                *time.Time
 	ExpiresAt                  time.Time
@@ -65,6 +66,7 @@ type Connections interface {
 	ClearCandidates(context.Context, uuid.UUID) error
 	Candidates(context.Context, uuid.UUID) ([]ConnectionCandidate, error)
 	HasCandidate(context.Context, uuid.UUID, uuid.UUID) (bool, error)
+	ResolveReference(context.Context, ChannelReference) ([]uuid.UUID, error)
 }
 
 // UserMembershipReader is used only by the worker.

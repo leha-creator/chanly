@@ -248,8 +248,8 @@ func TestCatalogTablesForAppRole(t *testing.T) {
 		}
 	}
 	if _, err := d.Pool.Exec(ctx, `INSERT INTO channel_price (id, channel_id, format_id, amount, is_enabled, created_at, updated_at)
-		VALUES ($1, $2, 'f_2_48', 9999, true, now(), now())`, ids.New(), ch); err == nil {
-		t.Error("price below 100 ₽ accepted")
+		VALUES ($1, $2, 'f_2_48', 0, true, now(), now())`, ids.New(), ch); err == nil {
+		t.Error("nonpositive price accepted")
 	}
 
 	// Интервалы недоступности: роль пишет и удаляет, конец не раньше начала.

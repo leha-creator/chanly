@@ -17,6 +17,7 @@ import (
 
 const KindScanChannelConnection = "scan_channel_connection"
 const KindClaimChannelConnection = "claim_channel_connection"
+const KindConnectChannelByName = "connect_channel_by_name"
 const connectionBatch = 20
 const connectionRefreshDelay = 10 * time.Second
 
@@ -37,11 +38,33 @@ func (s *Service) CreateConnection(ctx context.Context, orgID, userID uuid.UUID)
 	if bot == "" {
 		return nil, apperr.New(apperr.CodeServiceUnavailable, "MAX bot name is not configured")
 	}
+	c, token, err := s.issueConnection(ctx, orgID, userID, "")
+	if err != nil {
+		return nil, err
+	}
+	return &ConnectionView{Connection: c, Candidates: []domain.ConnectionCandidate{}, BotURL: "https://max.ru/" + url.PathEscape(bot) + "?start=connect_" + token}, nil
+}
+
+func (s *Service) CreateConnectionByName(ctx context.Context, orgID, userID uuid.UUID, name string) (*ConnectionView, error) {
+	if _, err := domain.ParseChannelReference(name); err != nil {
+		return nil, ruleError(err)
+	}
+	c, _, err := s.issueConnection(ctx, orgID, userID, strings.TrimSpace(name))
+	if err != nil {
+		return nil, err
+	}
+	return &ConnectionView{Connection: c, Candidates: []domain.ConnectionCandidate{}}, nil
+}
+
+func (s *Service) issueConnection(ctx context.Context, orgID, userID uuid.UUID, name string) (*domain.Connection, string, error) {
 	now := s.Clock.Now()
 	token := domain.NewConnectionToken()
 	c := &domain.Connection{ID: ids.New(), OrganizationID: orgID, UserID: userID,
 		TokenHash: domain.HashConnectionToken(s.Config.Pepper, token), ExpiresAt: now.Add(s.Config.LinkCodeTTL),
-		Status: "pending", ScanID: ids.New(), CreatedAt: now, UpdatedAt: now}
+		Status: "pending", ChannelName: name, ScanID: ids.New(), CreatedAt: now, UpdatedAt: now}
+	if name != "" {
+		c.Status = "checking"
+	}
 	err := s.Tx.InTx(ctx, func(ctx context.Context) error {
 		n, err := s.Connections.CountSince(ctx, orgID, now.Add(-time.Hour))
 		if err != nil {
@@ -50,13 +73,19 @@ func (s *Service) CreateConnection(ctx context.Context, orgID, userID uuid.UUID)
 		if n >= s.Config.LinkCodesPerHour {
 			return apperr.RateLimited("channel_connection", time.Hour)
 		}
-		return s.Connections.Create(ctx, c)
+		if err = s.Connections.Create(ctx, c); err != nil {
+			return err
+		}
+		if name != "" {
+			return s.enqueueConnection(ctx, c, KindConnectChannelByName, uuid.Nil)
+		}
+		return nil
 	})
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	s.log.InfoContext(ctx, "channel connection created", "op", "Channel.Connection.Create", "connection_id", c.ID)
-	return &ConnectionView{Connection: c, Candidates: []domain.ConnectionCandidate{}, BotURL: "https://max.ru/" + url.PathEscape(bot) + "?start=connect_" + token}, nil
+	return c, token, nil
 }
 
 func (s *Service) ownConnection(ctx context.Context, org, user, id uuid.UUID, lock bool) (*domain.Connection, error) {
@@ -162,7 +191,7 @@ func (s *Service) RefreshConnection(ctx context.Context, org, user, id uuid.UUID
 		if !s.Clock.Now().Before(c.ExpiresAt) {
 			return apperr.Conflict("connection expired")
 		}
-		if c.MaxUserID == nil {
+		if c.MaxUserID == nil && c.ChannelName == "" {
 			return apperr.Conflict("open the bot link first")
 		}
 		if c.Status == "checking" {
@@ -184,7 +213,11 @@ func (s *Service) RefreshConnection(ctx context.Context, org, user, id uuid.UUID
 		if err = s.saveConnection(ctx, c); err != nil {
 			return err
 		}
-		return s.enqueueConnection(ctx, c, KindScanChannelConnection, uuid.Nil)
+		kind := KindScanChannelConnection
+		if c.ChannelName != "" {
+			kind = KindConnectChannelByName
+		}
+		return s.enqueueConnection(ctx, c, kind, uuid.Nil)
 	})
 }
 
@@ -228,7 +261,7 @@ func (s *Service) liveConnectionJob(ctx context.Context, p ConnectionPayload, st
 	if err != nil {
 		return nil, err
 	}
-	if c.ScanID != p.ScanID || c.Status != status || c.MaxUserID == nil || !s.Clock.Now().Before(c.ExpiresAt) {
+	if c.ScanID != p.ScanID || c.Status != status || (c.MaxUserID == nil && c.ChannelName == "") || !s.Clock.Now().Before(c.ExpiresAt) {
 		return nil, nil
 	}
 	return c, nil
@@ -261,6 +294,10 @@ func (s *Service) checkConnectionRights(ctx context.Context, c *domain.Channel, 
 	if !user.CanConnect() {
 		return domain.ChatInfo{}, domain.Membership{}, "user_rights_required", nil
 	}
+	return s.checkBotConnectionRights(ctx, c)
+}
+
+func (s *Service) checkBotConnectionRights(ctx context.Context, c *domain.Channel) (domain.ChatInfo, domain.Membership, string, error) {
 	bot, err := s.Chats.GetMembership(ctx, c.MaxChatID)
 	if errors.Is(err, domain.ErrChannelAccessDenied) {
 		return domain.ChatInfo{}, bot, "channel_unavailable", nil
@@ -287,7 +324,7 @@ func (s *Service) checkConnectionRights(ctx context.Context, c *domain.Channel, 
 
 func (s *Service) ScanConnection(ctx context.Context, p ConnectionPayload) error {
 	c, err := s.liveConnectionJob(ctx, p, "checking")
-	if err != nil || c == nil {
+	if err != nil || c == nil || c.ChannelName != "" {
 		return err
 	}
 	batch, err := s.Connections.ListDiscovered(ctx, c.OrganizationID, p.After, connectionBatch)
@@ -342,7 +379,7 @@ func (s *Service) ScanConnection(ctx context.Context, p ConnectionPayload) error
 
 func (s *Service) CompleteConnection(ctx context.Context, p ConnectionPayload) error {
 	c, err := s.liveConnectionJob(ctx, p, "connecting")
-	if err != nil || c == nil {
+	if err != nil || c == nil || c.ChannelName != "" {
 		return err
 	}
 	if c.ChannelID == nil {
@@ -370,12 +407,16 @@ func (s *Service) CompleteConnection(ctx context.Context, p ConnectionPayload) e
 	if reason != "" {
 		return s.connectionFailed(ctx, p, "connecting", reason)
 	}
+	return s.finishConnection(ctx, p, ch, info, bot, "connecting", "bot_dialog")
+}
+
+func (s *Service) finishConnection(ctx context.Context, p ConnectionPayload, ch *domain.Channel, info domain.ChatInfo, bot domain.Membership, status, method string) error {
 	return s.Tx.InTx(ctx, func(ctx context.Context) error {
-		current, err := s.Connections.Get(ctx, c.ID, true)
+		current, err := s.Connections.Get(ctx, p.ConnectionID, true)
 		if err != nil {
 			return err
 		}
-		if current.ScanID != p.ScanID || current.Status != "connecting" || !s.Clock.Now().Before(current.ExpiresAt) {
+		if current.ScanID != p.ScanID || current.Status != status || !s.Clock.Now().Before(current.ExpiresAt) {
 			return nil
 		}
 		locked, err := s.Channels.GetForUpdate(ctx, ch.ID)
@@ -412,10 +453,11 @@ func (s *Service) CompleteConnection(ctx context.Context, p ConnectionPayload) e
 		actorCtx := audit.WithActor(ctx, audit.Actor{Type: audit.ActorBlogger, UserID: &current.UserID, OrganizationID: &current.OrganizationID})
 		if err = s.Audit.Record(actorCtx, audit.Entry{Action: "channel.linked", ObjectType: "channel", ObjectID: locked.ID.String(),
 			ActorType: audit.ActorBlogger, OrganizationID: &current.OrganizationID,
-			Data: map[string]any{"max_chat_id": locked.MaxChatID, "method": "bot_dialog"}}); err != nil {
+			Data: map[string]any{"max_chat_id": locked.MaxChatID, "method": method}}); err != nil {
 			return err
 		}
 		current.Status = "connected"
+		current.ChannelID = &locked.ID
 		current.Reason = ""
 		return s.saveConnection(ctx, current)
 	})

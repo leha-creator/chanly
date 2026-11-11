@@ -1467,29 +1467,47 @@ paths:
     post:
       tags: [blogger-channels]
       operationId: createChannelConnection
-      summary: Подключить канал через личный диалог с ботом
+      summary: Подключить канал по имени
       description: |
-        Создаёт сессию для текущего пользователя и организации. bot_url возвращается
-        только здесь: откройте ссылку и запустите бота в MAX. Затем добавьте бота
-        администратором канала с write/delete и запустите refresh. Публикаций нет.
-        Ссылка одноразовая, сессия действует CHANNEL_LINK_CODE_TTL.
+        Основной сценарий: передайте channel_name (название, @тег, ссылку MAX или ID).
+        Сначала добавьте бота администратором канала с write/delete. Worker ищет среди
+        известных боту каналов и проверяет только доступ и права бота, без проверки
+        личности или прав пользователя MAX, затем привязывает канал к организации.
+        Название сопоставляется целиком без учёта регистра, без нечёткого поиска.
+        Совпадающие названия — failed/channel_name_ambiguous: укажите ссылку или ID.
+        Нет известного канала — failed/channel_not_found. Чужая организация не меняется.
+        201 означает созданную сессию, а не завершённую привязку: опрашивайте GET до
+        connected/failed. Ни публикация, ни запуск бота в личном диалоге не требуются.
+        Для совместимости POST без тела сохраняет прежний сценарий с одноразовым
+        bot_url и проверкой личности MAX; с channel_name поле bot_url отсутствует.
+        Сессия действует CHANNEL_LINK_CODE_TTL.
         Принимаются публичные и приватные каналы; публичная ссылка не требуется.
         Не больше CHANNEL_LINK_CODES_PER_HOUR сессий организации в час.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [channel_name]
+              properties:
+                channel_name: { type: string, minLength: 1, maxLength: 512 }
+            example: { channel_name: 'Рецепты на каждый день' }
       responses:
         '201':
-          description: Сессия и одноразовая ссылка
+          description: Сессия подключения
           content:
             application/json:
               schema:
                 allOf:
                   - $ref: '#/components/schemas/ChannelConnection'
                   - type: object
-                    required: [bot_url]
                     properties:
                       bot_url: { type: string, format: uri }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '429': { $ref: '#/components/responses/RateLimited' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
         '503': { $ref: '#/components/responses/ServiceUnavailable' }
   /blogger/channels/connections/{id}:
     get:
@@ -1498,8 +1516,11 @@ paths:
       summary: Статус подключения и проверенные каналы
       description: |
         Доступно только пользователю, создавшему сессию, в той же организации.
-        Кандидаты возвращаются только в ready. Владелец или администратор с write;
-        бот имеет write/delete. checking и connecting — опрашивать до смены статуса.
+        Для подключения по имени checking переходит в connected или failed; кандидаты
+        и подтверждение claim не нужны. Проверяются права бота write/delete.
+        В старом сценарии без channel_name кандидаты возвращаются только в ready:
+        пользователь — владелец или администратор с write; бот имеет write/delete.
+        checking и connecting — опрашивать до смены статуса.
         Пустой ready: добавьте бота, проверьте права и повторите refresh.
         failed/max_unavailable означает сбой MAX, а не отсутствие каналов.
       parameters:
@@ -1519,7 +1540,9 @@ paths:
       operationId: refreshChannelConnection
       summary: Проверить доступные каналы в фоне
       description: |
-        Только после запуска персональной ссылки. Проверяются каналы, обнаруженные
+        При channel_name повторяет поиск и подключение по сохранённому имени без
+        запуска персональной ссылки. В старом сценарии требуется запуск bot_url.
+        Проверяются каналы, обнаруженные
         из событий MAX; глобального списка каналов API MAX не предоставляет.
         Повтор во время checking не создаёт новую проверку. Между проверками — 10 секунд.
         При failed можно повторить refresh; при expired создайте новую сессию.
@@ -5173,20 +5196,23 @@ components:
       required: [format_id, amount, is_enabled]
       properties:
         format_id: { $ref: '#/components/schemas/PlacementFormatId' }
-        amount: { type: integer, format: int64, minimum: 10000, maximum: 1000000000 }
+        amount: { type: integer, format: int64, minimum: 1, maximum: 1000000000 }
         is_enabled: { type: boolean }
     ChannelConnection:
       type: object
       required: [id, status, expires_at, candidates]
       properties:
         id: { type: string, format: uuid }
+        channel_name:
+          type: string
+          description: Введённое имя, @тег, ссылка или ID для подключения по доступу бота.
         status:
           type: string
           enum: [pending, checking, ready, connecting, connected, failed, expired]
         expires_at: { type: string, format: date-time }
         reason:
           type: string
-          enum: [expired, max_unavailable, user_rights_required, bot_rights_required, not_channel, linked_to_other, channel_unavailable, channel_changed]
+          enum: [expired, max_unavailable, user_rights_required, bot_rights_required, not_channel, linked_to_other, channel_unavailable, channel_changed, channel_not_found, channel_name_ambiguous]
         channel_id: { type: string, format: uuid }
         candidates:
           type: array

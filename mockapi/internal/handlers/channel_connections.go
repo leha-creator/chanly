@@ -35,7 +35,7 @@ func ownMockConnection(ctx context.Context, tx *store.Tx, id uuid.UUID) (*store.
 
 func mockConnectionView(tx *store.Tx, c *store.ChannelConnection) api.ChannelConnection {
 	out := api.ChannelConnection{Id: c.ID, Status: api.ChannelConnectionStatus(c.Status), ExpiresAt: c.ExpiresAt,
-		ChannelId: c.ChannelID, Candidates: []api.ChannelConnectionCandidate{}}
+		ChannelId: c.ChannelID, ChannelName: strPtr(c.ChannelName), Candidates: []api.ChannelConnectionCandidate{}}
 	if c.Reason != "" {
 		r := api.ChannelConnectionReason(c.Reason)
 		out.Reason = &r
@@ -54,12 +54,19 @@ func mockConnectionView(tx *store.Tx, c *store.ChannelConnection) api.ChannelCon
 	return out
 }
 
-func (h *Handlers) CreateChannelConnection(ctx context.Context, _ api.CreateChannelConnectionRequestObject) (api.CreateChannelConnectionResponseObject, error) {
+func (h *Handlers) CreateChannelConnection(ctx context.Context, req api.CreateChannelConnectionRequestObject) (api.CreateChannelConnectionResponseObject, error) {
 	tx, done := h.st.Begin(ctx)
 	defer done()
 	u, o, err := blogger(ctx, tx)
 	if err != nil {
 		return nil, err
+	}
+	name := ""
+	if req.Body != nil {
+		name = strings.TrimSpace(req.Body.ChannelName)
+		if _, _, err := store.ParseChannelReference(name); err != nil {
+			return nil, err
+		}
 	}
 	count := 0
 	for _, c := range tx.D.ChannelConnections {
@@ -76,11 +83,23 @@ func (h *Handlers) CreateChannelConnection(ctx context.Context, _ api.CreateChan
 	}
 	token := base64.RawURLEncoding.EncodeToString(b)
 	c := &store.ChannelConnection{ID: store.NewID(), OrgID: o.ID, UserID: u.ID, TokenHash: mockConnectionHash(token),
-		ExpiresAt: tx.Now.Add(time.Hour), CreatedAt: tx.Now, UpdatedAt: tx.Now, Status: "pending"}
+		ChannelName: name,
+		ExpiresAt:   tx.Now.Add(time.Hour), CreatedAt: tx.Now, UpdatedAt: tx.Now, Status: "pending"}
 	tx.D.ChannelConnections = append(tx.D.ChannelConnections, c)
+	var botURL *string
+	if name != "" {
+		mockConnectByName(tx, c)
+	} else {
+		botURL = strPtr("https://max.ru/" + strings.TrimPrefix(BotName, "@") + "?start=connect_" + token)
+	}
 	h.logger(ctx).Info("channel connection created", "op", "Channel.Connection.Create", "connection_id", c.ID)
-	return api.CreateChannelConnection201JSONResponse{Id: c.ID, Status: api.CreateChannelConnection201JSONResponseBodyStatusPending,
-		ExpiresAt: c.ExpiresAt, Candidates: []api.ChannelConnectionCandidate{}, BotUrl: "https://max.ru/" + strings.TrimPrefix(BotName, "@") + "?start=connect_" + token}, nil
+	response := api.CreateChannelConnection201JSONResponse{Id: c.ID, Status: api.CreateChannelConnection201JSONResponseBodyStatus(c.Status),
+		ExpiresAt: c.ExpiresAt, Candidates: []api.ChannelConnectionCandidate{}, ChannelName: strPtr(c.ChannelName), ChannelId: c.ChannelID, BotUrl: botURL}
+	if c.Reason != "" {
+		r := api.CreateChannelConnection201JSONResponseBodyReason(c.Reason)
+		response.Reason = &r
+	}
+	return response, nil
 }
 
 func (h *Handlers) GetChannelConnection(ctx context.Context, req api.GetChannelConnectionRequestObject) (api.GetChannelConnectionResponseObject, error) {
@@ -100,7 +119,7 @@ func (h *Handlers) RefreshChannelConnection(ctx context.Context, req api.Refresh
 	if err != nil {
 		return nil, err
 	}
-	if !tx.Now.Before(c.ExpiresAt) || c.MaxUserID == 0 || c.Status == "connected" {
+	if !tx.Now.Before(c.ExpiresAt) || (c.MaxUserID == 0 && c.ChannelName == "") || c.Status == "connected" {
 		return nil, store.Conflict("conflict", "connection cannot be refreshed", nil)
 	}
 	if tx.Now.Sub(c.UpdatedAt) < 10*time.Second {
@@ -110,6 +129,9 @@ func (h *Handlers) RefreshChannelConnection(ctx context.Context, req api.Refresh
 	c.Reason = ""
 	c.ChannelID = nil
 	c.UpdatedAt = tx.Now
+	if c.ChannelName != "" {
+		mockConnectByName(tx, c)
+	}
 	return api.RefreshChannelConnection202Response{}, nil
 }
 

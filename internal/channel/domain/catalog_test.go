@@ -512,3 +512,29 @@ func TestCatalogCursor(t *testing.T) {
 }
 
 func ptr[T any](v T) *T { return &v }
+
+func TestSetPricesDevelopmentMinimum(t *testing.T) {
+	for _, tc := range []struct {
+		name            string
+		minimum, amount money.Kopecks
+		want            error
+	}{
+		{"dev ten rubles", 1, 1000, nil},
+		{"dev one kopeck", 1, 1, nil},
+		{"dev zero", 1, 0, ErrPriceOutOfRange},
+		{"dev negative", 1, -1, ErrPriceOutOfRange},
+		{"dev upper limit", 1, MaxPriceAmount, nil},
+		{"dev above limit", 1, MaxPriceAmount + 1, ErrPriceOutOfRange},
+		{"production ten rubles", MinPriceAmount, 1000, ErrPriceOutOfRange},
+		{"default ten rubles", 0, 1000, ErrPriceOutOfRange},
+		{"production minimum", MinPriceAmount, MinPriceAmount, nil},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			c := priced(StatusActive)
+			err := c.SetPricesWithMinimum([]Price{{FormatID: "f_1_24", Amount: tc.amount, IsEnabled: true}}, formats, t0, tc.minimum)
+			if !errors.Is(err, tc.want) {
+				t.Fatalf("got %v, want %v", err, tc.want)
+			}
+		})
+	}
+}

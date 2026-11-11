@@ -1,6 +1,14 @@
 -- name: InsertChannelConnection :exec
-INSERT INTO channel_connection(id, organization_id, user_id, token_hash, expires_at, status, scan_id, created_at, updated_at)
-VALUES (@id, @organization_id, @user_id, @token_hash, @expires_at, @status, @scan_id, @created_at, @updated_at);
+INSERT INTO channel_connection(id, organization_id, user_id, token_hash, channel_name, expires_at, status, scan_id, created_at, updated_at)
+VALUES (@id, @organization_id, @user_id, @token_hash, @channel_name, @expires_at, @status, @scan_id, @created_at, @updated_at);
+
+-- name: ResolveChannelConnectionReference :many
+SELECT id FROM channel WHERE CASE @kind::text
+    WHEN 'title' THEN lower(btrim(coalesce(title,''))) = lower(@value::text)
+    WHEN 'link' THEN rtrim(coalesce(link,''),'/') = @value::text
+    WHEN 'id' THEN max_chat_id::text = @value::text
+    ELSE false END
+ORDER BY id LIMIT 2;
 
 -- name: GetChannelConnection :one
 SELECT * FROM channel_connection WHERE id = @id;

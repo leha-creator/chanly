@@ -100,6 +100,10 @@ func newChannelService(cfg Config, in *infra, txRunner tx.Runner, queue job.Enqu
 	in.log.Debug("public and private MAX channels accepted", "op", "Bootstrap.Channel")
 	store := channelpg.New(in.pool, in.log.With(logx.KeyModule, "channel"))
 	ch := cfg.Channel
+	minimum := domain.MinPriceAmount
+	if cfg.Env == "development" {
+		minimum = 1
+	}
 	day := 24 * time.Hour
 	deps := channelapp.Deps{
 		Connections: store.Connections(),
@@ -108,7 +112,8 @@ func newChannelService(cfg Config, in *infra, txRunner tx.Runner, queue job.Enqu
 		Catalog: store.Catalog(), Admin: store.AdminChannels(),
 		Alerts: in.alerter, Tx: txRunner, Jobs: queue, Audit: auditLog, Clock: in.clock, Log: in.log,
 		Config: channelapp.Config{
-			LinkCodeTTL: cfg.Channel.LinkCodeTTL, LinkCodesPerHour: cfg.Channel.LinkCodesPerHour,
+			MinPriceAmount: minimum,
+			LinkCodeTTL:    cfg.Channel.LinkCodeTTL, LinkCodesPerHour: cfg.Channel.LinkCodesPerHour,
 			UnclaimedTTL: cfg.Channel.UnclaimedTTL, RknThreshold: cfg.Channel.RknThreshold,
 			Pepper: []byte(cfg.AuthCodePepper), BotName: cfg.MAX.BotName,
 			FeeRateBP: ch.FeeRateBP, RknRecheckInterval: ch.RknRecheckInterval,

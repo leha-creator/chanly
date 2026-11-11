@@ -85,6 +85,14 @@ func (c *Channel) HasOfferedPrice() bool {
 // удаляется. active — активные форматы справочника по порядку; цены сохраняются
 // в том же порядке.
 func (c *Channel) SetPrices(prices []Price, active []Format, now time.Time) error {
+	return c.SetPricesWithMinimum(prices, active, now, MinPriceAmount)
+}
+
+// SetPricesWithMinimum applies the environment floor; zero retains the production floor.
+func (c *Channel) SetPricesWithMinimum(prices []Price, active []Format, now time.Time, minimum money.Kopecks) error {
+	if minimum <= 0 {
+		minimum = MinPriceAmount
+	}
 	if !c.catalogEditable() {
 		return ErrNotEditable
 	}
@@ -98,7 +106,7 @@ func (c *Channel) SetPrices(prices []Price, active []Format, now time.Time) erro
 		if !slices.ContainsFunc(active, func(f Format) bool { return f.ID == p.FormatID && f.IsActive }) {
 			return ErrUnknownFormat
 		}
-		if p.Amount < MinPriceAmount || p.Amount > MaxPriceAmount {
+		if p.Amount < minimum || p.Amount > MaxPriceAmount {
 			return ErrPriceOutOfRange
 		}
 		p.FormatActive = true

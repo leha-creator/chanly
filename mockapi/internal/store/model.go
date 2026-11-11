@@ -156,6 +156,7 @@ type LinkCode struct {
 
 // ChannelConnection is the in-memory counterpart of an onboarding session.
 type ChannelConnection struct {
+	ChannelName                     string
 	ID, OrgID, UserID               uuid.UUID
 	TokenHash                       string
 	MaxUserID                       int64

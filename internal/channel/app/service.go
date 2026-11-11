@@ -19,6 +19,7 @@ import (
 	"github.com/leha-creator/chanly/internal/platform/clock"
 	"github.com/leha-creator/chanly/internal/platform/job"
 	"github.com/leha-creator/chanly/internal/platform/logx"
+	"github.com/leha-creator/chanly/internal/platform/money"
 	"github.com/leha-creator/chanly/internal/platform/tx"
 )
 
@@ -45,6 +46,8 @@ type Config struct {
 	EarlyCodeRetry time.Duration
 	// FeeRateBP — комиссия платформы в базисных пунктах (PLATFORM_FEE_RATE_BP, A-30: 1500).
 	FeeRateBP int
+	// MinPriceAmount is wired by bootstrap; zero retains the production floor.
+	MinPriceAmount money.Kopecks
 	// RknRecheckInterval — через сколько подтверждённый номер РКН пора проверить снова (R-17).
 	RknRecheckInterval time.Duration
 	// Unavailability — пределы интервалов недоступности (R-6).

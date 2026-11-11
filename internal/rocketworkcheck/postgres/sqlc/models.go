@@ -263,6 +263,7 @@ type ChannelConnection struct {
 	ChannelID      pgtype.UUID
 	CreatedAt      pgtype.Timestamptz
 	UpdatedAt      pgtype.Timestamptz
+	ChannelName    *string
 }
 
 type ChannelConnectionCandidate struct {

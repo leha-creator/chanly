@@ -265,6 +265,7 @@ type ChannelConnection struct {
 	ChannelID      *uuid.UUID
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
+	ChannelName    *string
 }
 
 type ChannelConnectionCandidate struct {

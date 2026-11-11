@@ -31,15 +31,23 @@ func (r *Connections) result(ctx context.Context, op string, err error) error {
 func (r *Connections) Create(ctx context.Context, c *domain.Connection) error {
 	return r.result(ctx, "Channel.Connection.Create", r.s.q(ctx).InsertChannelConnection(ctx, sqlc.InsertChannelConnectionParams{
 		ID: c.ID, OrganizationID: c.OrganizationID, UserID: c.UserID, TokenHash: c.TokenHash,
-		ExpiresAt: c.ExpiresAt, Status: c.Status, ScanID: c.ScanID, CreatedAt: c.CreatedAt, UpdatedAt: c.UpdatedAt,
+		ChannelName: text(c.ChannelName),
+		ExpiresAt:   c.ExpiresAt, Status: c.Status, ScanID: c.ScanID, CreatedAt: c.CreatedAt, UpdatedAt: c.UpdatedAt,
 	}))
 }
 
 func connection(row sqlc.ChannelConnection) *domain.Connection {
 	return &domain.Connection{ID: row.ID, OrganizationID: row.OrganizationID, UserID: row.UserID,
-		TokenHash: row.TokenHash, MaxUserID: row.MaxUserID, TokenUsedAt: row.TokenUsedAt, ExpiresAt: row.ExpiresAt,
+		ChannelName: str(row.ChannelName),
+		TokenHash:   row.TokenHash, MaxUserID: row.MaxUserID, TokenUsedAt: row.TokenUsedAt, ExpiresAt: row.ExpiresAt,
 		Status: row.Status, Reason: row.Reason, ScanID: row.ScanID, ChannelID: row.ChannelID,
 		CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}
+}
+
+func (r *Connections) ResolveReference(ctx context.Context, ref domain.ChannelReference) ([]uuid.UUID, error) {
+	ids, err := r.s.q(ctx).ResolveChannelConnectionReference(ctx, sqlc.ResolveChannelConnectionReferenceParams{Kind: ref.Kind, Value: ref.Value})
+	r.s.debug(ctx, "Channel.Connection.ResolveReference", "kind", ref.Kind, "count", len(ids))
+	return ids, r.result(ctx, "Channel.Connection.ResolveReference", err)
 }
 
 func (r *Connections) Get(ctx context.Context, id uuid.UUID, lock bool) (*domain.Connection, error) {

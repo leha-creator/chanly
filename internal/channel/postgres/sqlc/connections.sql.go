@@ -73,7 +73,7 @@ func (q *Queries) DeleteExpiredChannelConnections(ctx context.Context, arg Delet
 }
 
 const findChannelConnectionTokenForUpdate = `-- name: FindChannelConnectionTokenForUpdate :one
-SELECT id, organization_id, user_id, token_hash, max_user_id, token_used_at, expires_at, status, reason, scan_id, channel_id, created_at, updated_at FROM channel_connection WHERE token_hash = $1 FOR UPDATE
+SELECT id, organization_id, user_id, token_hash, max_user_id, token_used_at, expires_at, status, reason, scan_id, channel_id, created_at, updated_at, channel_name FROM channel_connection WHERE token_hash = $1 FOR UPDATE
 `
 
 func (q *Queries) FindChannelConnectionTokenForUpdate(ctx context.Context, tokenHash string) (ChannelConnection, error) {
@@ -93,12 +93,13 @@ func (q *Queries) FindChannelConnectionTokenForUpdate(ctx context.Context, token
 		&i.ChannelID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ChannelName,
 	)
 	return i, err
 }
 
 const getChannelConnection = `-- name: GetChannelConnection :one
-SELECT id, organization_id, user_id, token_hash, max_user_id, token_used_at, expires_at, status, reason, scan_id, channel_id, created_at, updated_at FROM channel_connection WHERE id = $1
+SELECT id, organization_id, user_id, token_hash, max_user_id, token_used_at, expires_at, status, reason, scan_id, channel_id, created_at, updated_at, channel_name FROM channel_connection WHERE id = $1
 `
 
 func (q *Queries) GetChannelConnection(ctx context.Context, id uuid.UUID) (ChannelConnection, error) {
@@ -118,12 +119,13 @@ func (q *Queries) GetChannelConnection(ctx context.Context, id uuid.UUID) (Chann
 		&i.ChannelID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ChannelName,
 	)
 	return i, err
 }
 
 const getChannelConnectionForUpdate = `-- name: GetChannelConnectionForUpdate :one
-SELECT id, organization_id, user_id, token_hash, max_user_id, token_used_at, expires_at, status, reason, scan_id, channel_id, created_at, updated_at FROM channel_connection WHERE id = $1 FOR UPDATE
+SELECT id, organization_id, user_id, token_hash, max_user_id, token_used_at, expires_at, status, reason, scan_id, channel_id, created_at, updated_at, channel_name FROM channel_connection WHERE id = $1 FOR UPDATE
 `
 
 func (q *Queries) GetChannelConnectionForUpdate(ctx context.Context, id uuid.UUID) (ChannelConnection, error) {
@@ -143,6 +145,7 @@ func (q *Queries) GetChannelConnectionForUpdate(ctx context.Context, id uuid.UUI
 		&i.ChannelID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ChannelName,
 	)
 	return i, err
 }
@@ -164,8 +167,8 @@ func (q *Queries) HasChannelConnectionCandidate(ctx context.Context, arg HasChan
 }
 
 const insertChannelConnection = `-- name: InsertChannelConnection :exec
-INSERT INTO channel_connection(id, organization_id, user_id, token_hash, expires_at, status, scan_id, created_at, updated_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+INSERT INTO channel_connection(id, organization_id, user_id, token_hash, channel_name, expires_at, status, scan_id, created_at, updated_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 `
 
 type InsertChannelConnectionParams struct {
@@ -173,6 +176,7 @@ type InsertChannelConnectionParams struct {
 	OrganizationID uuid.UUID
 	UserID         uuid.UUID
 	TokenHash      string
+	ChannelName    *string
 	ExpiresAt      time.Time
 	Status         string
 	ScanID         uuid.UUID
@@ -186,6 +190,7 @@ func (q *Queries) InsertChannelConnection(ctx context.Context, arg InsertChannel
 		arg.OrganizationID,
 		arg.UserID,
 		arg.TokenHash,
+		arg.ChannelName,
 		arg.ExpiresAt,
 		arg.Status,
 		arg.ScanID,
@@ -278,6 +283,40 @@ SELECT pg_advisory_xact_lock(hashtextextended($1::text, 8103))
 func (q *Queries) LockChannelConnectionIssuance(ctx context.Context, organizationID string) error {
 	_, err := q.db.Exec(ctx, lockChannelConnectionIssuance, organizationID)
 	return err
+}
+
+const resolveChannelConnectionReference = `-- name: ResolveChannelConnectionReference :many
+SELECT id FROM channel WHERE CASE $1::text
+    WHEN 'title' THEN lower(btrim(coalesce(title,''))) = lower($2::text)
+    WHEN 'link' THEN rtrim(coalesce(link,''),'/') = $2::text
+    WHEN 'id' THEN max_chat_id::text = $2::text
+    ELSE false END
+ORDER BY id LIMIT 2
+`
+
+type ResolveChannelConnectionReferenceParams struct {
+	Kind  string
+	Value string
+}
+
+func (q *Queries) ResolveChannelConnectionReference(ctx context.Context, arg ResolveChannelConnectionReferenceParams) ([]uuid.UUID, error) {
+	rows, err := q.db.Query(ctx, resolveChannelConnectionReference, arg.Kind, arg.Value)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []uuid.UUID{}
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const saveChannelConnection = `-- name: SaveChannelConnection :exec

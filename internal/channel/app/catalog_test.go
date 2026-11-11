@@ -436,3 +436,23 @@ func TestMetrics(t *testing.T) {
 		t.Fatal("MAX called for disconnected channel")
 	}
 }
+
+func TestSetPricesDevelopmentFloor(t *testing.T) {
+	e := newEnv(t)
+	c := e.moderated(-80000000009)
+	e.svc.Config.MinPriceAmount = 1
+	got, err := e.svc.SetPrices(e.ctx(), *c.OrganizationID, c.ID, []domain.Price{{FormatID: "f_1_24", Amount: 1000, IsEnabled: true}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got.Prices) != 1 || got.Prices[0].Amount != 1000 {
+		t.Fatalf("prices: %+v", got.Prices)
+	}
+	var amount int64
+	if err := e.d.Pool.QueryRow(e.ctx(), "SELECT amount FROM channel_price WHERE channel_id=$1", c.ID).Scan(&amount); err != nil {
+		t.Fatal(err)
+	}
+	if amount != 1000 {
+		t.Fatalf("stored amount: %d", amount)
+	}
+}
