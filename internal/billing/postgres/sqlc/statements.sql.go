@@ -79,7 +79,7 @@ const bankStatementExists = `-- name: BankStatementExists :one
 SELECT EXISTS (SELECT 1 FROM bank_statement WHERE file_sha256 = $1) AS found
 `
 
-func (q *Queries) BankStatementExists(ctx context.Context, fileSha256 string) (bool, error) {
+func (q *Queries) BankStatementExists(ctx context.Context, fileSha256 *string) (bool, error) {
 	row := q.db.QueryRow(ctx, bankStatementExists, fileSha256)
 	var found bool
 	err := row.Scan(&found)
@@ -116,7 +116,7 @@ func (q *Queries) CountBankTransactionsByStatus(ctx context.Context) ([]CountBan
 }
 
 const getBankStatement = `-- name: GetBankStatement :one
-SELECT id, uploaded_by, storage_key, file_sha256, account_number, date_from, date_to, opening_balance, closing_balance, incoming_count, matched_count, unmatched_count, duplicate_count, created_at, updated_at FROM bank_statement WHERE id = $1
+SELECT id, uploaded_by, storage_key, file_sha256, account_number, date_from, date_to, opening_balance, closing_balance, incoming_count, matched_count, unmatched_count, duplicate_count, created_at, updated_at, source, complete FROM bank_statement WHERE id = $1
 `
 
 func (q *Queries) GetBankStatement(ctx context.Context, id uuid.UUID) (BankStatement, error) {
@@ -138,6 +138,8 @@ func (q *Queries) GetBankStatement(ctx context.Context, id uuid.UUID) (BankState
 		&i.DuplicateCount,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Source,
+		&i.Complete,
 	)
 	return i, err
 }
@@ -173,16 +175,16 @@ func (q *Queries) GetBankTransactionForUpdate(ctx context.Context, id uuid.UUID)
 const insertBankStatement = `-- name: InsertBankStatement :exec
 
 INSERT INTO bank_statement (id, uploaded_by, storage_key, file_sha256, account_number, date_from, date_to,
-    opening_balance, closing_balance, incoming_count, matched_count, unmatched_count, duplicate_count, created_at, updated_at)
+    opening_balance, closing_balance, incoming_count, matched_count, unmatched_count, duplicate_count, source, complete, created_at, updated_at)
 VALUES ($1, $2, $3, $4, $5, $6, $7,
-    $8, $9, $10, $11, $12, $13, $14, $14)
+    $8, $9, $10, $11, $12, $13, $14, $15, $16, $16)
 `
 
 type InsertBankStatementParams struct {
 	ID             uuid.UUID
-	UploadedBy     uuid.UUID
-	StorageKey     string
-	FileSha256     string
+	UploadedBy     *uuid.UUID
+	StorageKey     *string
+	FileSha256     *string
 	AccountNumber  string
 	DateFrom       pgtype.Date
 	DateTo         pgtype.Date
@@ -192,6 +194,8 @@ type InsertBankStatementParams struct {
 	MatchedCount   int32
 	UnmatchedCount int32
 	DuplicateCount int32
+	Source         string
+	Complete       bool
 	CreatedAt      time.Time
 }
 
@@ -211,6 +215,8 @@ func (q *Queries) InsertBankStatement(ctx context.Context, arg InsertBankStateme
 		arg.MatchedCount,
 		arg.UnmatchedCount,
 		arg.DuplicateCount,
+		arg.Source,
+		arg.Complete,
 		arg.CreatedAt,
 	)
 	return err
@@ -267,7 +273,7 @@ func (q *Queries) InsertBankTransaction(ctx context.Context, arg InsertBankTrans
 }
 
 const latestBankStatement = `-- name: LatestBankStatement :one
-SELECT id, uploaded_by, storage_key, file_sha256, account_number, date_from, date_to, opening_balance, closing_balance, incoming_count, matched_count, unmatched_count, duplicate_count, created_at, updated_at FROM bank_statement ORDER BY date_to DESC NULLS LAST, created_at DESC, id DESC LIMIT 1
+SELECT id, uploaded_by, storage_key, file_sha256, account_number, date_from, date_to, opening_balance, closing_balance, incoming_count, matched_count, unmatched_count, duplicate_count, created_at, updated_at, source, complete FROM bank_statement ORDER BY date_to DESC NULLS LAST, created_at DESC, id DESC LIMIT 1
 `
 
 func (q *Queries) LatestBankStatement(ctx context.Context) (BankStatement, error) {
@@ -289,12 +295,14 @@ func (q *Queries) LatestBankStatement(ctx context.Context) (BankStatement, error
 		&i.DuplicateCount,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Source,
+		&i.Complete,
 	)
 	return i, err
 }
 
 const latestUploadedBankStatement = `-- name: LatestUploadedBankStatement :one
-SELECT id, uploaded_by, storage_key, file_sha256, account_number, date_from, date_to, opening_balance, closing_balance, incoming_count, matched_count, unmatched_count, duplicate_count, created_at, updated_at FROM bank_statement ORDER BY created_at DESC, id DESC LIMIT 1
+SELECT id, uploaded_by, storage_key, file_sha256, account_number, date_from, date_to, opening_balance, closing_balance, incoming_count, matched_count, unmatched_count, duplicate_count, created_at, updated_at, source, complete FROM bank_statement ORDER BY created_at DESC, id DESC LIMIT 1
 `
 
 // Последняя загруженная выписка (итоги загрузки adm/payments).
@@ -317,6 +325,8 @@ func (q *Queries) LatestUploadedBankStatement(ctx context.Context) (BankStatemen
 		&i.DuplicateCount,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Source,
+		&i.Complete,
 	)
 	return i, err
 }
@@ -397,28 +407,31 @@ func (q *Queries) UnmatchedBankTotal(ctx context.Context) (UnmatchedBankTotalRow
 }
 
 const updateBankStatementCounts = `-- name: UpdateBankStatementCounts :exec
-UPDATE bank_statement SET incoming_count = $1, matched_count = $2,
-    unmatched_count = $3, duplicate_count = $4, updated_at = $5
-WHERE id = $6
+UPDATE bank_statement SET incoming_count = $1,
+    matched_count = (SELECT count(*) FROM bank_transaction bt WHERE bt.bank_statement_id = $2 AND bt.match_status = 'matched'),
+    unmatched_count = (SELECT count(*) FROM bank_transaction bt WHERE bt.bank_statement_id = $2 AND bt.match_status = 'unmatched'),
+    duplicate_count = $3, updated_at = $4,
+    opening_balance = $5, closing_balance = $6
+WHERE id = $2
 `
 
 type UpdateBankStatementCountsParams struct {
 	IncomingCount  int32
-	MatchedCount   int32
-	UnmatchedCount int32
+	ID             uuid.UUID
 	DuplicateCount int32
 	UpdatedAt      time.Time
-	ID             uuid.UUID
+	OpeningBalance *int64
+	ClosingBalance *int64
 }
 
 func (q *Queries) UpdateBankStatementCounts(ctx context.Context, arg UpdateBankStatementCountsParams) error {
 	_, err := q.db.Exec(ctx, updateBankStatementCounts,
 		arg.IncomingCount,
-		arg.MatchedCount,
-		arg.UnmatchedCount,
+		arg.ID,
 		arg.DuplicateCount,
 		arg.UpdatedAt,
-		arg.ID,
+		arg.OpeningBalance,
+		arg.ClosingBalance,
 	)
 	return err
 }

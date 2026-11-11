@@ -52,7 +52,7 @@ commands:
   dev seed                 [--wait 5m] [--orders=true]: demo users, catalog, campaigns and orders; needs a running
                            worker (development and test only)
   config check --for <mode>  validate configuration of a mode (api, worker, migrate, legal, admin, dev) and exit
-  integration-check        --system max|ord|rocketwork [--scenario preflight|inspect|sandbox|publish|observe|recover|remove]
+  integration-check        --system max|ord|rocketwork|tbank [--scenario preflight|inspect|sandbox|sync|publish|observe|recover|remove]
                            [--chat ID] [--run-dir PATH] [--execute]: isolated integration checks (development only)
   probe <url>              GET the url with a 2 s timeout: exit 0 on 200 (container health check)
 `

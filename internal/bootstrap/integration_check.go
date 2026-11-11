@@ -27,6 +27,7 @@ import (
 )
 
 type integrationCheckOptions struct {
+	from, to                       string
 	system, scenario, runDir       string
 	chatID                         int64
 	execute                        bool
@@ -36,6 +37,8 @@ type integrationCheckOptions struct {
 func parseIntegrationCheck(args []string) (integrationCheckOptions, error) {
 	var o integrationCheckOptions
 	f := flag.NewFlagSet("integration-check", flag.ContinueOnError)
+	f.StringVar(&o.from, "from", "", "fixed T-Bank replay interval start, RFC3339")
+	f.StringVar(&o.to, "to", "", "fixed T-Bank replay interval end, RFC3339")
 	// flag errors may contain supplied values; never echo arguments into logs.
 	f.SetOutput(io.Discard)
 	f.StringVar(&o.system, "system", "", "max, ord or rocketwork")
@@ -49,8 +52,11 @@ func parseIntegrationCheck(args []string) (integrationCheckOptions, error) {
 	if f.Parse(args) != nil || f.NArg() != 0 {
 		return o, errUsage
 	}
+	if (o.from != "" || o.to != "") && (o.system != "tbank" || o.scenario != "sync" || o.from == "" || o.to == "") {
+		return o, errUsage
+	}
 	switch o.system {
-	case "max", "ord", "rocketwork":
+	case "max", "ord", "rocketwork", "tbank":
 	default:
 		return o, errUsage
 	}
@@ -66,16 +72,20 @@ func parseIntegrationCheck(args []string) (integrationCheckOptions, error) {
 		return o, nil
 	}
 	switch o.scenario {
+	case "sync":
+		if o.system != "tbank" || !o.execute || o.runDir == "" {
+			return o, errUsage
+		}
 	case "preflight":
 		if o.execute {
 			return o, errUsage
 		}
 	case "inspect":
-		if (o.system != "max" && o.system != "ord") || !o.execute {
+		if (o.system != "max" && o.system != "ord" && o.system != "tbank") || !o.execute {
 			return o, errUsage
 		}
 	case "sandbox":
-		if o.system != "ord" || !o.execute || o.runDir == "" {
+		if (o.system != "ord" && o.system != "tbank") || !o.execute || o.runDir == "" {
 			return o, errUsage
 		}
 	case "publish", "observe", "recover", "remove":
@@ -99,6 +109,8 @@ func integrationCheckPreflight(c Config, vars map[string]string, o *integrationC
 		return errors.New("integration checks require APP_ENV=development; test uses fakes and production is forbidden")
 	}
 	switch o.system {
+	case "tbank":
+		return tbankCheckPreflight(c, vars, *o)
 	case "max":
 		if c.MAXFake() || strings.TrimSpace(c.MAX.BotToken) == "" {
 			return errors.New("MAX_BOT_TOKEN is required; fake cannot pass a live check")
@@ -213,6 +225,8 @@ func runIntegrationCheck(ctx context.Context, p RunParams) int {
 		} else {
 			err = in.inspectCheckORD(ctx, cfg)
 		}
+	} else if o.system == "tbank" {
+		err = in.executeTBankCheck(ctx, cfg, o)
 	} else if o.system == "rocketwork" {
 		err = in.executeRWCheck(ctx, cfg, o)
 	} else if err = in.connectCheckMAX(cfg); err == nil {

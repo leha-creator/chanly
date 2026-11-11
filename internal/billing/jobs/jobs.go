@@ -33,3 +33,10 @@ func Register(w *job.Worker, svc *app.Service, o Options) {
 			return err
 		}, job.HandlerOptions{})
 }
+
+func RegisterBank(w *job.Worker, svc *app.Service, interval time.Duration) {
+	if svc.BankSource == nil {
+		return
+	}
+	w.RegisterPeriodic(app.KindSyncBank, job.Every(interval), func(ctx context.Context, _ job.Running) error { _, err := svc.SyncBank(ctx); return err }, job.HandlerOptions{})
+}

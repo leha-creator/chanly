@@ -165,7 +165,7 @@ func statementSummary(tx *store.Tx, s *store.BankStatement) api.BankStatementSum
 	return api.BankStatementSummary{Id: s.ID, AccountNumber: s.AccountNumber, DateFrom: ptr(dateOf(s.DateFrom)),
 		DateTo: ptr(dateOf(s.DateTo)), OpeningBalance: ptr(s.OpeningBalance), ClosingBalance: ptr(s.ClosingBalance),
 		IncomingCount: s.Incoming, MatchedCount: s.Matched, UnmatchedCount: s.Unmatched, DuplicateCount: s.Duplicate,
-		UploadedBy: userRef(tx, s.UploadedBy), CreatedAt: s.CreatedAt}
+		Source: api.File, UploadedBy: ptr(userRef(tx, s.UploadedBy)), CreatedAt: s.CreatedAt}
 }
 
 func (h *Handlers) UploadBankStatement(ctx context.Context, req api.UploadBankStatementRequestObject) (api.UploadBankStatementResponseObject, error) {

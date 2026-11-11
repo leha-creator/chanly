@@ -49,6 +49,10 @@ func (r Renderer) Invoice(doc domain.InvoiceDoc) ([]byte, error) {
 	d.paragraph(AmountInWords(doc.Amount))
 	d.SetFont(family, "", 10)
 	d.Ln(3)
+	if doc.PaymentPurpose != "" {
+		d.paragraph("Назначение платежа: " + doc.PaymentPurpose)
+		d.paragraph("Скопируйте назначение платежа полностью, включая код после номера счёта.")
+	}
 	d.paragraph("Счёт действителен до " + dateText(doc.ExpiresAt) + " включительно. В назначении платежа укажите номер счёта " +
 		doc.Number + ". Оплата третьими лицами не допускается.")
 	d.signatures("Индивидуальный предприниматель", "")

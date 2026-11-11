@@ -65,15 +65,23 @@ func statementError(err error) error {
 
 func (h *Handlers) statementSummary(ctx context.Context, p *httpx.Principal, st domain.BankStatement) (apigen.BankStatementSummary, error) {
 	var c adminref.Collector
-	c.User(&st.UploadedBy)
+	if st.UploadedBy != uuid.Nil {
+		c.User(&st.UploadedBy)
+	}
 	refs, err := h.resolve(ctx, &c)
 	if err != nil {
 		return apigen.BankStatementSummary{}, err
 	}
 	out := apigen.BankStatementSummary{Id: st.ID, AccountNumber: st.Account, IncomingCount: st.IncomingCount,
 		MatchedCount: st.MatchedCount, UnmatchedCount: st.UnmatchedCount, DuplicateCount: st.DuplicateCount,
-		UploadedBy: apigen.AdminUserRef{Id: st.UploadedBy, Email: httpx.EmailFor(p, refs.Emails[st.UploadedBy])},
-		CreatedAt:  st.CreatedAt.UTC()}
+		Source:    apigen.BankStatementSummarySource(st.Source),
+		CreatedAt: st.CreatedAt.UTC()}
+	if st.Source == "" {
+		out.Source = apigen.File
+	}
+	if st.UploadedBy != uuid.Nil {
+		out.UploadedBy = &apigen.AdminUserRef{Id: st.UploadedBy, Email: httpx.EmailFor(p, refs.Emails[st.UploadedBy])}
+	}
 	if st.DateFrom != nil {
 		out.DateFrom = &openapi_types.Date{Time: *st.DateFrom}
 	}

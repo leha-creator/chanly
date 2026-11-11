@@ -11,7 +11,9 @@ import (
 	accountpg "github.com/leha-creator/chanly/internal/account/postgres"
 	"github.com/leha-creator/chanly/internal/billing/domain"
 	ledgerapp "github.com/leha-creator/chanly/internal/ledger/app"
+	ledgerdomain "github.com/leha-creator/chanly/internal/ledger/domain"
 	placementpg "github.com/leha-creator/chanly/internal/placement/postgres"
+	"github.com/leha-creator/chanly/internal/platform/money"
 )
 
 // ---------------------------------------------------------------- billing ← account
@@ -57,6 +59,11 @@ func (b BillingOrganizations) ByINN(ctx context.Context, inn string) (domain.Org
 type BillingLedger struct{ Svc *ledgerapp.Service }
 
 var _ domain.Ledger = BillingLedger{}
+
+func (b BillingLedger) BankBalance(ctx context.Context) (money.Kopecks, error) {
+	totals, err := b.Svc.Totals(ctx)
+	return totals[ledgerdomain.AccountBank], err
+}
 
 func (b BillingLedger) Deposit(ctx context.Context, d domain.DepositRequest) error {
 	_, err := b.Svc.Deposit(ctx, d.BankTransactionID, d.InvoiceID, d.OrganizationID, d.Amount, d.AdminID)

@@ -29,9 +29,17 @@ type InvoicePage struct {
 // до вставки строки (при ошибке вставки файл остаётся сиротой — безвредно).
 func (s *Service) CreateInvoice(ctx context.Context, orgID, userID uuid.UUID, amount money.Kopecks, ip *netip.Addr) (domain.Invoice, error) {
 	const op = "Billing.CreateInvoice"
-	if err := domain.ValidateAmount(amount); err != nil {
+	minimum, maximum := domain.MinInvoiceAmount, domain.MaxInvoiceAmount
+	controlled := s.BankConfig.Access == domain.BankControlled && s.BankConfig.CreditPolicy.Check(orgID, domain.MinControlledInvoiceAmount, s.Clock.Now()) == nil
+	if controlled {
+		minimum = domain.MinControlledInvoiceAmount
+		if s.BankConfig.CreditPolicy.MaxPayment < maximum {
+			maximum = s.BankConfig.CreditPolicy.MaxPayment
+		}
+	}
+	if amount < minimum || amount > maximum {
 		return domain.Invoice{}, apperr.Validation("amount", "out_of_range").
-			WithDetail("min", int64(domain.MinInvoiceAmount)).WithDetail("max", int64(domain.MaxInvoiceAmount))
+			WithDetail("min", int64(minimum)).WithDetail("max", int64(maximum))
 	}
 	now := s.Clock.Now()
 	if err := s.invoiceRateLimit(ctx, op, userID, ip, now); err != nil {
@@ -51,8 +59,13 @@ func (s *Service) CreateInvoice(ctx context.Context, orgID, userID uuid.UUID, am
 		CreatedBy: userID, CreatedAt: now, UpdatedAt: now,
 	}
 	inv.PDFStorageKey = "invoices/" + inv.ID.String() + ".pdf"
+	paymentPurpose := ""
+	if controlled {
+		paymentPurpose = "Пополнение баланса по счёту № " + inv.Number + ". " + s.BankConfig.CreditPolicy.Marker()
+	}
 	pdf, err := s.Renderer.Invoice(domain.InvoiceDoc{
-		Number: inv.Number, IssuedAt: now, ExpiresAt: inv.ExpiresAt, Amount: amount, Supplier: s.Config.Supplier,
+		PaymentPurpose: paymentPurpose,
+		Number:         inv.Number, IssuedAt: now, ExpiresAt: inv.ExpiresAt, Amount: amount, Supplier: s.Config.Supplier,
 		Payer: inv.Payer, VATNote: s.Config.VATNote,
 	})
 	if err != nil {

@@ -27,8 +27,9 @@ const (
 
 // Пределы суммы счёта — как в InvoiceCreate спецификации: 1 000 ₽ … 1 000 000 000 ₽.
 const (
-	MinInvoiceAmount money.Kopecks = 100000
-	MaxInvoiceAmount money.Kopecks = 100000000000
+	MinInvoiceAmount           money.Kopecks = 100000
+	MinControlledInvoiceAmount money.Kopecks = 100
+	MaxInvoiceAmount           money.Kopecks = 100000000000
 )
 
 // Payer — плательщик на момент выставления (D-26, R-10). Банковские реквизиты необязательны.

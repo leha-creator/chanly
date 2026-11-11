@@ -107,6 +107,19 @@ for dir in "${envs[@]}"; do
   [[ -f $app && -f $stack ]] || continue
 
   check_common "$app" 1
+  [[ -z $(value_of "$app" TBANK_MODE) || $(value_of "$app" TBANK_MODE) == disabled ]] || \
+    fail tbank_disabled_required env="$env_name" key=TBANK_MODE
+  [[ $(value_of "$app" TBANK_ACCESS_MODE) == readonly ]] || \
+    fail tbank_readonly_required env="$env_name" key=TBANK_ACCESS_MODE
+  [[ $(value_of "$app" TBANK_DEV_REAL_ENABLED) == false ]] || \
+    fail tbank_real_dev_disabled_required env="$env_name" key=TBANK_DEV_REAL_ENABLED
+  [[ $(value_of "$app" TBANK_PRODUCTION_APPROVED) == false ]] || \
+    fail tbank_production_not_admitted env="$env_name" key=TBANK_PRODUCTION_APPROVED
+  if [[ $env_name == staging ]]; then
+    [[ $(value_of "$app" TBANK_API_URL) == https://business.tbank.ru/openapi/sandbox ]] || \
+      fail tbank_sandbox_required env="$env_name" key=TBANK_API_URL
+  fi
+
   if [[ $env_name == staging ]]; then
     [[ $(value_of "$app" ORD_API_URL) == https://ord-prestable.yandex.net ]] || \
       fail ord_sandbox_required env="$env_name" key=ORD_API_URL

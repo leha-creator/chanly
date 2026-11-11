@@ -305,6 +305,7 @@ func (m *modules) registerJobs(w *job.Worker) {
 	})
 	placementjobs.RegisterEvents(m.platform.dispatcher, m.placement)
 	closingHour, closingMinute := m.cfg.ClosingActsAt()
+	billingjobs.RegisterBank(w, m.billing, m.cfg.TBank.PollInterval)
 	billingjobs.Register(w, m.billing, billingjobs.Options{ExpireInterval: m.cfg.Billing.InvoiceExpireInterval,
 		ClosingDay: m.cfg.Billing.ClosingActsDay, ClosingHour: closingHour, ClosingMinute: closingMinute})
 	ledgerjobs.Register(w, m.ledger, m.cfg.Billing.LedgerCheckInterval)

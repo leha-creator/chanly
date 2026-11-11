@@ -73,6 +73,7 @@ type Config struct {
 	Media        MediaConfig
 	Placement    PlacementConfig
 	Billing      BillingConfig
+	TBank        TBankConfig
 	Notification NotificationConfig
 
 	ORD        ORDConfig
@@ -364,6 +365,7 @@ func (c Config) Validate(mode string) error {
 		return finish(bad)
 	}
 	if mode == ModeAdmin || mode == ModeDev {
+		c.validateTBank(add)
 		return finish(bad) // только база
 	}
 	if c.DBMaxConns < 1 {
@@ -430,6 +432,7 @@ func (c Config) Validate(mode string) error {
 		c.validateORD(add)
 		c.validateRocketWork(add)
 		c.validateBilling(add)
+		c.validateTBank(add)
 		c.validateNotification(add)
 	}
 	if mode == ModeWorker {

@@ -29,6 +29,7 @@ type ImportResult struct {
 	Matched     int
 	Unmatched   int
 	Duplicates  int
+	Conflicts   int
 	// Credited — сумма зачисленных на балансы поступлений.
 	Credited money.Kopecks
 }
@@ -47,13 +48,23 @@ func (s *Service) ImportStatement(ctx context.Context, adminID uuid.UUID, data [
 	const op = "Billing.ImportStatement"
 	sum := sha256.Sum256(data)
 	sha := hex.EncodeToString(sum[:])
+	var resume *domain.BankStatement
 	exists, err := s.Statements.ExistsByHash(ctx, sha)
 	if err != nil {
 		return ImportResult{}, err
 	}
 	if exists {
-		s.log.WarnContext(ctx, "bank statement rejected", logx.KeyOp, op, "reason", "already_imported", KeyAdminID, adminID)
-		return ImportResult{}, domain.ErrStatementImported
+		st, e := s.Statements.ByHash(ctx, sha)
+		if e != nil {
+			return ImportResult{}, e
+		}
+		if !st.Complete {
+			resume = &st
+		}
+		if resume == nil {
+			s.log.WarnContext(ctx, "bank statement rejected", logx.KeyOp, op, "reason", "already_imported", KeyAdminID, adminID)
+			return ImportResult{}, domain.ErrStatementImported
+		}
 	}
 	parsed, err := s.Parser.Parse(data)
 	if err != nil {
@@ -73,24 +84,30 @@ func (s *Service) ImportStatement(ctx context.Context, adminID uuid.UUID, data [
 		CreatedAt: now, UpdatedAt: now,
 	}
 	st.StorageKey = "statements/" + st.ID.String()
-	if err := s.Storage.PutPrivate(ctx, st.StorageKey, bytes.NewReader(data), int64(len(data)), "text/plain"); err != nil {
-		return ImportResult{}, err
-	}
-	if err := s.Tx.InTx(ctx, func(ctx context.Context) error { return s.Statements.Insert(ctx, st) }); err != nil {
-		return ImportResult{}, err
+	if resume != nil {
+		st = *resume
+	} else {
+		if err := s.Storage.PutPrivate(ctx, st.StorageKey, bytes.NewReader(data), int64(len(data)), "text/plain"); err != nil {
+			return ImportResult{}, err
+		}
+		if err := s.Tx.InTx(ctx, func(ctx context.Context) error { return s.Statements.Insert(ctx, st) }); err != nil {
+			return ImportResult{}, err
+		}
 	}
 	res := ImportResult{StatementID: st.ID, Incoming: len(parsed.Incoming)}
 	for _, in := range parsed.Incoming {
 		outcome, err := s.importIncoming(ctx, op, st.ID, in)
 		if err != nil {
-			// Уже зачисленное остаётся; повторная загрузка того же файла запрещена, поэтому
-			// остаток загружается выпиской за следующий период или вручную.
+			// Committed operations remain credited; the incomplete file can be replayed
+			// through the same identity checks to finish the remaining operations.
 			s.log.ErrorContext(ctx, "bank statement import interrupted", logx.KeyOp, op, KeyBankStatementID, st.ID,
 				"processed", res.Matched+res.Unmatched+res.Duplicates, logx.KeyError, err.Error())
 			s.finishStatement(ctx, st, res)
 			return res, err
 		}
 		switch {
+		case outcome.conflict:
+			res.Conflicts++
 		case outcome.duplicate:
 			res.Duplicates++
 		case outcome.matched:
@@ -101,6 +118,9 @@ func (s *Service) ImportStatement(ctx context.Context, adminID uuid.UUID, data [
 		}
 	}
 	if err := s.finishStatement(ctx, st, res); err != nil {
+		return res, err
+	}
+	if err := s.Statements.Complete(ctx, st.ID); err != nil {
 		return res, err
 	}
 	s.log.InfoContext(ctx, "bank statement imported", logx.KeyOp, op, KeyBankStatementID, st.ID, "incoming", res.Incoming,
@@ -130,6 +150,7 @@ func (s *Service) finishStatement(ctx context.Context, st domain.BankStatement, 
 }
 
 type incomingOutcome struct {
+	conflict  bool
 	duplicate bool
 	matched   bool
 }
@@ -143,6 +164,20 @@ func (s *Service) importIncoming(ctx context.Context, op string, statementID uui
 		res domain.MatchResult
 	)
 	err := s.Tx.InTx(ctx, func(ctx context.Context) error {
+		if s.BankIdentity != nil {
+			in.ImportID = statementID
+			var duplicate bool
+			var err error
+			in, duplicate, err = s.BankIdentity.ResolveIncoming(ctx, s.Config.Supplier.BankAccount, in)
+			if err != nil {
+				return err
+			}
+			if duplicate {
+				out.duplicate = !in.IdentityConflict
+				out.conflict = in.IdentityConflict
+				return nil
+			}
+		}
 		var c domain.Candidates
 		var err error
 		if c.ByNumber, err = s.Invoices.ByNumbersForUpdate(ctx, domain.FindNumbers(in.Purpose)); err != nil {
@@ -152,6 +187,9 @@ func (s *Service) importIncoming(ctx context.Context, op string, statementID uui
 			return err
 		}
 		res = domain.Match(in, c)
+		if in.IdentityConflict {
+			res = domain.MatchResult{}
+		}
 		now := s.Clock.Now()
 		bt = domain.BankTransaction{ID: ids.New(), StatementID: statementID, Incoming: in, MatchStatus: domain.MatchUnmatched,
 			CreatedAt: now, UpdatedAt: now}
@@ -170,9 +208,23 @@ func (s *Service) importIncoming(ctx context.Context, op string, statementID uui
 			return nil
 		}
 		out.matched = true
-		return s.credit(ctx, bt, res.Invoice, uuid.Nil, now)
+		if err := s.credit(ctx, bt, res.Invoice, uuid.Nil, now); err != nil {
+			if !errors.Is(err, domain.ErrBankCreditRestricted) {
+				return err
+			}
+			out.matched = false
+			bt.MatchStatus = domain.MatchUnmatched
+			bt.OrganizationID = uuid.Nil
+			bt.InvoiceID = uuid.Nil
+			s.log.WarnContext(ctx, "bank credit held for review", "bank_transaction_id", bt.ID, "reason", err.Error())
+			return s.BankTransactions.Update(ctx, bt)
+		}
+		return nil
 	})
-	if err != nil || out.duplicate {
+	if err == nil && in.IdentityConflict {
+		s.raise(ctx, op, alert.Alert{Reason: "bank_identity_conflict", ObjectKey: statementID.String(), Level: alert.LevelWarn, Summary: "Банковская операция требует ручной сверки; повторное зачисление запрещено"})
+	}
+	if err != nil || out.duplicate || out.conflict {
 		if out.duplicate {
 			s.log.InfoContext(ctx, "payment duplicate skipped", logx.KeyOp, op, KeyBankStatementID, statementID,
 				KeyAmount, int64(in.Amount))
@@ -194,6 +246,9 @@ func (s *Service) importIncoming(ctx context.Context, op string, statementID uui
 // credit — проводка deposit, оплата счёта и уведомление в транзакции вызывающего: уведомление
 // создаётся вместе с зачислением или не создаётся вовсе (I-10).
 func (s *Service) credit(ctx context.Context, bt domain.BankTransaction, inv *domain.Invoice, adminID uuid.UUID, now time.Time) error {
+	if err := s.authorizeBankCredit(ctx, bt, now); err != nil {
+		return err
+	}
 	req := domain.DepositRequest{BankTransactionID: bt.ID, OrganizationID: bt.OrganizationID, Amount: bt.Amount, AdminID: adminID}
 	if inv != nil {
 		req.InvoiceID = inv.ID

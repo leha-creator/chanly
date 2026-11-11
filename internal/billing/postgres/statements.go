@@ -17,7 +17,7 @@ var _ domain.Statements = statements{}
 
 func statementFromRow(r sqlc.BankStatement) domain.BankStatement {
 	return domain.BankStatement{
-		ID: r.ID, UploadedBy: r.UploadedBy, StorageKey: r.StorageKey, FileSHA256: r.FileSha256, Account: r.AccountNumber,
+		ID: r.ID, UploadedBy: uuidOf(r.UploadedBy), StorageKey: str(r.StorageKey), FileSHA256: str(r.FileSha256), Account: r.AccountNumber, Source: r.Source, Complete: r.Complete,
 		DateFrom: dateOf(r.DateFrom), DateTo: dateOf(r.DateTo), Opening: kopecksOf(r.OpeningBalance),
 		Closing: kopecksOf(r.ClosingBalance), IncomingCount: int(r.IncomingCount), MatchedCount: int(r.MatchedCount),
 		UnmatchedCount: int(r.UnmatchedCount), DuplicateCount: int(r.DuplicateCount), CreatedAt: r.CreatedAt.UTC(),
@@ -27,7 +27,7 @@ func statementFromRow(r sqlc.BankStatement) domain.BankStatement {
 
 func (r statements) Insert(ctx context.Context, st domain.BankStatement) error {
 	if err := r.s.q(ctx).InsertBankStatement(ctx, sqlc.InsertBankStatementParams{
-		ID: st.ID, UploadedBy: st.UploadedBy, StorageKey: st.StorageKey, FileSha256: st.FileSHA256,
+		ID: st.ID, UploadedBy: uuidPtr(st.UploadedBy), StorageKey: strPtr(st.StorageKey), FileSha256: strPtr(st.FileSHA256), Source: statementSource(st.Source), Complete: st.Complete,
 		AccountNumber: st.Account, DateFrom: pgDatePtr(st.DateFrom), DateTo: pgDatePtr(st.DateTo),
 		OpeningBalance: kopecksPtr(st.Opening), ClosingBalance: kopecksPtr(st.Closing),
 		IncomingCount: int32(st.IncomingCount), MatchedCount: int32(st.MatchedCount),
@@ -40,7 +40,7 @@ func (r statements) Insert(ctx context.Context, st domain.BankStatement) error {
 }
 
 func (r statements) ExistsByHash(ctx context.Context, sha string) (bool, error) {
-	found, err := r.s.q(ctx).BankStatementExists(ctx, sha)
+	found, err := r.s.q(ctx).BankStatementExists(ctx, &sha)
 	if err != nil {
 		return false, r.s.fail(ctx, "Statement.ExistsByHash", err)
 	}
@@ -49,8 +49,9 @@ func (r statements) ExistsByHash(ctx context.Context, sha string) (bool, error) 
 
 func (r statements) UpdateCounts(ctx context.Context, st domain.BankStatement) error {
 	if err := r.s.q(ctx).UpdateBankStatementCounts(ctx, sqlc.UpdateBankStatementCountsParams{
-		ID: st.ID, IncomingCount: int32(st.IncomingCount), MatchedCount: int32(st.MatchedCount),
-		UnmatchedCount: int32(st.UnmatchedCount), DuplicateCount: int32(st.DuplicateCount), UpdatedAt: st.UpdatedAt,
+		ID: st.ID, IncomingCount: int32(st.IncomingCount),
+		DuplicateCount: int32(st.DuplicateCount), UpdatedAt: st.UpdatedAt,
+		OpeningBalance: kopecksPtr(st.Opening), ClosingBalance: kopecksPtr(st.Closing),
 	}); err != nil {
 		return r.s.fail(ctx, "Statement.UpdateCounts", err)
 	}
@@ -174,4 +175,11 @@ func (r statements) LatestUploaded(ctx context.Context) (domain.BankStatement, e
 		return domain.BankStatement{}, r.s.fail(ctx, "Statement.LatestUploaded", err)
 	}
 	return statementFromRow(row), nil
+}
+
+func statementSource(source string) string {
+	if source == "" {
+		return "file"
+	}
+	return source
 }

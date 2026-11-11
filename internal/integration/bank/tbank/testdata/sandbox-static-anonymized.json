@@ -1,0 +1,49 @@
+{
+    "balances":  {
+                     "balanceBegin":  0,
+                     "balanceEnd":  484.5,
+                     "credit":  484.5,
+                     "debit":  0,
+                     "creditAuthorizations":  0,
+                     "debitAuthorizations":  0,
+                     "operationsCount":  1,
+                     "balances":  [
+                                      {
+                                          "date":  "2022-02-02",
+                                          "balanceBegin":  0,
+                                          "balanceEnd":  484.5,
+                                          "credit":  484.5,
+                                          "debit":  0,
+                                          "creditAuthorizations":  0,
+                                          "debitAuthorizations":  0,
+                                          "operationsCount":  1
+                                      }
+                                  ]
+                 },
+    "nextCursor":  "static-cursor",
+    "operations":  [
+                       {
+                           "operationDate":  "2022-02-02T20:07:04Z",
+                           "operationId":  "00000000-0000-4000-8000-000000000001",
+                           "operationStatus":  "Transaction",
+                           "accountNumber":  "40802810838000000001",
+                           "typeOfOperation":  "Credit",
+                           "accountCurrencyDigitalCode":  "643",
+                           "accountAmount":  484.5,
+                           "docDate":  "2022-02-02T20:07:04Z",
+                           "chargeDate":  "2022-02-02T20:07:04Z",
+                           "documentNumber":  "TEST-1",
+                           "payPurpose":  "Тестовый перевод собственных средств",
+                           "payer":  {
+                                         "acct":  "40802810838000000001",
+                                         "name":  "Тестовая платформа",
+                                         "inn":  "500100732259"
+                                     },
+                           "receiver":  {
+                                            "acct":  "40802810838000000001",
+                                            "name":  "Тестовая платформа",
+                                            "inn":  "500100732259"
+                                        }
+                       }
+                   ]
+}

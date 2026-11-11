@@ -259,6 +259,11 @@ func incoming(d document) (domain.Incoming, error) {
 		Purpose:       f["НазначениеПлатежа"],
 	}
 	in.ExternalID = ExternalID(date, f["Номер"], amount, in.PayerINN, in.PayerAccount)
+	in.DocumentNumber = strings.TrimSpace(f["Номер"])
+	if d, err := parseDate(f["Дата"]); err == nil {
+		in.DocDate = &d
+	}
+	in.ChargeDate = &date
 	return in, nil
 }
 

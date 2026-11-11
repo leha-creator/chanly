@@ -47,6 +47,8 @@ type Invoices interface {
 // Statements — загруженные выписки.
 type Statements interface {
 	Insert(ctx context.Context, s BankStatement) error
+	ByHash(ctx context.Context, sha string) (BankStatement, error)
+	Complete(ctx context.Context, id uuid.UUID) error
 	// ExistsByHash — файл с этим SHA-256 уже загружен.
 	ExistsByHash(ctx context.Context, sha string) (bool, error)
 	UpdateCounts(ctx context.Context, s BankStatement) error
@@ -90,6 +92,7 @@ type Settlement struct {
 
 // Ledger — журнал проводок. Реализация — модуль ledger (переходник в bootstrap/bridge).
 type Ledger interface {
+	BankBalance(context.Context) (money.Kopecks, error)
 	// Deposit зачисляет поступление на баланс в транзакции вызывающего (S-30).
 	Deposit(ctx context.Context, d DepositRequest) error
 	// Settlements — распределения удержаний в периоде [from, to) по рекламодателям.
@@ -160,13 +163,14 @@ type Supplier struct {
 
 // InvoiceDoc — данные PDF счёта.
 type InvoiceDoc struct {
-	Number    string
-	IssuedAt  time.Time
-	ExpiresAt time.Time
-	Amount    money.Kopecks
-	Supplier  Supplier
-	Payer     Payer
-	VATNote   string
+	PaymentPurpose string
+	Number         string
+	IssuedAt       time.Time
+	ExpiresAt      time.Time
+	Amount         money.Kopecks
+	Supplier       Supplier
+	Payer          Payer
+	VATNote        string
 }
 
 // ReportDoc — данные PDF отчёта агента.

@@ -97,6 +97,7 @@ maxim/
 │   │   │   └── maxfake/             #   поддельная реализация для тестов и разработки
 │   │   ├── ord/                     #   Яндекс ОРД, API v8: контрагент, договор, площадки, креатив, статистика, акт и разбивка, статус; корзина ord:global
 │   │   │   └── ordfake/             #   ОРД в памяти: статусы по шагам, токен fake-erid-N, отказы по запросу
+│   │   ├── bank/tbank/              #   GET statement через BankSource/outbound/ratelimit, точный decimal; опрос disabled/fake/live
 │   │   ├── bank/clientbank/         #   разбор выписки «1С:Предприятие» (UTF-8, cp866, windows-1251): поступления, external_id; адаптер billing/domain.StatementParser
 │   │   ├── rocketwork/              #   Public API v1: исполнители, договор/акт/pay, документы, Withdrawal, подписки/история; точные суммы, sensitive outbound, disabled
 │   │   │   ├── rocketworktest/      #   независимый HTTP-эмулятор и валидатор исходного OpenAPI для тестов
@@ -419,3 +420,11 @@ integration_check_ord.go создаёт клиент с outbound, огранич
 Транспорт отчётности API v8: internal/integration/ord/reporting_v8.go содержит отдельные wire DTO и Submit*V8; ими пользуются sandbox и bootstrap/bridge/marking_reports.go. Внутренний correlation ID статистики не сериализуется. outbound.Call.NoRetry запрещает повтор отдельной операции и не ослабляет глобальный Options.NoRetry. Реальные HTTP-тела сверяются с OpenAPI в reporting_v8_test.go; legacy-fixture тест не считается подтверждением спецификации.
 
 Акт и разбивка — независимые объекты invoice/invoice_creatives с отдельными квитанциями и dedupe keys. ord_invoice_creatives имеет PK/FK на акт; обе стадии сериализуются блокировкой родительской строки. Перед POST отчётности marking/app сохраняет checkpoint, сеть вызывается вне транзакции. Неопределённый исход не допускает replay; известная квитанция после timeout возобновляет polling. Миграция 17 сохраняет старую квитанцию разбивки и блокирует исторический акт для сверки. Финансовые снимки в копейках хранятся вместе с отчётом; комиссия приходит из placement, НДС — из account, без импортов чужих модулей внутри marking. Неизвестные метрики не превращаются в нули.
+
+## Автоматический источник Т-Банка (2026-11-11)
+
+Порт billing/domain.BankSource читает страницы фиксированного UTC-периода; StatementParser остаётся файловым. billing/app использует общий importIncoming и credit, billing/postgres хранит алиасы/наблюдения и checkpoint. billing/jobs регистрирует sync_bank_statements только при явном включении источника; bootstrap/config_tbank.go валидирует режимы и TLS, integration_check_tbank.go собирает отдельный диагностический контур. Advisory lock держится на выделенном соединении вне сетевой транзакции; SQL бизнес-запросов генерируется sqlc. Среды проверки используют отдельные БД, storage/отправители не подключаются.
+
+### Ограниченные dev-зачисления Т-Банка
+
+BankCreditPolicy и BankCreditBudget — порты/правила billing/domain; app проверяет источник/организацию/сумму/expiry/код назначения до deposit. postgres резервирует бюджет с FOR UPDATE в той же транзакции, что проводка, invoice и уведомление; таблицы bank_credit_policy/spend (00101), immutable policy hash, расход по bank_transaction_id. Bootstrap отделяет readonly от controlled/automation и не регистрирует фоновый источник в readonly. Режим controlled разрешён только development с отдельным флагом реального endpoint. Исходящие выплаты Рокет Ворк к этим правам не относятся.

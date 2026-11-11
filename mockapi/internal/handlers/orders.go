@@ -301,6 +301,11 @@ func (h *Handlers) ListInvoices(ctx context.Context, req api.ListInvoicesRequest
 }
 
 func (h *Handlers) CreateInvoice(ctx context.Context, req api.CreateInvoiceRequestObject) (api.CreateInvoiceResponseObject, error) {
+	// The mock models ordinary business limits; controlled real-bank tests use
+	// the backend with its explicit organization-bound admission.
+	if req.Body.Amount < 100000 || req.Body.Amount > 100000000000 {
+		return nil, store.Validation("amount", "out_of_range")
+	}
 	tx, done := h.st.Begin(ctx)
 	defer done()
 	_, o, err := advertiser(ctx, tx)

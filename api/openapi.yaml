@@ -4760,9 +4760,9 @@ components:
         amount:
           type: integer
           format: int64
-          minimum: 100000
+          minimum: 100
           maximum: 100000000000
-          description: Сумма пополнения в копейках, от 1 000 ₽
+          description: Сумма в копейках. Обычно от 1 000 ₽; в ограниченном dev-прогоне выбранной организации — от 1 ₽ до лимита допуска. Сервер проверяет действующий режим и границы.
     Invoice:
       type: object
       required: [id, number, amount, status, expires_at, created_at, pdf_url]
@@ -5413,7 +5413,7 @@ components:
       enum: [matched, unmatched, ignored]
     BankStatementSummary:
       type: object
-      required: [id, account_number, incoming_count, matched_count, unmatched_count, duplicate_count, uploaded_by, created_at]
+      required: [id, account_number, incoming_count, matched_count, unmatched_count, duplicate_count, source, created_at]
       properties:
         id: { $ref: '#/components/schemas/Uuid' }
         account_number: { type: string }
@@ -5425,6 +5425,7 @@ components:
         matched_count: { type: integer, minimum: 0 }
         unmatched_count: { type: integer, minimum: 0 }
         duplicate_count: { type: integer, minimum: 0 }
+        source: { type: string, enum: [file, tbank] }
         uploaded_by: { $ref: '#/components/schemas/AdminUserRef' }
         created_at: { type: string, format: date-time }
     BankTransaction:

@@ -2,16 +2,19 @@
 
 -- name: InsertBankStatement :exec
 INSERT INTO bank_statement (id, uploaded_by, storage_key, file_sha256, account_number, date_from, date_to,
-    opening_balance, closing_balance, incoming_count, matched_count, unmatched_count, duplicate_count, created_at, updated_at)
+    opening_balance, closing_balance, incoming_count, matched_count, unmatched_count, duplicate_count, source, complete, created_at, updated_at)
 VALUES (@id, @uploaded_by, @storage_key, @file_sha256, @account_number, @date_from, @date_to,
-    @opening_balance, @closing_balance, @incoming_count, @matched_count, @unmatched_count, @duplicate_count, @created_at, @created_at);
+    @opening_balance, @closing_balance, @incoming_count, @matched_count, @unmatched_count, @duplicate_count, @source, @complete, @created_at, @created_at);
 
 -- name: BankStatementExists :one
 SELECT EXISTS (SELECT 1 FROM bank_statement WHERE file_sha256 = @file_sha256) AS found;
 
 -- name: UpdateBankStatementCounts :exec
-UPDATE bank_statement SET incoming_count = @incoming_count, matched_count = @matched_count,
-    unmatched_count = @unmatched_count, duplicate_count = @duplicate_count, updated_at = @updated_at
+UPDATE bank_statement SET incoming_count = @incoming_count,
+    matched_count = (SELECT count(*) FROM bank_transaction bt WHERE bt.bank_statement_id = @id AND bt.match_status = 'matched'),
+    unmatched_count = (SELECT count(*) FROM bank_transaction bt WHERE bt.bank_statement_id = @id AND bt.match_status = 'unmatched'),
+    duplicate_count = @duplicate_count, updated_at = @updated_at,
+    opening_balance = @opening_balance, closing_balance = @closing_balance
 WHERE id = @id;
 
 -- name: LatestBankStatement :one

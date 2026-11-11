@@ -10,6 +10,11 @@ import (
 
 // Incoming — поступление на расчётный счёт платформы из выписки (05 §5).
 type Incoming struct {
+	ImportID            uuid.UUID
+	BankOperationID     string
+	DocumentNumber      string
+	DocDate, ChargeDate *time.Time
+	IdentityConflict    bool
 	// ExternalID — идентификатор операции; повтор не зачисляется (R-12).
 	ExternalID    string
 	OperationDate time.Time
@@ -31,7 +36,7 @@ type Statement struct {
 }
 
 // StatementParser — «список поступлений» из файла выписки (05 §5, A-35). Реализация —
-// integration/bank/clientbank; при переходе на API банка меняется только адаптер (Q-26).
+// integration/bank/clientbank. Сетевой API реализует отдельный BankSource (Q-26).
 type StatementParser interface {
 	Parse(data []byte) (Statement, error)
 }
@@ -61,6 +66,8 @@ type BankTransaction struct {
 
 // BankStatement — загруженный файл выписки и итог разбора (R-12).
 type BankStatement struct {
+	Source         string
+	Complete       bool
 	ID             uuid.UUID
 	UploadedBy     uuid.UUID
 	StorageKey     string

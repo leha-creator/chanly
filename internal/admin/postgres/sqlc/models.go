@@ -78,11 +78,51 @@ type AuthCode struct {
 	UpdatedAt      time.Time
 }
 
+type BankCreditPolicy struct {
+	RunID          uuid.UUID
+	PolicySha256   string
+	AccountNumber  string
+	OrganizationID uuid.UUID
+	MaxPayment     int64
+	MaxTotal       int64
+	ExpiresAt      time.Time
+	Spent          int64
+}
+
+type BankCreditSpend struct {
+	BankTransactionID uuid.UUID
+	RunID             uuid.UUID
+	Amount            int64
+	CreatedAt         time.Time
+}
+
+type BankOperationIdentity struct {
+	AccountNumber string
+	Alias         string
+	ExternalID    string
+	Fingerprint   string
+}
+
+type BankOperationObservation struct {
+	ID             uuid.UUID
+	AccountNumber  string
+	OperationID    string
+	ExternalID     string
+	DocumentNumber string
+	DocDate        *time.Time
+	ChargeDate     *time.Time
+	OperationDate  time.Time
+	Conflict       bool
+	StatementID    uuid.UUID
+	Evidence       []byte
+	ObservedAt     time.Time
+}
+
 type BankStatement struct {
 	ID             uuid.UUID
-	UploadedBy     uuid.UUID
-	StorageKey     string
-	FileSha256     string
+	UploadedBy     *uuid.UUID
+	StorageKey     *string
+	FileSha256     *string
 	AccountNumber  string
 	DateFrom       pgtype.Date
 	DateTo         pgtype.Date
@@ -94,6 +134,14 @@ type BankStatement struct {
 	DuplicateCount int32
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
+	Source         string
+	Complete       bool
+}
+
+type BankSyncProgress struct {
+	AccountNumber string
+	Progress      []byte
+	UpdatedAt     time.Time
 }
 
 type BankTransaction struct {
