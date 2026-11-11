@@ -9,6 +9,7 @@ import (
 	payoutapp "github.com/leha-creator/chanly/internal/payout/app"
 	payoutdomain "github.com/leha-creator/chanly/internal/payout/domain"
 	"github.com/leha-creator/chanly/internal/platform/money"
+	checkdomain "github.com/leha-creator/chanly/internal/rocketworkcheck/domain"
 )
 
 // Режимы адаптера Рокет Ворк (R-1 этапа выплат).
@@ -23,6 +24,11 @@ const (
 
 // RocketWorkConfig — Рокет Ворк и выплаты блогерам (05 §4, 06 §2.3, этап «Выплаты блогерам»).
 type RocketWorkConfig struct {
+	ControlDatabaseURL   string `env:"ROCKETWORK_CONTROL_DATABASE_URL"`
+	PolicyDatabaseURL    string `env:"ROCKETWORK_POLICY_DATABASE_URL"`
+	ArmingID             string `env:"ROCKETWORK_CHECK_ARMING_ID"`
+	AccessMode           string `env:"ROCKETWORK_ACCESS_MODE"`
+	Purpose              string `env:"ROCKETWORK_PURPOSE"`
 	ProductionApproved   bool   `env:"ROCKETWORK_PRODUCTION_APPROVED"`
 	WithdrawalCompanyINN string `env:"ROCKETWORK_WITHDRAWAL_COMPANY_INN"`
 	WithdrawalBIC        string `env:"ROCKETWORK_WITHDRAWAL_BIC"`
@@ -68,6 +74,23 @@ type RocketWorkConfig struct {
 	NPDAnnualLimit int64 `env:"PAYOUT_NPD_ANNUAL_LIMIT" envDefault:"240000000"`
 }
 
+// RocketWorkAccess defaults live transports to read-only, including old configs.
+func (c Config) RocketWorkAccess() checkdomain.Access {
+	if c.RocketWork.AccessMode == "" {
+		return checkdomain.ReadOnly
+	}
+	return checkdomain.Access(c.RocketWork.AccessMode)
+}
+
+func (c Config) rocketWorkAutomationAllowed() bool {
+	r := c.RocketWork
+	if c.RocketWorkAccess() != checkdomain.Automation || r.Purpose != checkdomain.Business {
+		return false
+	}
+	return (c.Env == EnvProduction && r.Target == "production" && r.ProductionApproved) ||
+		(c.Env != EnvProduction && r.Target == "local-emulator" && rwOrigin(r.Target, r.BaseURL))
+}
+
 // RocketWorkMode — режим с подстановкой значения по умолчанию.
 func (c Config) RocketWorkMode() string {
 	if m := strings.TrimSpace(c.RocketWork.Mode); m != "" {
@@ -103,7 +126,7 @@ func (c Config) PayoutAppConfig() payoutapp.Config {
 	if origin == "" {
 		origin = "https://api.rocketwork.ru"
 	}
-	if c.RocketWorkMode() == RocketWorkLive && r.WorkflowEnabled && rwOrigin(r.Target, origin) && r.AccountKey != "" && (r.Target != "production" || r.ProductionApproved) {
+	if c.RocketWorkMode() == RocketWorkLive && r.WorkflowEnabled && c.rocketWorkAutomationAllowed() && rwOrigin(r.Target, origin) && r.AccountKey != "" {
 		result.ProviderScope = &payoutdomain.ProviderScope{Environment: r.Target, Account: r.AccountKey}
 		if r.WithdrawalCompanyINN != "" && r.WithdrawalBIC != "" && r.WithdrawalAccount != "" && r.WithdrawalExecutorID > 0 {
 			result.WithdrawalDestination = &payoutdomain.WithdrawalDestination{CompanyINN: r.WithdrawalCompanyINN, BIC: r.WithdrawalBIC, AccountNumber: r.WithdrawalAccount, ExecutorID: r.WithdrawalExecutorID}
@@ -115,11 +138,56 @@ func (c Config) PayoutAppConfig() payoutapp.Config {
 	return result
 }
 
+// validateRocketWorkIsolation also applies to admin/dev commands, which otherwise
+// validate only their database settings.
+func (c Config) validateRocketWorkIsolation(add func(field, reason string)) {
+	r := c.RocketWork
+	mode := c.RocketWorkMode()
+	if r.ControlDatabaseURL != "" || r.PolicyDatabaseURL != "" || r.ArmingID != "" {
+		add("ROCKETWORK_CONTROL_DATABASE_URL", "control credentials and arming configuration belong only to isolated rocketwork-check")
+	}
+	if c.Env != EnvProduction && r.Target != "local-emulator" && r.Token != "" {
+		add("ROCKETWORK_TOKEN", "ordinary dev/test processes must not receive the primary account token")
+	}
+	if mode != RocketWorkLive && r.Token != "" {
+		add("ROCKETWORK_TOKEN", "fake/disabled must not receive provider credentials")
+	}
+	access := c.RocketWorkAccess()
+	switch access {
+	case checkdomain.ReadOnly:
+	case checkdomain.Controlled:
+		// The ordinary API/worker configuration never carries runner authority.
+		add("ROCKETWORK_ACCESS_MODE", "controlled requires the isolated diagnostic runner")
+	case checkdomain.Automation:
+		if !c.rocketWorkAutomationAllowed() {
+			add("ROCKETWORK_ACCESS_MODE", "automation requires production business admission or a local emulator")
+		}
+	default:
+		add("ROCKETWORK_ACCESS_MODE", "must be readonly, controlled or automation")
+	}
+	if r.Purpose != "" && r.Purpose != checkdomain.Business && r.Purpose != checkdomain.Diagnostic {
+		add("ROCKETWORK_PURPOSE", "must be business or diagnostic")
+	}
+}
+
 // validateRocketWork — параметры выплат режимов api и worker (R-1).
 func (c Config) validateRocketWork(add func(field, reason string)) {
 	r := c.RocketWork
 	mode := c.RocketWorkMode()
+	c.validateRocketWorkIsolation(add)
+	if mode == RocketWorkLive {
+		origin := r.BaseURL
+		if origin == "" {
+			origin = "https://api.rocketwork.ru"
+		}
+		if !rwOrigin(r.Target, origin) {
+			add("ROCKETWORK_TARGET", "explicit target must match provider origin")
+		}
+	}
 	if r.WorkflowEnabled {
+		if !c.rocketWorkAutomationAllowed() {
+			add("ROCKETWORK_WORKFLOW_ENABLED", "requires explicit automation capability")
+		}
 		if mode != RocketWorkLive {
 			add("ROCKETWORK_WORKFLOW_ENABLED", "requires live adapter")
 		}

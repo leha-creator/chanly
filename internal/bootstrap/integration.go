@@ -175,6 +175,7 @@ func (in *infra) connectRocketWork(ctx context.Context, cfg Config) error {
 		}
 		in.rocketwork = rocketworkfake.New(cfg.RocketWorkWebhookSecret(), opts...)
 		log.InfoContext(ctx, "rocketwork adapter connected", logx.KeyOp, op, "mode", mode,
+			"access_mode", cfg.RocketWorkAccess(), "purpose", cfg.RocketWork.Purpose,
 			"state_path", cfg.RocketWork.FakeStatePath)
 	case RocketWorkLive:
 		outMetrics, limitMetrics := in.integrationMetrics()
@@ -184,8 +185,17 @@ func (in *infra) connectRocketWork(ctx context.Context, cfg Config) error {
 			Redact: rocketwork.RedactFields,
 		})
 		limiter := ratelimit.New(in.pool, in.clock, log, ratelimit.Options{Metrics: limitMetrics})
+		var authorization rocketwork.WriteAuthorizer
+		if cfg.rocketWorkAutomationAllowed() {
+			if cfg.RocketWork.Target == "local-emulator" {
+				authorization, _ = rocketwork.LocalEmulatorAuthorization(cfg.RocketWork.BaseURL)
+			} else {
+				authorization = rocketwork.AutomationAuthorization{}
+			}
+		}
 		in.rocketwork = rocketwork.New(out, limiter, rocketwork.Options{BaseURL: cfg.RocketWork.BaseURL,
-			Token: cfg.RocketWork.Token, WebhookSecret: cfg.RocketWorkWebhookSecret(), PreviousWebhookSecret: []byte(cfg.RocketWork.PreviousWebhookSecret), Rate: cfg.RocketWork.Rate}, log)
+			Authorizer: authorization,
+			Token:      cfg.RocketWork.Token, WebhookSecret: cfg.RocketWorkWebhookSecret(), PreviousWebhookSecret: []byte(cfg.RocketWork.PreviousWebhookSecret), Rate: cfg.RocketWork.Rate}, log)
 		log.InfoContext(ctx, "rocketwork adapter connected", logx.KeyOp, op, "mode", mode,
 			"contract", "Public API v1", "workflow_enabled", cfg.PayoutAppConfig().ProviderScope != nil, "live_verified", false)
 	default:

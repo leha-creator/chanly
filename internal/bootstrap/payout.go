@@ -19,6 +19,8 @@ import (
 	"github.com/leha-creator/chanly/internal/platform/job"
 	"github.com/leha-creator/chanly/internal/platform/logx"
 	"github.com/leha-creator/chanly/internal/platform/tx"
+	checkapp "github.com/leha-creator/chanly/internal/rocketworkcheck/app"
+	checkpg "github.com/leha-creator/chanly/internal/rocketworkcheck/postgres"
 )
 
 // rocketworkWebhookPattern — маршрут вебхука Рокет Ворк (операция rocketworkWebhook, R-11):
@@ -51,6 +53,11 @@ func newPayoutService(cfg Config, in *infra, txRunner tx.Runner, queue job.Sched
 		Limits:   auditLog,
 		Notifier: bridge.PayoutNotifier{Svc: notifier},
 		Config:   cfg.PayoutAppConfig(),
+	}
+	if cfg.RocketWorkMode() == RocketWorkLive && cfg.RocketWork.Target == "production" {
+		if client, ok := api.(*rocketwork.Client); ok {
+			deps.DiagnosticEvents = bridge.CheckEventRouter{Events: checkapp.Events{Registry: checkpg.New(in.pool, log), Log: log}, AccountAlias: cfg.RocketWork.AccountKey, API: client}
+		}
 	}
 	if in.alerter != nil {
 		deps.Alerts = in.alerter

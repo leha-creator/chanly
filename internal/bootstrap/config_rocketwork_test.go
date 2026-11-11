@@ -66,7 +66,7 @@ func TestRocketWorkConfigErrors(t *testing.T) {
 		}
 		return e
 	}
-	live := map[string]string{"ROCKETWORK_MODE": "live", "ROCKETWORK_TOKEN": "rw-token", "ROCKETWORK_WEBHOOK_SECRET": "rw-webhook-secret-0123"}
+	live := map[string]string{"ROCKETWORK_MODE": "live", "ROCKETWORK_TARGET": "local-emulator", "ROCKETWORK_BASE_URL": "http://127.0.0.1:19999", "ROCKETWORK_TOKEN": "rw-token", "ROCKETWORK_WEBHOOK_SECRET": "rw-webhook-secret-0123"}
 	cfg, err := LoadConfig(env(live), ModeWorker)
 	if err != nil {
 		t.Fatalf("live config: %v", err)
@@ -127,6 +127,7 @@ func TestRocketWorkConfigProduction(t *testing.T) {
 	}
 	fields = nil
 	cfg.RocketWork.Mode = RocketWorkLive
+	cfg.RocketWork.Target = "production"
 	cfg.RocketWork.Token = "test-token"
 	cfg.RocketWork.WebhookSecret = "test-secret-123456"
 	cfg.validateRocketWork(func(field, reason string) { fields = append(fields, field+": "+reason) })

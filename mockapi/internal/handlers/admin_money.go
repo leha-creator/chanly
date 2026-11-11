@@ -377,7 +377,7 @@ func (h *Handlers) CancelAdminInvoice(ctx context.Context, req api.CancelAdminIn
 
 // ---------------------------------------------------------------- журнал денег
 
-var ledgerKinds = []string{"bank", "rocketwork_deposit", "payout_fees", "advertiser_balance", "placement_hold", "blogger_payable", "platform_revenue"}
+var ledgerKinds = []string{"bank", "rocketwork_deposit", "payout_fees", "diagnostic_expense", "advertiser_balance", "placement_hold", "blogger_payable", "platform_revenue"}
 
 func (h *Handlers) GetLedgerSummary(ctx context.Context, req api.GetLedgerSummaryRequestObject) (api.GetLedgerSummaryResponseObject, error) {
 	tx, done := h.st.Begin(ctx)
@@ -390,7 +390,7 @@ func (h *Handlers) GetLedgerSummary(ctx context.Context, req api.GetLedgerSummar
 	var assets, liabilities int64
 	for _, k := range ledgerKinds {
 		out.Accounts = append(out.Accounts, api.LedgerAccountTotal{Kind: api.LedgerAccountKind(k), Balance: bal[k]})
-		if slices.Contains([]string{"bank", "rocketwork_deposit", "payout_fees"}, k) {
+		if slices.Contains([]string{"bank", "rocketwork_deposit", "payout_fees", "diagnostic_expense"}, k) {
 			assets += bal[k]
 		} else {
 			liabilities += bal[k]

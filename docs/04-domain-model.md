@@ -594,9 +594,15 @@ erDiagram
 | `kind` | `text` | да | 06 §2.1 |
 | `organization_id` | `uuid` | нет | Для `advertiser_balance`, `blogger_payable` |
 | `placement_id` | `uuid` | нет | Для `placement_hold` |
-| `balance` | `bigint` | да | Кеш суммы проводок. Обновляется в транзакции с проводкой. Проверка `ledger_account_liability_balance`: у обязательств (все виды, кроме `bank`, `rocketwork_deposit`, `payout_fees`) не меньше нуля |
+| `balance` | `bigint` | да | Кеш суммы проводок. Обновляется в транзакции с проводкой. Проверка `ledger_account_liability_balance`: у обязательств (все виды, кроме `bank`, `rocketwork_deposit`, `payout_fees`, `diagnostic_expense`) не меньше нуля |
 
 Уникальность: `(kind, organization_id, placement_id)` с учётом пустых значений.
+
+### Контрольные данные диагностики RocketWork
+
+Модуль `rocketworkcheck` хранит `rw_check_account` и aliases канонического физического аккаунта; immutable `rw_check_grant` с оператором/сроком/отзывом/политикой; immutable terms/hash/ownership в `rw_check_run`; уникальные action intent/checkpoint в `rw_check_action`. Номинал и fee ceiling резервируются один раз, actual nominal/fee и ledger_id фиксируются вместе с settlement. Reserved_at определяет день счётчика новых операций, settled_at — trusted UTC-день контрольного расхода; provider_paid_at, если доступен, хранит отдельную дату провайдера. Она не разрешает менять контрольный день.
+
+Отдельные `rw_check_legacy_import` и `rw_check_audit` сохраняют сверенный старый task и операторские переходы. Новый owner-issued grant может быть привязан как active_grant_id командой reauthorize, не меняя исходные terms, manifest hash, task ID, резерв и intent. Прямые UPDATE/DELETE/TRUNCATE закрыты runner/app-ролям; обычный dispatcher читает только минимальные ownership views. Подробности — [операторский процесс](launch/integration-checks.md#контролируемый-прогон-onetime); SQL-источник — миграции 22–33.
 
 ### ledger_transaction, ledger_entry
 
@@ -841,8 +847,8 @@ erDiagram
 | `creative.erir_status` | `pending`, `success`, `error` |
 | `invoice.status` | `issued`, `paid`, `expired`, `cancelled` |
 | `bank_transaction.match_status` | `matched`, `unmatched`, `ignored` |
-| `ledger_account.kind` | `bank`, `rocketwork_deposit`, `payout_fees` — активы; `advertiser_balance`, `placement_hold`, `blogger_payable`, `platform_revenue` — обязательства |
-| `ledger_transaction.kind` | `deposit`, `hold`, `hold_release`, `settlement`, `payout`, `deposit_topup`, `balance_return`, `manual` |
+| `ledger_account.kind` | `bank`, `rocketwork_deposit`, `payout_fees`, `diagnostic_expense` — активы; `advertiser_balance`, `placement_hold`, `blogger_payable`, `platform_revenue` — обязательства |
+| `ledger_transaction.kind` | `deposit`, `hold`, `hold_release`, `settlement`, `payout`, `deposit_topup`, `balance_return`, `manual`, `rw_diagnostic` |
 | `hold.status` | `active`, `released`, `distributed` |
 | `payout.status` | `created`, `sent`, `succeeded`, `failed` |
 | `rocketwork_contractor.status` | `invited`, `pending`, `active`, `blocked` |

@@ -2,6 +2,7 @@ package bootstrap
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -10,6 +11,7 @@ import (
 	"math"
 	"net/http"
 	"net/url"
+	"os"
 	"slices"
 	"strconv"
 	"strings"
@@ -24,6 +26,7 @@ import (
 	"github.com/leha-creator/chanly/internal/platform/logx"
 	"github.com/leha-creator/chanly/internal/platform/outbound"
 	"github.com/leha-creator/chanly/internal/platform/ratelimit"
+	checkdomain "github.com/leha-creator/chanly/internal/rocketworkcheck/domain"
 )
 
 type integrationCheckOptions struct {
@@ -56,11 +59,11 @@ func parseIntegrationCheck(args []string) (integrationCheckOptions, error) {
 	}
 	if o.system == "rocketwork" {
 		switch o.scenario {
-		case "fingerprint", "preflight", "inspect", "execute", "resume", "reconcile":
+		case "fingerprint", "preflight", "prepare", "inspect", "execute", "resume", "reconcile", "status":
 		default:
 			return o, errUsage
 		}
-		if o.manifest == "" || o.runDir == "" || o.target == "" || (o.scenario == "preflight" && o.execute) || ((o.scenario == "execute" || o.scenario == "resume") && !o.execute) {
+		if o.manifest == "" || o.target == "" || (o.scenario == "preflight" && o.execute) || ((o.scenario == "execute" || o.scenario == "resume") && !o.execute) {
 			return o, errUsage
 		}
 		return o, nil
@@ -161,6 +164,38 @@ func runIntegrationCheck(ctx context.Context, p RunParams) int {
 	o, err := parseIntegrationCheck(p.Args)
 	if err != nil {
 		return 2
+	}
+	if o.system == "rocketwork" {
+		var header struct {
+			Version int `json:"version"`
+		}
+		// Decode version separately; strict full decoding happens in the selected workflow.
+		file, err := os.Open(o.manifest)
+		if err != nil {
+			return 1
+		}
+		err = json.NewDecoder(io.LimitReader(file, 65537)).Decode(&header)
+		_ = file.Close()
+		if err != nil {
+			return 1
+		}
+		if header.Version == 2 {
+			var m checkdomain.Manifest
+			if readRWJSON(o.manifest, &m) != nil || m.Target != o.target {
+				return 1
+			}
+			scenario := o.scenario
+			if scenario == "preflight" {
+				scenario = "fingerprint"
+			}
+			p.Command = "rocketwork-check"
+			p.Args = []string{scenario, "--manifest", o.manifest, "--run", m.RunID}
+			return runRocketWorkControl(ctx, p)
+		}
+		if o.target == "production" && (o.scenario == "execute" || o.scenario == "resume" || o.scenario == "prepare") {
+			logx.New(p.Stdout, slog.LevelInfo, "cli").Warn("legacy production manifest requires explicit readonly import and a new owner-issued grant")
+			return 1
+		}
 	}
 	vars := env.ToMap(p.Environ)
 	cfg, err := LoadConfig(vars, ModeDev)

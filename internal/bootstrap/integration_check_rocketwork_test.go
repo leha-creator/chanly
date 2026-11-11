@@ -1,12 +1,14 @@
 package bootstrap
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -74,10 +76,13 @@ func TestRWCheckManifestRejectsChangesBeforeNetwork(t *testing.T) {
 }
 
 func TestRWCheckDocumentedManifest(t *testing.T) {
-	o := integrationCheckOptions{system: "rocketwork", scenario: "preflight", target: "local-emulator", manifest: "../../docs/launch/examples/rocketwork-manifest.json", runDir: t.TempDir()}
-	c := Config{Env: EnvProduction, RocketWork: RocketWorkConfig{Mode: RocketWorkLive, Target: "local-emulator", BaseURL: "http://127.0.0.1:18080", AccountKey: "synthetic", Token: "synthetic"}}
-	if _, _, err := loadRWCheckManifest(c, o); err != nil {
-		t.Fatal(err)
+	var output bytes.Buffer
+	p := RunParams{Command: "integration-check", Args: []string{"--system", "rocketwork", "--target", "local-emulator", "--manifest", "../../docs/launch/examples/rocketwork-manifest.json", "--scenario", "preflight"}, Stdout: &output, Stderr: &output}
+	if code := Run(context.Background(), p); code != 0 {
+		t.Fatalf("documented v2 preflight=%d: %s", code, output.String())
+	}
+	if !strings.Contains(output.String(), `"network_used":false`) {
+		t.Fatal("preflight did not declare offline result")
 	}
 }
 

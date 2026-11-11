@@ -69,7 +69,7 @@ func rwOrigin(target, raw string) bool {
 	case "production":
 		return checkEndpoint(raw, rocketwork.DefaultBaseURL)
 	case "sandbox":
-		return u.Scheme == "https" && !strings.EqualFold(u.Hostname(), "api.rocketwork.ru") && !strings.EqualFold(u.Hostname(), "localhost") && net.ParseIP(u.Hostname()) == nil
+		return false // No provider-approved RocketWork sandbox exists for this workflow.
 	case "local-emulator":
 		ip := net.ParseIP(u.Hostname())
 		return (u.Scheme == "http" || u.Scheme == "https") && ip != nil && ip.IsLoopback()
@@ -181,7 +181,11 @@ func openRWCheckState(dir, hash string, m rwCheckManifest) (*rwCheckState, func(
 func (in *infra) checkRWClient(c Config) *rocketwork.Client {
 	out := outbound.New(in.pool, in.clock, in.log, outbound.Options{System: outbound.SystemRocketWork, HTTP: rocketwork.NewHTTPClient(), NoRetry: true})
 	lim := ratelimit.New(in.pool, in.clock, in.log, ratelimit.Options{})
-	return rocketwork.New(out, lim, rocketwork.Options{BaseURL: c.RocketWork.BaseURL, Token: c.RocketWork.Token, WebhookSecret: c.RocketWorkWebhookSecret(), Rate: c.RocketWork.Rate}, in.log)
+	var authorization rocketwork.WriteAuthorizer
+	if c.RocketWork.Target == "local-emulator" {
+		authorization, _ = rocketwork.LocalEmulatorAuthorization(c.RocketWork.BaseURL)
+	}
+	return rocketwork.New(out, lim, rocketwork.Options{BaseURL: c.RocketWork.BaseURL, Token: c.RocketWork.Token, WebhookSecret: c.RocketWorkWebhookSecret(), Rate: c.RocketWork.Rate, Authorizer: authorization}, in.log)
 }
 func (in *infra) executeRWCheck(ctx context.Context, c Config, o integrationCheckOptions) error {
 	m, hash, err := loadRWCheckManifest(c, o)

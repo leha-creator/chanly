@@ -108,8 +108,8 @@ func (e *env) converges() {
 	ctx := context.Background()
 	var assets, liabilities int64
 	if err := e.d.Pool.QueryRow(ctx, `SELECT
-		coalesce(sum(balance) FILTER (WHERE kind IN ('bank', 'rocketwork_deposit', 'payout_fees')), 0),
-		coalesce(sum(balance) FILTER (WHERE kind NOT IN ('bank', 'rocketwork_deposit', 'payout_fees')), 0)
+		coalesce(sum(balance) FILTER (WHERE kind IN ('bank', 'rocketwork_deposit', 'payout_fees', 'diagnostic_expense')), 0),
+		coalesce(sum(balance) FILTER (WHERE kind NOT IN ('bank', 'rocketwork_deposit', 'payout_fees', 'diagnostic_expense')), 0)
 		FROM ledger_account`).Scan(&assets, &liabilities); err != nil {
 		e.t.Fatal(err)
 	}
@@ -118,7 +118,7 @@ func (e *env) converges() {
 	}
 	var mismatched int
 	if err := e.d.Pool.QueryRow(ctx, `SELECT count(*) FROM ledger_account a WHERE a.balance <>
-		CASE WHEN a.kind IN ('bank', 'rocketwork_deposit', 'payout_fees') THEN 1 ELSE -1 END * (
+		CASE WHEN a.kind IN ('bank', 'rocketwork_deposit', 'payout_fees', 'diagnostic_expense') THEN 1 ELSE -1 END * (
 			coalesce((SELECT sum(amount) FROM ledger_entry WHERE debit_account_id = a.id), 0) -
 			coalesce((SELECT sum(amount) FROM ledger_entry WHERE credit_account_id = a.id), 0))`).Scan(&mismatched); err != nil {
 		e.t.Fatal(err)

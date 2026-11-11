@@ -142,8 +142,17 @@ func TestAdminApprovalsHTTP(t *testing.T) {
 		} `json:"accounts"`
 	}
 	s1.do(http.MethodGet, "/admin/ledger/summary", nil).json(t, &summary)
-	if !summary.Balanced || len(summary.Accounts) != 7 {
+	if !summary.Balanced || len(summary.Accounts) != 8 {
 		t.Fatalf("summary: %+v", summary)
+	}
+	diagnosticFound := false
+	for _, account := range summary.Accounts {
+		if account.Kind == "diagnostic_expense" {
+			diagnosticFound = true
+		}
+	}
+	if !diagnosticFound {
+		t.Fatal("diagnostic expense missing from ledger summary")
 	}
 	var audit page[struct {
 		Action string         `json:"action"`

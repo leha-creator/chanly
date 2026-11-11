@@ -26,7 +26,8 @@ type accountDTO struct {
 }
 
 type taskDTO struct {
-	Taxes *struct {
+	PaidAt *string `json:"paid_at"`
+	Taxes  *struct {
 		Requested *json.Number `json:"requested_amount"`
 		Retained  *json.Number `json:"retained_amount"`
 	} `json:"taxes"`

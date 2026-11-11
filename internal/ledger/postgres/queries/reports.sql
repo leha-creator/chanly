@@ -14,15 +14,15 @@ LIMIT @lim;
 -- name: SumBalancesBySide :one
 -- Сумма кешей остатков активов и пассивов (06 §2.2 п. 3).
 SELECT
-    coalesce(sum(balance) FILTER (WHERE kind IN ('bank', 'rocketwork_deposit', 'payout_fees')), 0)::bigint AS assets,
-    coalesce(sum(balance) FILTER (WHERE kind NOT IN ('bank', 'rocketwork_deposit', 'payout_fees')), 0)::bigint AS liabilities
+    coalesce(sum(balance) FILTER (WHERE kind IN ('bank', 'rocketwork_deposit', 'payout_fees', 'diagnostic_expense')), 0)::bigint AS assets,
+    coalesce(sum(balance) FILTER (WHERE kind NOT IN ('bank', 'rocketwork_deposit', 'payout_fees', 'diagnostic_expense')), 0)::bigint AS liabilities
 FROM ledger_account;
 
 -- name: ListCacheMismatches :many
 -- Счета, у которых кеш остатка не равен сумме проводок (06 §2.2 п. 6).
 WITH sums AS (
     SELECT a.id, a.kind, a.balance,
-        ((CASE WHEN a.kind IN ('bank', 'rocketwork_deposit', 'payout_fees') THEN 1 ELSE -1 END) * (
+        ((CASE WHEN a.kind IN ('bank', 'rocketwork_deposit', 'payout_fees', 'diagnostic_expense') THEN 1 ELSE -1 END) * (
             coalesce((SELECT sum(amount) FROM ledger_entry WHERE debit_account_id = a.id), 0) -
             coalesce((SELECT sum(amount) FROM ledger_entry WHERE credit_account_id = a.id), 0)))::bigint AS computed
     FROM ledger_account a
@@ -45,7 +45,7 @@ ORDER BY placement_id;
 
 -- name: ListNegativeLiabilities :many
 SELECT id, kind, balance FROM ledger_account
-WHERE kind NOT IN ('bank', 'rocketwork_deposit', 'payout_fees') AND balance < 0 ORDER BY id;
+WHERE kind NOT IN ('bank', 'rocketwork_deposit', 'payout_fees', 'diagnostic_expense') AND balance < 0 ORDER BY id;
 
 -- name: ListSettlements :many
 -- Распределения удержаний за период [from, to): выплата блогеру и комиссия по размещению,

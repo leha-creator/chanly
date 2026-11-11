@@ -104,6 +104,10 @@ maxim/
 │   │   └── mail/
 │   │       └── mailfake/
 │   │
+│   ├── rocketworkcheck/              # Контроль диагностики основного RW-аккаунта: policy/grant/run, общий бюджет
+│   │   ├── domain/                  # Чистая политика, immutable manifest/run и порты
+│   │   ├── app/                     # Подготовка, intent, пошаговый workflow, reconcile и atomic settlement
+│   │   └── postgres/                # Доверенный контрольный журнал; отдельные SQL-права, sqlc
 │   ├── account/                     # ── МОДУЛЬ: аккаунты и организации (04 §2) ──
 │   │   ├── domain/                  #   сущности, правила legal_type → tax_regime → vat_rate, порты
 │   │   ├── app/                     #   сценарии: запросить код, войти, создать организацию…
@@ -389,6 +393,10 @@ func (h *Handlers) PublishNow(ctx context.Context, req apigen.PublishNowRequestO
 ```
 
 ## Тестирование
+
+Контролируемая диагностика RW (`internal/rocketworkcheck`, 2026-11-11) имеет собственные domain/app/postgres и не импортирует payout/ledger. Связь с провайдером и владельцем ledger — через порты и `bootstrap/bridge`. Отдельный `maxim rocketwork-check` собирает только доверенный control pool, outbound/limiter, checks и узкий ledger adapter; он не стартует ordinary workers. Таблицы `rw_check_*` и SECURITY DEFINER-функции с закрытым PUBLIC EXECUTE принадлежат доверенной БД: runner исполняет разрешённые переходы, policy role выдаёт/отзывает grants и меняет потолки, обычная app role читает только ownership views. Основной HTTP-клиент по умолчанию readonly; controlled capability связывает exact wire, свежий task snapshot и durable intent. Production automation — отдельная capability.
+
+Ledger-владелец проводит `rw_diagnostic:<run_id>` через ограниченную функцию из `ledger/postgres`: `diagnostic_expense` для номинала и `payout_fees` для комиссии кредитуют общий RW-депозит. Ledger и settlement резерва находятся в общей транзакции. Это не размещение, blogger_payable или P-16. Проверки PostgreSQL + настоящий Client + независимый HTTP-эмулятор включают concurrent reserves, midnight settlement, потерю ответа, revoke/kill/restore arming, legacy import, смешанные callbacks и сбой до ledger commit.
 
 Состояние интеграции Рокет Ворк: `payout/domain/workflow.go` описывает неизменяемые условия сделки и checkpoint операции, `payout/postgres/workflow.go` сохраняет их через sqlc. Миграция 18 разделяет исполнителей по среде/аккаунту и защищает снимок, захват действия и историю неизвестного исхода. Старые provider ID не конвертируются в подтверждённые связи. Пока внешний процесс ждёт, payout остаётся created/sent и сохраняет ограничение одной живой выплаты размещения.
 

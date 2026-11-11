@@ -33,7 +33,11 @@ func attachContractClient(t *testing.T, e *env, emulator *rocketworktest.Emulato
 	log := logx.Discard()
 	out := outbound.New(e.d.Pool, e.clk, log, outbound.Options{System: outbound.SystemRocketWork, HTTP: rocketwork.NewHTTPClient(), Sleep: func(context.Context, time.Duration) error { return nil }})
 	lim := ratelimit.New(e.d.Pool, e.clk, log, ratelimit.Options{Sleep: func(_ context.Context, d time.Duration) error { e.clk.Advance(d); return nil }})
-	c := rocketwork.New(out, lim, rocketwork.Options{BaseURL: serverURL, Token: emulator.Token, WebhookSecret: []byte("synthetic-postback-secret"), Rate: 10000}, log)
+	authorization, err := rocketwork.LocalEmulatorAuthorization(serverURL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	c := rocketwork.New(out, lim, rocketwork.Options{BaseURL: serverURL, Token: emulator.Token, WebhookSecret: []byte("synthetic-postback-secret"), Rate: 10000, Authorizer: authorization}, log)
 	e.svc.Provider = bridge.PayoutProvider{API: c, Log: log}
 }
 

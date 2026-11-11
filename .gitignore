@@ -6,6 +6,10 @@
 .env
 .env.*
 !.env.example
+# Private inputs and credentials for isolated RocketWork operator jobs.
+/deploy/app/rocketwork-runner.env
+/deploy/app/rocketwork-policy.env
+/deploy/app/rocketwork-input/
 *.pem
 *.key
 *.p12

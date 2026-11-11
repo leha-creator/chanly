@@ -46,7 +46,7 @@ func (c *Client) taskAction(ctx context.Context, id int64, action string) (TaskS
 	var response struct {
 		Task *taskDTO `json:"task"`
 	}
-	if err := c.write(ctx, "Task."+action, http.MethodPatch, "/api/tasks/"+strconv.FormatInt(id, 10)+"/"+action, nil, &response); err != nil {
+	if err := c.writeWithTask(ctx, "Task."+action, http.MethodPatch, "/api/tasks/"+strconv.FormatInt(id, 10)+"/"+action, nil, &response, &before); err != nil {
 		return TaskSnapshot{}, err
 	}
 	if response.Task == nil {

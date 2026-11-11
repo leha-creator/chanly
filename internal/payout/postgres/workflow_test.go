@@ -127,18 +127,22 @@ func TestWorkflowMigrationRoundTripAndLegacyGuard(t *testing.T) {
 	migrate := func(command string) error {
 		return db.MigrateURL(ctx, e.d.OwnerURL, dbtest.AppRole, command, logx.Discard())
 	}
-	if err := migrate(db.MigrateDown); err != nil {
-		t.Fatal(err)
-	} // withdrawal 21
-	if err := migrate(db.MigrateDown); err != nil {
-		t.Fatal(err)
-	} // events 20
-	if err := migrate(db.MigrateDown); err != nil {
-		t.Fatal(err)
+	toVersion := func(target int) {
+		t.Helper()
+		for {
+			var version int
+			if err := e.d.Owner.QueryRow(ctx, `SELECT max(version_id) FROM goose_db_version WHERE is_applied`).Scan(&version); err != nil {
+				t.Fatal(err)
+			}
+			if version <= target {
+				return
+			}
+			if err := migrate(db.MigrateDown); err != nil {
+				t.Fatal(err)
+			}
+		}
 	}
-	if err := migrate(db.MigrateDown); err != nil {
-		t.Fatal(err)
-	} // workflow 18, after onboarding 19
+	toVersion(17) // Explicitly remove workflow 18, including any newer migrations.
 	p, c := e.fixture(t)
 	po := e.payout(t, p, c)
 	po.ExternalID = "p-old-fake-id"
@@ -152,15 +156,7 @@ func TestWorkflowMigrationRoundTripAndLegacyGuard(t *testing.T) {
 	if err != nil || w.Phase != "legacy" || w.TaskID != nil || w.Scope.Environment != "legacy" {
 		t.Fatalf("legacy converted to live: %+v %v", w, err)
 	}
-	if err := migrate(db.MigrateDown); err != nil {
-		t.Fatal(err)
-	} // empty withdrawal 21
-	if err := migrate(db.MigrateDown); err != nil {
-		t.Fatal(err)
-	} // empty events 20
-	if err := migrate(db.MigrateDown); err != nil {
-		t.Fatal(err)
-	} // empty onboarding 19
+	toVersion(18)
 	if err := migrate(db.MigrateDown); err == nil {
 		t.Fatal("rollback discarded history")
 	}

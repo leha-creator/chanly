@@ -6,6 +6,15 @@ import (
 	"github.com/leha-creator/chanly/internal/platform/money"
 )
 
+// NewDiagnosticExpense never settles a business obligation or placement.
+func NewDiagnosticExpense(runID uuid.UUID, nominal, fee money.Kopecks) Transaction {
+	t := Transaction{Kind: KindDiagnostic, Actor: ActorSystem, IdempotencyKey: "rw_diagnostic:" + runID.String(), Postings: []Posting{{Debit: DiagnosticExpense(), Credit: RocketworkDeposit(), Amount: nominal}}}
+	if fee > 0 {
+		t.Postings = append(t.Postings, Posting{Debit: PayoutFees(), Credit: RocketworkDeposit(), Amount: fee})
+	}
+	return t
+}
+
 // Ключи идемпотентности (06 §2.2 п. 7, R-3): вид и основание.
 
 // DepositKey — зачисление поступления из выписки.

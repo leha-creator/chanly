@@ -1,0 +1,17 @@
+{
+  "ArmingID": "",
+  "RunID": "68f9b598-bd15-472a-9907-71b36077ad23",
+  "ManifestHash": "0000000000000000000000000000000000000000000000000000000000000000",
+  "AccountID": "synthetic-physical-account",
+  "CompanyINN": "000000000000",
+  "Version": 1,
+  "FixedAmount": 1000,
+  "MaxCommission": -1,
+  "TotalBudget": 10000,
+  "DailyBudget": 5000,
+  "DailyOperations": 3,
+  "Executors": [{"ID": 7, "INN": "000000000000", "Employment": "selfemployed"}],
+  "Actions": ["create", "complete", "sign_act", "pay"],
+  "NotBefore": "2026-11-11T00:00:00Z",
+  "ExpiresAt": "2026-11-12T00:00:00Z"
+}

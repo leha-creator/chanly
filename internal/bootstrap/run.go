@@ -31,6 +31,8 @@ var errUsage = errors.New("usage")
 func Run(ctx context.Context, p RunParams) int {
 	mode := p.Command
 	switch mode {
+	case "rocketwork-check":
+		return runRocketWorkControl(ctx, p)
 	case "integration-check":
 		return runIntegrationCheck(ctx, p)
 	case ModeProbe:

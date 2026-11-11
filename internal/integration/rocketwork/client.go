@@ -33,8 +33,9 @@ const (
 )
 
 type Options struct {
-	BaseURL string
-	Token   string
+	Authorizer WriteAuthorizer
+	BaseURL    string
+	Token      string
 	// Bearer credential configured in the postback subscription; HMAC is fake-only.
 	WebhookSecret         []byte
 	PreviousWebhookSecret []byte
@@ -64,6 +65,11 @@ func New(out *outbound.Client, limiter *ratelimit.Limiter, opts Options, log *sl
 		opts.BaseURL = DefaultBaseURL
 	}
 	opts.BaseURL = strings.TrimRight(opts.BaseURL, "/")
+	if _, ok := opts.Authorizer.(emulatorAuthorization); ok {
+		if _, err := LocalEmulatorAuthorization(opts.BaseURL); err != nil {
+			opts.Authorizer = nil
+		}
+	}
 	if opts.Rate <= 0 {
 		opts.Rate = DefaultRate
 	}

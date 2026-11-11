@@ -82,6 +82,7 @@ func (t TaskTerms) wire() taskCreateDTO {
 // TaskSnapshot separates agreement/payment/document states from the legacy
 // Payment port. Amounts are exact; optional financial data stays optional.
 type TaskSnapshot struct {
+	PaidAt                                   *time.Time
 	RetainedTaxKopecks                       *int64
 	Documents                                TaskDocuments
 	ID                                       int64
@@ -122,6 +123,14 @@ func (d taskDTO) snapshot() (TaskSnapshot, error) {
 		return TaskSnapshot{}, err
 	}
 	s := TaskSnapshot{ID: d.ID, ExternalID: d.ExternalID, Type: d.Type, Status: d.Status, EmploymentKind: d.EmploymentKind, AmountKopecks: amount, TaxRetention: d.TaxRetention, ActRequired: d.ActRequired, ReceiptURL: d.ReceiptURI, SignatureForm: d.SignatureForm}
+	if d.PaidAt != nil {
+		at, err := time.Parse(time.RFC3339Nano, *d.PaidAt)
+		if err != nil || at.IsZero() {
+			return TaskSnapshot{}, ErrFormat
+		}
+		at = at.UTC()
+		s.PaidAt = &at
+	}
 	if d.Taxes != nil && d.Taxes.Retained != nil {
 		v, err := rublesToKopecks(string(*d.Taxes.Retained))
 		if err != nil || v < 0 {

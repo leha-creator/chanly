@@ -186,6 +186,9 @@ func (n NopNotifier) Notify(ctx context.Context, x domain.Notice) error {
 
 // Deps — зависимости сервиса; связывает bootstrap.
 type Deps struct {
+	DiagnosticEvents interface {
+		RouteDiagnostic(context.Context, string) (bool, error)
+	}
 	Store         domain.Store
 	Provider      domain.Provider
 	Ledger        domain.Ledger

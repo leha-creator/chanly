@@ -211,7 +211,7 @@ func (q *Queries) ListAdminEntries(ctx context.Context, arg ListAdminEntriesPara
 const listCacheMismatches = `-- name: ListCacheMismatches :many
 WITH sums AS (
     SELECT a.id, a.kind, a.balance,
-        ((CASE WHEN a.kind IN ('bank', 'rocketwork_deposit', 'payout_fees') THEN 1 ELSE -1 END) * (
+        ((CASE WHEN a.kind IN ('bank', 'rocketwork_deposit', 'payout_fees', 'diagnostic_expense') THEN 1 ELSE -1 END) * (
             coalesce((SELECT sum(amount) FROM ledger_entry WHERE debit_account_id = a.id), 0) -
             coalesce((SELECT sum(amount) FROM ledger_entry WHERE credit_account_id = a.id), 0)))::bigint AS computed
     FROM ledger_account a
@@ -371,7 +371,7 @@ func (q *Queries) ListJournal(ctx context.Context, arg ListJournalParams) ([]Lis
 
 const listNegativeLiabilities = `-- name: ListNegativeLiabilities :many
 SELECT id, kind, balance FROM ledger_account
-WHERE kind NOT IN ('bank', 'rocketwork_deposit', 'payout_fees') AND balance < 0 ORDER BY id
+WHERE kind NOT IN ('bank', 'rocketwork_deposit', 'payout_fees', 'diagnostic_expense') AND balance < 0 ORDER BY id
 `
 
 type ListNegativeLiabilitiesRow struct {
@@ -457,8 +457,8 @@ func (q *Queries) ListSettlements(ctx context.Context, arg ListSettlementsParams
 
 const sumBalancesBySide = `-- name: SumBalancesBySide :one
 SELECT
-    coalesce(sum(balance) FILTER (WHERE kind IN ('bank', 'rocketwork_deposit', 'payout_fees')), 0)::bigint AS assets,
-    coalesce(sum(balance) FILTER (WHERE kind NOT IN ('bank', 'rocketwork_deposit', 'payout_fees')), 0)::bigint AS liabilities
+    coalesce(sum(balance) FILTER (WHERE kind IN ('bank', 'rocketwork_deposit', 'payout_fees', 'diagnostic_expense')), 0)::bigint AS assets,
+    coalesce(sum(balance) FILTER (WHERE kind NOT IN ('bank', 'rocketwork_deposit', 'payout_fees', 'diagnostic_expense')), 0)::bigint AS liabilities
 FROM ledger_account
 `
 

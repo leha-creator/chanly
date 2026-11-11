@@ -5463,10 +5463,10 @@ components:
     # ------------------------------------------------ admin: ledger
     LedgerAccountKind:
       type: string
-      enum: [bank, rocketwork_deposit, payout_fees, advertiser_balance, placement_hold, blogger_payable, platform_revenue]
+      enum: [bank, rocketwork_deposit, payout_fees, diagnostic_expense, advertiser_balance, placement_hold, blogger_payable, platform_revenue]
     LedgerTransactionKind:
       type: string
-      enum: [deposit, hold, hold_release, settlement, payout, deposit_topup, balance_return, manual]
+      enum: [deposit, hold, hold_release, settlement, payout, deposit_topup, balance_return, manual, rw_diagnostic]
     LedgerAccountRef:
       type: object
       required: [kind]

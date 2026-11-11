@@ -509,7 +509,7 @@ func (a LedgerAccount) key() string {
 }
 
 // activeKinds — активы (06 §2.1): остаток растёт по дебету.
-var activeKinds = []string{"bank", "rocketwork_deposit", "payout_fees"}
+var activeKinds = []string{"bank", "rocketwork_deposit", "payout_fees", "diagnostic_expense"}
 
 // LedgerBalances — остатки по видам счетов.
 func (tx *Tx) LedgerBalances() map[string]int64 {

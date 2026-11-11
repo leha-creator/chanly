@@ -94,7 +94,8 @@ func start() (*DB, func(), error) {
 		postgres.WithUsername("maxim"),
 		postgres.WithPassword("maxim"),
 		testcontainers.WithWaitStrategy(
-			wait.ForLog("database system is ready to accept connections").WithOccurrence(2).WithStartupTimeout(time.Minute)),
+			wait.ForLog("database system is ready to accept connections").WithOccurrence(2).WithStartupTimeout(time.Minute),
+			wait.ForListeningPort("5432/tcp").WithStartupTimeout(time.Minute)),
 	)
 	if err != nil {
 		return nil, nil, fmt.Errorf("start postgres: %w", err)
