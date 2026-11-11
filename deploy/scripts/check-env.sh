@@ -120,6 +120,32 @@ for dir in "${envs[@]}"; do
       fail tbank_sandbox_required env="$env_name" key=TBANK_API_URL
   fi
 
+  for k in ROCKETWORK_CONTROL_DATABASE_URL ROCKETWORK_POLICY_DATABASE_URL ROCKETWORK_CHECK_ARMING_ID; do
+    [[ -z $(value_of "$app" "$k") ]] || fail control_secret_in_app_env env="$env_name" key="$k"
+  done
+  if [[ $env_name != production ]]; then
+    [[ -z $(value_of "$app" ROCKETWORK_TOKEN) ]] || fail primary_token_in_dev_env env="$env_name" key=ROCKETWORK_TOKEN
+  fi
+  for kind in runner policy; do
+    ops="$dir/rocketwork-$kind.env.example"
+    [[ -f $ops ]] || continue
+    check_common "$ops" 0
+    mapfile -t ops_keys < <(keys_of "$ops")
+    for k in "${ops_keys[@]}"; do
+      case "$kind:$k" in
+        runner:LOG_LEVEL|runner:ROCKETWORK_TARGET|runner:ROCKETWORK_BASE_URL|runner:ROCKETWORK_TOKEN|runner:ROCKETWORK_CONTROL_DATABASE_URL|runner:ROCKETWORK_CHECK_ARMING_ID|policy:LOG_LEVEL|policy:ROCKETWORK_POLICY_DATABASE_URL|policy:ROCKETWORK_CHECK_ARMING_ID) ;;
+        *) fail unexpected_ops_key env="$env_name" role="$kind" key="$k" ;;
+      esac
+    done
+    for k in ROCKETWORK_TOKEN ROCKETWORK_CONTROL_DATABASE_URL ROCKETWORK_POLICY_DATABASE_URL ROCKETWORK_CHECK_ARMING_ID; do
+      [[ -z $(value_of "$ops" "$k") ]] || fail ops_template_contains_authority env="$env_name" key="$k"
+    done
+    if [[ $kind == runner ]]; then
+      [[ -z $(value_of "$ops" ROCKETWORK_POLICY_DATABASE_URL) ]] || fail policy_dsn_in_runner env="$env_name"
+    else
+      [[ -z $(value_of "$ops" ROCKETWORK_TOKEN) && -z $(value_of "$ops" ROCKETWORK_CONTROL_DATABASE_URL) ]] || fail runner_secret_in_policy env="$env_name"
+    fi
+  done
   if [[ $env_name == staging ]]; then
     [[ $(value_of "$app" ORD_API_URL) == https://ord-prestable.yandex.net ]] || \
       fail ord_sandbox_required env="$env_name" key=ORD_API_URL

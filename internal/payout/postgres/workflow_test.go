@@ -127,11 +127,11 @@ func TestWorkflowMigrationRoundTripAndLegacyGuard(t *testing.T) {
 	migrate := func(command string) error {
 		return db.MigrateURL(ctx, e.d.OwnerURL, dbtest.AppRole, command, logx.Discard())
 	}
-	rollbackTo := func(target int64) {
+	toVersion := func(target int) {
 		t.Helper()
 		for {
-			var version int64
-			if err := e.d.Owner.QueryRow(ctx, `SELECT coalesce(max(version_id),0) FROM goose_db_version WHERE is_applied`).Scan(&version); err != nil {
+			var version int
+			if err := e.d.Owner.QueryRow(ctx, `SELECT max(version_id) FROM goose_db_version WHERE is_applied`).Scan(&version); err != nil {
 				t.Fatal(err)
 			}
 			if version <= target {
@@ -142,7 +142,7 @@ func TestWorkflowMigrationRoundTripAndLegacyGuard(t *testing.T) {
 			}
 		}
 	}
-	rollbackTo(17) // before the workflow migration; later migrations may grow.
+	toVersion(17) // Explicitly remove workflow 18, including any newer migrations.
 	p, c := e.fixture(t)
 	po := e.payout(t, p, c)
 	po.ExternalID = "p-old-fake-id"
@@ -156,7 +156,7 @@ func TestWorkflowMigrationRoundTripAndLegacyGuard(t *testing.T) {
 	if err != nil || w.Phase != "legacy" || w.TaskID != nil || w.Scope.Environment != "legacy" {
 		t.Fatalf("legacy converted to live: %+v %v", w, err)
 	}
-	rollbackTo(18)
+	toVersion(18)
 	if err := migrate(db.MigrateDown); err == nil {
 		t.Fatal("rollback discarded history")
 	}

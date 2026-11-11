@@ -492,11 +492,17 @@ sequenceDiagram
 
 `ROCKETWORK_MODE=fake|disabled|live` выбирает адаптер. По умолчанию production использует disabled, остальные окружения — fake. Fake проверяет доменную модель, отдельный HTTP-эмулятор проверяет тела по исходной схеме. `live` допускает чтение в production; автоматизация включается отдельно.
 
-Для workflow нужны `ROCKETWORK_WORKFLOW_ENABLED=true`, `ROCKETWORK_TARGET=local-emulator|sandbox|production`, постоянный `ROCKETWORK_ACCOUNT_KEY`, токены и явные условия. Target проверяется по origin: local-emulator — loopback, sandbox — отдельный HTTPS origin, production — `https://api.rocketwork.ru`. Изменение APP_ENV не превращает боевой адрес в тестовый. Sandbox URL провайдер пока не подтвердил.
+`ROCKETWORK_ACCESS_MODE=readonly|controlled|automation` отделяет доступ от транспорта; по умолчанию live имеет readonly. Для обычного production workflow нужны `ACCESS_MODE=automation`, `PURPOSE=business`, `WORKFLOW_ENABLED=true`, `TARGET=production`, постоянный `ACCOUNT_KEY` и явные условия (все с префиксом `ROCKETWORK_`). Production origin — `https://api.rocketwork.ru`. Sandbox для этого workflow отсутствует и отклоняется. `local-emulator` разрешает только loopback для тестового harness; он не выдаёт право писать на production origin.
 
 Условия: `ROCKETWORK_TASK_TITLE`, `ROCKETWORK_TASK_DESCRIPTION`, `ROCKETWORK_CONTRACT_MODE=online|manual`; online требует `DOCUMENT_NAME`, `PERIOD_FROM`, `PERIOD_TO`, manual — `DOCUMENT_NUMBER`, `DOCUMENT_DATE` (все с префиксом `ROCKETWORK_`). `ACT_REQUIRED`, `TAX_RETENTION` и `MAX_COMMISSION_KOPECKS` задаются явно, включая false/0. Даты — YYYY-MM-DD. Снимок условий уже созданной выплаты не меняется вслед за окружением.
 
-Для production automation дополнительно требуется `ROCKETWORK_PRODUCTION_APPROVED=true`: это отдельный допуск владельца после живой приёмки, а не результат unit-тестов или ping. В шаблонах оба переключателя false. Ограниченный диагностический прогон не включает worker и требует собственного согласованного manifest.
+Для production automation дополнительно требуется `ROCKETWORK_PRODUCTION_APPROVED=true`: это отдельный допуск владельца после живой приёмки, а не результат unit-тестов или ping. В шаблонах переключатели выключены. Обычные dev/test API, worker и admin/dev CLI не получают основной токен и не могут включить production automation комбинацией старых env-флагов.
+
+Контролируемая диагностика выполняется отдельной командой `maxim rocketwork-check` на доверенном ops-хосте, без бизнес-worker и публичного endpoint. Только ей доступны control-DSN, основной токен и внешний arming ID; отдельный владелец политики имеет policy-DSN для issue/revoke/kill/arm. Локальный senior в dev-БД и hash manifest не дают этих прав. Manifest v2 связывается с owner-issued grant по точному содержимому и RunID; общий canonical account budget не зависит от aliases, токена или run_dir.
+
+Новая OneTime-операция с самого начала имеет фиксированный номинал в договоре, services, wire и учёте. Client amount должен совпасть точно; автоматические флаги false, исполнитель — из allowlist по ID/ИНН/employment. Перед каждым write проверяются актуальный допуск и ownership; до первого побочного эффекта резервируются номинал, максимум комиссии и слот. Intent сохраняется перед сетью; unknown не повторяется и не освобождает бюджет через полночь. Отзыв/kill switch блокирует новые writes, сохраняя readonly reconcile. Основной HTTP Client по умолчанию отклоняет все записи.
+
+Порядок выдачи, status/resume, импорт legacy manifest и backup recovery приведены в [инструкции проверки](launch/integration-checks.md#контролируемый-прогон-onetime) и [руководстве ops](../deploy/app/README.md#изолированные-проверки-rocketwork-на-основном-аккаунте). Предлагаемые 10 ₽/100 ₽/50 ₽/три операции/24 часа не подтверждают минимум или тариф провайдера и не включают разрешение. Фактическое превышение комиссии учитывается и замораживает новые записи; местный fee ceiling не ограничивает внешний тариф сам по себе.
 
 Webhook `POST /api/v1/webhooks/rocketwork` проверяет `Authorization: Bearer` за постоянное время. `ROCKETWORK_WEBHOOK_SECRET` — отдельный секрет подписки, не API-токен. При ротации сначала установить прежний секрет в `ROCKETWORK_PREVIOUS_WEBHOOK_SECRET`, новый — в основной; обновить подписку, проверить новый канал, затем удалить прежний секрет. HMAC используется только legacy fake. API-токен меняется через приватное окружение и перезапуск процессов.
 
@@ -522,7 +528,7 @@ Withdrawal берёт whitelisted-реквизиты только из `ROCKETWO
 
 Текущие ограничения checkpoint: одно onboarding-действие данного типа на организацию/аккаунт; повтор не посылает новую SMS или запрос ФНС. Повторное обновление профиля после уже подтверждённой команды требует отдельного расширения модели команд. Аналогично повторный цикл создания той же подписки после удаления не автоматизирован. Не удалять checkpoints и не менять scope ради обхода. Эти ограничения не означают отсутствие API-методов, но не позволяют обещать неограниченные циклы операторских действий.
 
-Q-10–Q-12 остаются открытыми в части доступа, тарифов, лимитов и фактического договорного процесса. Подтверждённого sandbox пока нет; сценарии отказов денег выполняются только локально. Живая проверка требует конкретных получателя, суммы, условий и разрешения владельца.
+Q-10–Q-12 остаются открытыми в части доступа, тарифов, лимитов и фактического договорного процесса. Sandbox для этого workflow отсутствует; сценарии отказов денег выполняются только локально. Живая проверка требует конкретных получателя, суммы, условий и разрешения владельца.
 
 ## 5. Приём оплаты
 

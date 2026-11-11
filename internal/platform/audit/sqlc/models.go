@@ -993,6 +993,100 @@ type RocketworkWorkflow struct {
 	UpdatedAt      time.Time
 }
 
+type RwCheckAccount struct {
+	ID              string
+	CompanyInn      string
+	TotalLimit      int64
+	DailyLimit      int64
+	DailyOperations int64
+	Killed          bool
+	CreatedAt       time.Time
+}
+
+type RwCheckAction struct {
+	RunID       uuid.UUID
+	Action      string
+	State       string
+	RequestHash string
+	CreatedAt   time.Time
+	ObservedAt  *time.Time
+}
+
+type RwCheckAlias struct {
+	Alias     string
+	AccountID string
+}
+
+type RwCheckAudit struct {
+	ID        int64
+	Actor     string
+	Operation string
+	GrantID   *uuid.UUID
+	RunID     *uuid.UUID
+	CreatedAt time.Time
+}
+
+type RwCheckDispatchOwnership struct {
+	Alias      string
+	AccountID  string
+	ExternalID string
+	TaskID     *int64
+	RunID      uuid.UUID
+}
+
+type RwCheckGrant struct {
+	ID        uuid.UUID
+	AccountID string
+	Version   int64
+	Purpose   string
+	IssuedBy  string
+	Policy    []byte
+	NotBefore time.Time
+	ExpiresAt time.Time
+	RevokedAt *time.Time
+	CreatedAt time.Time
+}
+
+type RwCheckLegacyImport struct {
+	ID             uuid.UUID
+	AccountID      string
+	ExternalID     string
+	TaskID         int64
+	ManifestHash   string
+	TermsHash      string
+	ObservedStatus string
+	ObservedAt     time.Time
+}
+
+type RwCheckOwnership struct {
+	AccountID  string
+	ExternalID string
+	TaskID     *int64
+	RunID      uuid.UUID
+}
+
+type RwCheckRun struct {
+	ID             uuid.UUID
+	AccountID      string
+	GrantID        uuid.UUID
+	ActiveGrantID  *uuid.UUID
+	Purpose        string
+	Manifest       []byte
+	ManifestHash   string
+	ExternalID     string
+	TaskID         *int64
+	Nominal        int64
+	FeeCeiling     int64
+	State          string
+	ReservedAt     *time.Time
+	SettledAt      *time.Time
+	ProviderPaidAt *time.Time
+	ActualNominal  *int64
+	ActualFee      *int64
+	LedgerID       *uuid.UUID
+	CreatedAt      time.Time
+}
+
 type Session struct {
 	ID        uuid.UUID
 	UserID    uuid.UUID

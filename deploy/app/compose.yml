@@ -46,6 +46,40 @@ x-worker: &worker
   networks: [backend]
 
 services:
+  # Operator-only jobs; intentionally do not inherit x-app/app.env or dev volumes.
+  rocketwork-runner:
+    profiles: [rocketwork-ops]
+    image: ${MAXIM_IMAGE}:${MAXIM_TAG_NEW:-unset}
+    command: ["rocketwork-check", "status"]
+    env_file:
+      - path: ./rocketwork-runner.env
+        required: false
+    environment:
+      ROCKETWORK_POLICY_DATABASE_URL: ""
+    restart: "no"
+    read_only: true
+    tmpfs: [/tmp]
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    volumes: [./rocketwork-input:/run/rocketwork-input:ro]
+    networks: [backend]
+  rocketwork-policy:
+    profiles: [rocketwork-ops]
+    image: ${MAXIM_IMAGE}:${MAXIM_TAG_NEW:-unset}
+    command: ["rocketwork-check", "status"]
+    env_file:
+      - path: ./rocketwork-policy.env
+        required: false
+    environment:
+      ROCKETWORK_CONTROL_DATABASE_URL: ""
+      ROCKETWORK_TOKEN: ""
+    restart: "no"
+    read_only: true
+    tmpfs: [/tmp]
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    volumes: [./rocketwork-input:/run/rocketwork-input:ro]
+    networks: [backend]
   postgres:
     image: ${MAXIM_POSTGRES_IMAGE:?MAXIM_POSTGRES_IMAGE is required (stack.env)}
     restart: unless-stopped

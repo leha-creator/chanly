@@ -141,6 +141,15 @@ func event(svc *app.Service, apply func(ctx context.Context, externalID string) 
 		if p.ScopeKey != svc.WebhookScopeKey() {
 			return inbound.ErrIgnore
 		}
+		if e.EventType == string(domain.WebhookPayoutStatus) && svc.DiagnosticEvents != nil {
+			handled, err := svc.DiagnosticEvents.RouteDiagnostic(ctx, p.ExternalID)
+			if err != nil {
+				return err
+			}
+			if handled {
+				return nil
+			}
+		}
 		err := apply(ctx, p.ExternalID)
 		if errors.Is(err, domain.ErrNotFound) {
 			if p.ScopeKey != "" {

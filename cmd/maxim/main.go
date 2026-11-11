@@ -33,6 +33,7 @@ var version = "dev"
 const usage = `usage: maxim <command> [args]
 
 commands:
+  rocketwork-check         fingerprint|configure-account|issue|revoke|reauthorize|kill|arm|prepare|inspect|execute|resume|reconcile|status|import
   api                      run HTTP API
   worker                   run job worker
   migrate up|down|status   apply, roll back one or show migrations

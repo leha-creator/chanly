@@ -36,7 +36,11 @@ func newClient(t *testing.T, h http.HandlerFunc) (*rocketwork.Client, *dbtest.DB
 		clk.Advance(w)
 		return nil
 	}})
-	return rocketwork.New(out, lim, rocketwork.Options{BaseURL: srv.URL, Token: token}, log), d
+	authorization, err := rocketwork.LocalEmulatorAuthorization(srv.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return rocketwork.New(out, lim, rocketwork.Options{BaseURL: srv.URL, Token: token, Authorizer: authorization}, log), d
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {

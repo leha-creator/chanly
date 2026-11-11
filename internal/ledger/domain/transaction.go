@@ -24,11 +24,13 @@ const (
 	KindDepositTopup  Kind = "deposit_topup"
 	KindBalanceReturn Kind = "balance_return"
 	KindManual        Kind = "manual"
+	KindDiagnostic    Kind = "rw_diagnostic"
 )
 
 // Kinds — все виды в порядке 06 §2.3.
 var Kinds = []Kind{
 	KindDeposit, KindHold, KindHoldRelease, KindSettlement, KindPayout, KindDepositTopup, KindBalanceReturn, KindManual,
+	KindDiagnostic,
 }
 
 // ActorType — кто запустил движение (ledger_transaction.actor_type).
@@ -111,6 +113,21 @@ func (t Transaction) Validate() error {
 
 // rules — допустимые проводки каждого вида (06 §2.3, R-4).
 var rules = map[Kind]func(Transaction) error{
+	KindDiagnostic: func(t Transaction) error {
+		if t.Actor != ActorSystem || !strings.HasPrefix(t.IdempotencyKey, "rw_diagnostic:") || t.Basis != (Basis{}) || len(t.Postings) > 2 {
+			return ErrInvalidPosting
+		}
+		if _, err := uuid.Parse(strings.TrimPrefix(t.IdempotencyKey, "rw_diagnostic:")); err != nil {
+			return ErrInvalidPosting
+		}
+		if t.Postings[0].Debit != DiagnosticExpense() || t.Postings[0].Credit != RocketworkDeposit() {
+			return ErrInvalidPosting
+		}
+		if len(t.Postings) == 2 && (t.Postings[1].Debit != PayoutFees() || t.Postings[1].Credit != RocketworkDeposit()) {
+			return ErrInvalidPosting
+		}
+		return nil
+	},
 	KindDeposit: func(t Transaction) error {
 		if t.Basis.BankTransactionID == uuid.Nil {
 			return fmt.Errorf("%w: deposit without bank transaction", ErrInvalidPosting)

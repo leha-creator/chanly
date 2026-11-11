@@ -60,13 +60,15 @@ type Config struct {
 
 	DatabaseURL string `env:"DATABASE_URL"`
 	// DBAppRole — роль, под которой работает приложение; миграции выдают ей права (04 §1).
-	DBAppRole      string `env:"DB_APP_ROLE" envDefault:"maxim_app"`
-	DBMaxConns     int32  `env:"DB_MAX_CONNS" envDefault:"10"`
-	S3             S3Config
-	SMTP           SMTPConfig
-	MailFrom       string `env:"MAIL_FROM"`
-	SecretsKey     string `env:"APP_SECRETS_KEY"`  // base64, 32 байта: шифрование секретов в job.payload (R-1)
-	AuthCodePepper string `env:"AUTH_CODE_PEPPER"` // секрет HMAC кода входа (R-3)
+	DBAppRole              string `env:"DB_APP_ROLE" envDefault:"maxim_app"`
+	DBRocketWorkPolicyRole string `env:"DB_ROCKETWORK_POLICY_ROLE"`
+	DBRocketWorkRunnerRole string `env:"DB_ROCKETWORK_RUNNER_ROLE"`
+	DBMaxConns             int32  `env:"DB_MAX_CONNS" envDefault:"10"`
+	S3                     S3Config
+	SMTP                   SMTPConfig
+	MailFrom               string `env:"MAIL_FROM"`
+	SecretsKey             string `env:"APP_SECRETS_KEY"`  // base64, 32 байта: шифрование секретов в job.payload (R-1)
+	AuthCodePepper         string `env:"AUTH_CODE_PEPPER"` // секрет HMAC кода входа (R-3)
 
 	Auth         AuthConfig
 	Channel      ChannelConfig
@@ -366,6 +368,7 @@ func (c Config) Validate(mode string) error {
 	}
 	if mode == ModeAdmin || mode == ModeDev {
 		c.validateTBank(add)
+		c.validateRocketWorkIsolation(add)
 		return finish(bad) // только база
 	}
 	if c.DBMaxConns < 1 {

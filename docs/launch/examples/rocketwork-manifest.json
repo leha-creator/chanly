@@ -1,25 +1,19 @@
 {
-  "version": 1,
+  "version": 2,
   "run_id": "68f9b598-bd15-472a-9907-71b36077ad23",
+  "grant_id": "60cdbaf5-c0e9-45d6-9506-7bb953f1c435",
+  "purpose": "diagnostic",
   "target": "local-emulator",
   "origin": "http://127.0.0.1:18080",
+  "account_id": "synthetic-physical-account",
   "account_key": "synthetic",
   "company_inn": "000000000000",
-  "executor": {
-    "Kind": "inn",
-    "Value": "000000000000",
-    "ExpectedID": 7,
-    "INN": "",
-    "Phone": "",
-    "ExternalID": "",
-    "EmploymentKind": "selfemployed"
-  },
-  "task_id": 0,
+  "executor": {"ID": 7, "INN": "000000000000", "Employment": "selfemployed"},
   "terms": {
-    "ExternalID": "integration-check:68f9b598-bd15-472a-9907-71b36077ad23",
+    "ExternalID": "rw-diagnostic:68f9b598-bd15-472a-9907-71b36077ad23",
     "ExecutorINN": "000000000000",
     "EmploymentKind": "selfemployed",
-    "AmountKopecks": 10000,
+    "AmountKopecks": 1000,
     "Title": "Synthetic",
     "Description": "Synthetic service",
     "SignatureForm": "online",
@@ -34,12 +28,5 @@
     "Autocomplete": false,
     "Autopayable": false
   },
-  "terms_sha256": "7c04c77609997c7a50993fa7c7f0a0f36ce5de35fb3621159d09fef33dfd890a",
-  "max_commission_kopecks": 100,
-  "actions": [
-    "create",
-    "complete",
-    "sign_act",
-    "pay"
-  ]
+  "actions": ["create", "complete", "sign_act", "pay"]
 }

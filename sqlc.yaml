@@ -3,6 +3,15 @@
 # Запуск: sqlc generate (CI проверяет, что сгенерированное совпадает с исходниками).
 version: "2"
 sql:
+  - engine: postgresql
+    schema: migrations
+    queries: internal/rocketworkcheck/postgres/queries
+    gen:
+      go:
+        package: sqlc
+        out: internal/rocketworkcheck/postgres/sqlc
+        sql_package: pgx/v5
+        emit_pointers_for_null_types: true
   - &entry
     engine: postgresql
     schema: migrations

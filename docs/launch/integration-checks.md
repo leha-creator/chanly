@@ -316,32 +316,65 @@ docker logs --tail 50 maxim-ord-worker-20261107
 
 ### Контролируемый прогон OneTime
 
-`APP_ENV` и `ROCKETWORK_TARGET` независимы. Диагностика запускает только клиент, outbound/limiter и файловое состояние; worker, рассылки и подписки автоматически не запускаются. `fingerprint` и `preflight` не открывают БД и не обращаются к провайдеру. `inspect` и `reconcile` выполняют только GET. Каждое execute/resume выполняет не более одного разрешённого изменения.
+Для этого workflow sandbox отсутствует. Обычная dev-бизнес-цепочка использует fake, включая расчёты 5400 ₽. Проверка на основном аккаунте с начала до конца имеет собственный небольшой номинал; деление, обрезка или подмена бизнес-суммы перед отправкой запрещены. Предлагаемые 10 ₽ не являются подтверждённым минимумом провайдера или разрешением заплатить.
 
-1. Скопировать [синтетический manifest](examples/rocketwork-manifest.json) в приватный каталог. Все его идентификаторы и суммы вымышлены; это формат, не разрешение на реальный перевод. Один manifest описывает одну OneTime-сделку и разрешённые действия create/complete/sign_act/pay либо cancel. Withdrawal, onboarding, подписки и возврат используют отдельные административные команды с durable checkpoint и нужными подтверждениями; этот runner их не запускает.
-2. Выбрать новый run_id и `terms.ExternalID=integration-check:<run_id>`, точные account_key/company_inn, подтверждённого executor и origin. Для нового задания task_id=0; для существующего указать его ID, удалить create, сохранить фактический external_id этого run. Сумма — копейки, комиссия — верхний предел. Все автоматические флаги false. Поля структуры terms/executor в примере сохраняют регистр Go-контракта; неизвестные поля запрещены.
-3. Указать ROCKETWORK_MODE=live, ROCKETWORK_TARGET, ROCKETWORK_ACCOUNT_KEY, ROCKETWORK_BASE_URL и ROCKETWORK_TOKEN. Base URL должен совпасть с manifest: local-emulator допускает только loopback, production — документированный адрес, sandbox — отдельный HTTPS origin, подтверждённый провайдером. Нельзя назвать production sandbox-ом.
-4. Вычислить fingerprint, перенести terms_sha256 в manifest, затем выполнить preflight. Fingerprint печатает hash нормализованного JSON, а не байтов файла; пробелы не меняют согласованные условия. После изменения любых условий пересогласовать manifest.
+| Режим | Процесс | Разрешения |
+|---|---|---|
+| fake | обычные dev API/worker | Синтетические суммы и сбои, без основного токена |
+| live-readonly | изолированный runner | Проверка согласованной компании, разрешённого исполнителя и своей задачи |
+| live-controlled | тот же runner с owner-issued grant | Один шаг OneTime с фиксированной суммой, резервом и intent в доверенной БД |
 
-```bash
-maxim integration-check --system rocketwork --target local-emulator --manifest private/manifest.json --run-dir private/run --scenario fingerprint
-maxim integration-check --system rocketwork --target local-emulator --manifest private/manifest.json --run-dir private/run --scenario preflight
-maxim integration-check --system rocketwork --target local-emulator --manifest private/manifest.json --run-dir private/run --scenario inspect
-```
+Production automation — отдельная capability штатного production-процесса; она не передаётся runner и не включается диагностикой. Withdrawal, refund, onboarding/rebind/FNS, массовые действия и подписки runner не выполняет. `APP_ENV`, локальный senior и присланный hash не выдают денежные права.
 
-Для внешнего доступа вместо local-emulator выбрать подтверждённый sandbox или production. Сначала inspect сверяет реальную компанию аккаунта, исполнителя и существующее задание. Далее владелец рассматривает конкретные условия и разрешает перечисленные побочные эффекты. Только после этого:
+#### Подготовка и первый запуск
 
-```bash
-maxim integration-check --system rocketwork --target production --manifest private/manifest.json --run-dir private/run --scenario execute --execute --approved-manifest-sha256 AGREED_HASH
-maxim integration-check --system rocketwork --target production --manifest private/manifest.json --run-dir private/run --scenario resume --execute --approved-manifest-sha256 AGREED_HASH
-maxim integration-check --system rocketwork --target production --manifest private/manifest.json --run-dir private/run --scenario reconcile
-```
+1. Подготовить приватный manifest v2 по [синтетическому примеру](examples/rocketwork-manifest.json). RunID и grant ID заранее согласованы с владельцем; external_id — `rw-diagnostic:<run_id>`. Получатель уже зарегистрирован. CompanyINN, Executor ID/INN/employment, реальные договор/даты/акт/налоги и список действий должны быть проверены владельцем. Все автоматические флаги false.
+2. Выполнить офлайн fingerprint. Это проверка формы и содержания без DB, токена и сети:
 
-Это примеры команд, они не выполнялись против production. Hash фиксирует согласованное содержание, но сам по себе не заменяет разрешение владельца. Создание договора, акт и pay — побочные эффекты. Нельзя запускать боевой прогон по одной общей фразе «в крайнем случае на бою».
+   ```bash
+   maxim rocketwork-check fingerprint --manifest private/manifest.json
+   maxim integration-check --system rocketwork --target production --manifest private/manifest.json --scenario preflight
+   ```
 
-`run.lock` запрещает параллельный запуск; state.json сохраняется через временный файл, sync и rename перед запросом. После аварии оставшийся lock удаляет оператор только после подтверждения, что процесс завершён. Состояние, manifest и run_id сохраняются; не создавать новую директорию/ключ для обхода uncertain. На неопределённом исходе — только сверка; пустой поиск не разрешает второй POST. Параметры/аккаунт/ID/сумма и hash проверяются перед записью, результат — свежим GET. paid без окончательных финансовых данных не подтверждает успешную сверку. Неподписанная отмена не возвращает уже отправленные деньги.
+   Для второй команды target должен совпадать с manifest. Для эмулятора использовать `local-emulator` и loopback origin, для основного аккаунта — `production` и `https://api.rocketwork.ru`; sandbox не принимается.
+3. Владелец отдельно редактирует [неактивный пример policy](examples/rocketwork-policy.json): точный ManifestHash из fingerprint, RunID, canonical AccountID, allowlist, явный подтверждённый максимум комиссии, срок и лимиты. Денежные поля policy обязательны: отсутствующая/null комиссия не считается согласованным нулём. Пример с пустым ArmingID и отрицательной комиссией **невалиден и не выдаёт допуск**. 100 ₽ общего / 50 ₽ дневного бюджета, три операции/сутки и 24 часа — предложенные условия, а не включённые разрешения.
+4. Через защищённый ops-доступ владелец использует policy-DSN, runner — отдельный control-DSN и provider token. Их DB identity проверяется вместо `--email`; runner не может issue/revoke/arm или менять квоты. Порядок выдачи:
 
-Состояние содержит только hash manifest, ID задания, checkpoints и ограниченную историю статусов. Сам manifest содержит персональные и договорные данные: хранить его приватно с резервной копией, не коммитить реальный экземпляр. Никогда не удалять состояние ради повторной отправки.
+   ```bash
+   # Только владелец политики; account после configure остаётся выключенным.
+   maxim rocketwork-check configure-account --policy private/policy.json --alias approved-account-alias
+   maxim rocketwork-check issue --policy private/policy.json --grant APPROVED_GRANT_UUID
+   # Только runner; prepare и status не пишут провайдеру.
+   maxim rocketwork-check prepare --manifest private/manifest.json
+   maxim rocketwork-check inspect --run APPROVED_RUN_UUID
+   maxim rocketwork-check status --run APPROVED_RUN_UUID
+   ```
+
+5. Показать владельцу конкретные сумму, получателя, условия, тариф, бюджеты и срок. Только после отдельного разрешения он выполняет `arm --account CANONICAL_ACCOUNT_ID`; затем runner пошагово исполняет:
+
+   ```bash
+   maxim rocketwork-check execute --run APPROVED_RUN_UUID
+   maxim rocketwork-check reconcile --run APPROVED_RUN_UUID
+   maxim rocketwork-check resume --run APPROVED_RUN_UUID
+   maxim rocketwork-check status --run APPROVED_RUN_UUID
+   ```
+
+   Каждый execute/resume выполняет максимум один новый внешний write. Если возвращён intent/uncertain, пустой поиск не разрешает повтор. `reconcile` читает провайдера и сохраняет доказанный результат; при отсутствии окончательной комиссии резерв сохраняется. Те же v2-команды доступны через `integration-check --system rocketwork --target production --manifest private/manifest.json --scenario ...`; execute/resume требуют `--execute`. `--approved-manifest-sha256` не является полномочием и не заменяет grant.
+6. Проверить фактический расход, договор/акт/чек, diagnostic ledger и квоты, затем владелец выполняет `revoke --grant ...`. При расхождении — `kill --account ...`, чтение и сверка продолжаются. Сумму, лимиты и депозит автоматически не повышать.
+
+#### Постоянное состояние и импорт старого прогона
+
+Manifest содержит персональные и договорные данные: хранить приватно вне git. Постоянные grant/run/action/reserve/ownership находятся в доверенной основной БД. `run_dir`, `run.lock`, state.json и пересоздание dev-БД не выдают права, не сбрасывают лимиты и не заменяют центральный журнал. Файловый v1-путь сохранён только для local-emulator harness.
+
+Старый production manifest v1 нельзя execute/resume напрямую. Команда `maxim rocketwork-check import --manifest private/legacy.json --alias approved-account-alias` выполняет только GET/lookup, проверяет компанию/условия/получателя и сохраняет существующий task ID. Она не создаёт договор, резерв или новое полномочие. Для продолжения владелец отдельно утверждает manifest v2 с `legacy_import_id`, `imported_terms_hash` из результата и прежними terms/external_id, без действия create, затем выдаёт новый grant. Prepare привязывает импортированный task; повторный POST исключён центральной уникальностью ownership. Уже оплаченные или спорные старые задачи сначала сверяются отдельно; новый grant не разрешает повторную оплату.
+
+`status` показывает номинал, fee ceiling, фактические расходы, все unresolved holds, остаток общего/дневного лимита, счётчик новых операций, версию/срок/отзыв допуска и next_step. Суммы — копейки; большие агрегаты передаются десятичными строками без потери точности. Квоты общие по каноническому физическому аккаунту; дополнительные aliases/grants/хосты их не обнуляют. UTC-день первичного резерва определяет счётчик операций; фактический финансовый расход относится к дню контрольного settlement, включая «резерв вчера → paid сегодня».
+
+Production Webhook после Bearer-проверки маршрутизирует диагностические задачи по центральному реестру и проверенному GET, а бизнес-задачи — в payout. Диагностические callbacks не запускают P-16 и не остаются в бесконечном business retry. Runner сверяется polling-командой reconcile и не требует создания подписки; одни и те же callbacks/history не создают повторную проводку.
+
+Внешняя комиссия устанавливается провайдером. Если API не ограничивает её до списания, локальный резерв не гарантирует абсолютный потолок комиссии. Превышение учитывается полностью, новые writes блокируются. Малый депозит и 10 ₽ сами по себе не гарантируют безопасность.
+
+Backup/recovery и раздельные Compose/SQL-права: [руководство ops](../../deploy/app/README.md#изолированные-проверки-rocketwork-на-основном-аккаунте). До restore остановить runner и сменить arming ID **вне backup БД**, восстановить readonly, сверить провайдера и ledger, затем выдать новый явный допуск. Продолжение незавершённого run требует отдельной owner-команды `reauthorize --run UUID --grant NEW_GRANT_UUID` с прежними immutable RunID/ManifestHash/номиналом/fee ceiling. Она меняет только активный grant, сохраняя резервы и все intent; не даёт повторить неизвестное действие. Восстановленный старый grant не разрешает writes при соблюдении этой процедуры; автоматическое обнаружение произвольного DBA-отката без внешнего high-watermark не обещается.
 
 ### Локальная проверка
 
@@ -479,3 +512,23 @@ go test ./internal/integration/bank/tbank -run TestFixtureMatchesSuppliedStateme
 Подготовлены readonly/controlled/automation Т-Банка, допуск TBANK_DEV_REAL_ENABLED, бюджет на один RUN_ID, организация, лимит платежа, expiry и код в назначении. Суммы по умолчанию — 100 ₽/платёж и 500 ₽/прогон, минимальный controlled-счёт 1 ₽. Реальных платежей в ходе этой подготовки не было. Для реального endpoint CLI требует --target production; обычный worker на dev работает только с controlled, не с неограниченным automation. Выкладка и совместная проверка выполняются после окончания соседней работы Рокет Ворк. Её разрешения исходящих выплат остаются отдельными. Инструкция: deploy/app/README.md, «Ограниченные реальные пополнения на dev».
 
 Проверка controlled-подготовки 2026-11-11: полный Linux go test -race -p 2 -count=1 -timeout=10m ./... прошёл; после последних изменений повторно прошли billing/app и bootstrap с PostgreSQL и -race, go vet, sqlc vet, mockapi, проверка env и Docker-сборка. Генерация OpenAPI/sqlc воспроизводима. Проверены конкурентный бюджет, rollback, неизменность политики, запрет удаления истории и ручного обхода. Живые реальные оплаты и совместная проверка после объединения веток ещё не выполнялись.
+### Контроль dev-допуска — 2026-11-11
+
+| Проверка | Результат |
+|---|---|
+| `sqlc generate` / `sqlc vet` 1.30.0 | Успешно; повторная генерация без дельты |
+| Backend + mockapi `go generate` | Успешно в Go 1.27.2; повторная генерация без дельты. OpenAPI расширен enum-значениями diagnostic_expense / rw_diagnostic |
+| `go vet ./...` | Успешно в Linux/CGO, включая финальные изменения |
+| `CI=true CGO_ENABLED=1 go test -race -count=1 ./...` | Полный успешный Linux-прогон с реальными PostgreSQL/MinIO/Mailpit; `GOFLAGS=-p=2`, локально `TESTCONTAINERS_RYUK_DISABLED=true` |
+| Адресный финальный Linux `-race` | Успешно: весь bootstrap/bridge и CLI/preflight/access/isolation после финальных проверок origin и явного ERROR при fee overrun |
+| PostgreSQL / Client / независимый HTTP-эмулятор | Успешно: общий бюджет нескольких grants, конкуренция, 100 повторов, midnight settlement, lost response, expiry/revoke/kill, invalid arming/alias/amount/flags/action, outage, legacy import, recovery reauthorize без сброса intent, смешанные/ранние callbacks, paid без fee, fee overrun, cancellation/rejection, ledger rollback и сходимость |
+| Миграции 22–33 и SQL-роли | Up/down пустых схем, сохранение истории и разделение policy/runner/app проверены; raw UPDATE/DELETE/TRUNCATE и выдача допуска runner запрещены. Новые миграции проверены в рабочем дереве; 26 имеет contract-маркер |
+| `mockapi: go test ./...` | Успешно; модель и summary нового расходного счёта согласованы с API |
+| CLI и Dockerfile | Успешно; финальный локальный образ maxim:rocketwork-controlled-local-20261111, без публикации |
+| `deploy/scripts/check-env.sh`, rendered Compose | Успешно; обычные dev API/worker не получают RW token, control-DSN или policy-DSN. Ops jobs используют отдельные env/профиль и read-only JSON inputs |
+| `git diff --check`, документация | Успешно; относительные локальные ссылки проверены. Исходный RW OpenAPI не менялся |
+| Живая проверка | Не выполнялась. Задача 13 требует конкретных условий, существующего получателя, проверенного минимума/комиссии и отдельного разрешения владельца |
+
+Первый Linux-прогон выявил конфликт reaper-контейнеров testcontainers при параллельных пакетах; локальный запуск ограничен `-p=2` и очищает контейнеры через сами тесты. В dbtest добавлено ожидание опубликованного PostgreSQL-порта. Полный прогон также потребовал явно выдать старым контрактным тестам loopback-capability, привязать rollback-тест к версии 17 вместо фиксированного числа шагов и расширить API/SQL-сверку новым расходным счётом. После исправлений полный прогон и адресные финальные проверки прошли. Эмуляторный run повторно проверяет origin/target при resume и не превращается в production-run через env. Сетевые команды доверенного CLI принимают только production; local-emulator используется офлайн для формы manifest и отдельным HTTP-harness на тестовой БД, без основного токена/control-DSN.
+
+Совместная проверка после объединения Т-Банка и RocketWork controlled (2026-11-11): полный Linux go test -race -p 2 -count=1 -timeout=10m ./... прошёл, включая PostgreSQL, bootstrap и оба платёжных контура. Также прошли go vet, sqlc vet, mockapi, env-check и Docker-сборка; повторная генерация API/sqlc без дельты. Реальные операции и выкладка не включались.

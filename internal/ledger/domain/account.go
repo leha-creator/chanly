@@ -17,6 +17,7 @@ const (
 	AccountBank              AccountKind = "bank"
 	AccountRocketworkDeposit AccountKind = "rocketwork_deposit"
 	AccountPayoutFees        AccountKind = "payout_fees"
+	AccountDiagnosticExpense AccountKind = "diagnostic_expense"
 	AccountAdvertiserBalance AccountKind = "advertiser_balance"
 	AccountPlacementHold     AccountKind = "placement_hold"
 	AccountBloggerPayable    AccountKind = "blogger_payable"
@@ -26,6 +27,7 @@ const (
 // AccountKinds — все виды в порядке 06 §2.1.
 var AccountKinds = []AccountKind{
 	AccountBank, AccountRocketworkDeposit, AccountPayoutFees,
+	AccountDiagnosticExpense,
 	AccountAdvertiserBalance, AccountPlacementHold, AccountBloggerPayable, AccountPlatformRevenue,
 }
 
@@ -50,7 +52,7 @@ func (k AccountKind) Valid() bool {
 // Side — актив или пассив. payout_fees — актив (расход).
 func (k AccountKind) Side() Side {
 	switch k {
-	case AccountBank, AccountRocketworkDeposit, AccountPayoutFees:
+	case AccountBank, AccountRocketworkDeposit, AccountPayoutFees, AccountDiagnosticExpense:
 		return Asset
 	}
 	return Liability
@@ -75,6 +77,7 @@ type AccountRef struct {
 func Bank() AccountRef              { return AccountRef{Kind: AccountBank} }
 func RocketworkDeposit() AccountRef { return AccountRef{Kind: AccountRocketworkDeposit} }
 func PayoutFees() AccountRef        { return AccountRef{Kind: AccountPayoutFees} }
+func DiagnosticExpense() AccountRef { return AccountRef{Kind: AccountDiagnosticExpense} }
 func PlatformRevenue() AccountRef   { return AccountRef{Kind: AccountPlatformRevenue} }
 
 // AdvertiserBalance — свободные деньги рекламодателя.
