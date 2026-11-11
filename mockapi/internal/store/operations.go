@@ -461,7 +461,7 @@ func (tx *Tx) RknRecheckDue(c *Channel) bool {
 // ApproveMissing — чего не хватает каналу для одобрения (S-16, details.missing).
 func ApproveMissing(c *Channel) []string {
 	missing := []string{}
-	if !c.IsPublic || !c.BotIsAdmin || !slices.Contains(c.BotPermissions, "write") || !slices.Contains(c.BotPermissions, "delete") {
+	if !c.BotIsAdmin || !slices.Contains(c.BotPermissions, "write") || !slices.Contains(c.BotPermissions, "delete") {
 		missing = append(missing, "rights")
 	}
 	if c.CategoryID == nil {

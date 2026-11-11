@@ -27,7 +27,6 @@ const KeyChannelID = "channel_id"
 
 // Config — параметры модуля (07 §8); значения по умолчанию — из документов.
 type Config struct {
-	Visibility domain.VisibilityPolicy
 	// LinkCodeTTL — срок кода подключения (A-41: 60 минут).
 	LinkCodeTTL time.Duration
 	// LinkCodesPerHour — предел кодов организации в час (R-2).

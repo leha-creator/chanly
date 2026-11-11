@@ -112,7 +112,7 @@ func (s *Service) Update(ctx context.Context, orgID, id uuid.UUID, p domain.Prof
 			return err
 		}
 		before := profile(c)
-		change, err := c.UpdateProfile(p, s.Config.RknThreshold, s.Clock.Now(), s.Config.Visibility)
+		change, err := c.UpdateProfile(p, s.Config.RknThreshold, s.Clock.Now())
 		if errors.Is(err, domain.ErrNotEditable) {
 			s.log.WarnContext(ctx, "channel update rejected", logx.KeyOp, op, KeyChannelID, c.ID, "status", c.Status)
 			return apperr.Conflict("channel cannot be edited in its current status").WithDetail("status", string(c.Status))

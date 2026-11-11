@@ -40,7 +40,7 @@ func (s *Service) Unblock(ctx context.Context, adminID, id uuid.UUID, reason str
 		return nil, apperr.Validation("reason", "required")
 	}
 	err := s.blockTx(ctx, op, id, func(c *domain.Channel) (domain.StatusChange, error) {
-		return c.Unblock(s.Config.RknThreshold, s.Clock.Now(), s.Config.Visibility)
+		return c.Unblock(s.Config.RknThreshold, s.Clock.Now())
 	}, "channel.unblocked", reason)
 	if err != nil {
 		return nil, err

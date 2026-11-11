@@ -1381,6 +1381,7 @@ paths:
         только здесь: откройте ссылку и запустите бота в MAX. Затем добавьте бота
         администратором канала с write/delete и запустите refresh. Публикаций нет.
         Ссылка одноразовая, сессия действует CHANNEL_LINK_CODE_TTL.
+        Принимаются публичные и приватные каналы; публичная ссылка не требуется.
         Не больше CHANNEL_LINK_CODES_PER_HOUR сессий организации в час.
       responses:
         '201':
@@ -1966,7 +1967,7 @@ paths:
       operationId: approveChannel
       summary: Одобрить канал (S-16 шаг 3)
       description: |
-        Роль: moderator, senior. Только из `moderation`. Нужны права бота и публичность канала, категория, включённая цена,
+        Роль: moderator, senior. Только из `moderation`. Нужны права бота, категория, включённая цена,
         а при подписчиках от 10 000 — подтверждённый номер РКН. Чего не хватает — `409` с
         `details.missing` из `rights`, `category`, `price`, `rkn`. Канал в другом состоянии — `409`
         с `details.status`.
@@ -2074,8 +2075,8 @@ paths:
       summary: Снять блокировку канала
       description: |
         Роль: senior. Только из `blocked` (иначе `409` с `details.status`); канал уходит на повторную
-        модерацию (`moderation`), а без прав бота или публичности — в `pending_rights` с
-        `status_reason` `missing_rights` или `not_public`.
+        модерацию (`moderation`), а без прав бота — в `pending_rights` с
+        `status_reason` `missing_rights`. Приватность канала не ограничивает допуск.
       parameters:
         - $ref: '#/components/parameters/Id'
       requestBody:
@@ -4449,7 +4450,9 @@ components:
         id: { $ref: '#/components/schemas/Uuid' }
         title: { type: string }
         icon_url: { type: string, format: uri }
-        link: { type: string, format: uri }
+        link:
+          type: string
+          description: Ссылка канала из MAX, в том числе приватная; пустая строка, если MAX не вернул ссылку.
         description: { type: string }
         category: { $ref: '#/components/schemas/ChannelCategory' }
         subscribers_count: { type: integer }
@@ -4978,12 +4981,14 @@ components:
         title: { type: string }
         icon_url: { type: string, format: uri }
         link: { type: string, format: uri }
-        is_public: { type: boolean }
+        is_public:
+          type: boolean
+          description: Фактическая публичность из MAX; приватные каналы также допускаются.
         status: { $ref: '#/components/schemas/ChannelStatus' }
         status_reason:
           type: string
           description: |
-            Код причины состояния: `not_public` — канал закрытый; `missing_rights` — у бота нет
+            Код причины состояния: `missing_rights` — у бота нет
             прав из `missing_permissions`; `unclaimed_expired` — канал не подключён кодом за 7 суток;
             `rkn_required` — канал приостановлен до подтверждения номера РКН; `blocked_by_admin` —
             канал заблокирован администратором; текст отказа модерации для `rejected`.
@@ -5039,7 +5044,7 @@ components:
         expires_at: { type: string, format: date-time }
         reason:
           type: string
-          enum: [expired, max_unavailable, user_rights_required, bot_rights_required, not_channel, not_public, linked_to_other, channel_unavailable, channel_changed]
+          enum: [expired, max_unavailable, user_rights_required, bot_rights_required, not_channel, linked_to_other, channel_unavailable, channel_changed]
         channel_id: { type: string, format: uuid }
         candidates:
           type: array

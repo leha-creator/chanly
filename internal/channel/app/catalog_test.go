@@ -73,9 +73,8 @@ func reason(t *testing.T, err error) string {
 	return string(ae.Code) + "/" + r
 }
 
-func TestPrivateChannelApprovalPersistsWithDevelopmentPolicy(t *testing.T) {
+func TestPrivateChannelApprovalPersists(t *testing.T) {
 	e := newEnv(t)
-	e.svc.Config.Visibility = domain.AllowPrivateChannels
 	c := e.moderated(-80000000100)
 	closed := publicCh
 	closed.IsPublic = false
@@ -83,18 +82,19 @@ func TestPrivateChannelApprovalPersistsWithDevelopmentPolicy(t *testing.T) {
 	e.event(rightsChanged(c.MaxChatID))
 	e.drain()
 	adminID, ctx := e.admin()
-	// The same stored facts must be rejected by the strict production policy.
-	e.svc.Config.Visibility = domain.PublicChannelsOnly
-	if _, err := e.svc.Approve(ctx, adminID, c.ID); !apperr.Is(err, apperr.CodeConflict) {
-		t.Fatalf("strict policy approved private channel: %v", err)
-	}
-	e.svc.Config.Visibility = domain.AllowPrivateChannels
 	if _, err := e.svc.Approve(ctx, adminID, c.ID); err != nil {
 		t.Fatal(err)
 	}
 	c = e.channel(c.MaxChatID)
 	if c.Status != domain.StatusActive || c.IsPublic {
 		t.Fatalf("persisted approval: status=%s public=%v", c.Status, c.IsPublic)
+	}
+	if _, err := e.svc.CatalogChannel(context.Background(), c.ID); err != nil {
+		t.Fatalf("private channel absent from catalog: %v", err)
+	}
+	page, err := e.svc.ListCatalog(context.Background(), app.CatalogRequest{})
+	if err != nil || len(page.Items) != 1 || page.Items[0].ID != c.ID {
+		t.Fatalf("private catalog: %+v %v", page, err)
 	}
 }
 

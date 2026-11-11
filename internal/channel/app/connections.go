@@ -82,6 +82,11 @@ func (s *Service) GetConnection(ctx context.Context, org, user, id uuid.UUID) (*
 			return err
 		}
 		v = &ConnectionView{Connection: c, Candidates: []domain.ConnectionCandidate{}}
+		// Older sessions may have failed only because the channel was private.
+		// Ask the client to refresh against current rules, never to make it public.
+		if c.Reason == domain.ReasonNotPublic {
+			c.Reason = "channel_changed"
+		}
 		if !s.Clock.Now().Before(c.ExpiresAt) {
 			c.Status = "expired"
 			c.Reason = "expired"
@@ -277,9 +282,6 @@ func (s *Service) checkConnectionRights(ctx context.Context, c *domain.Channel, 
 	if !info.IsChannel {
 		return info, bot, "not_channel", nil
 	}
-	if !info.IsPublic && s.Config.Visibility != domain.AllowPrivateChannels {
-		return info, bot, "not_public", nil
-	}
 	return info, bot, "", nil
 }
 
@@ -394,11 +396,11 @@ func (s *Service) CompleteConnection(ctx context.Context, p ConnectionPayload) e
 		if locked.LockVersion != ch.LockVersion {
 			return fail("channel_changed")
 		}
-		change := locked.RightsRefreshed(info, bot, s.Config.RknThreshold, s.Clock.Now(), s.Config.Visibility)
+		change := locked.RightsRefreshed(info, bot, s.Config.RknThreshold, s.Clock.Now())
 		if err = s.save(ctx, "Channel.Connection.Refresh", locked, change); err != nil {
 			return err
 		}
-		change, err = locked.LinkTo(current.OrganizationID, s.Config.RknThreshold, s.Clock.Now(), s.Config.Visibility)
+		change, err = locked.LinkTo(current.OrganizationID, s.Config.RknThreshold, s.Clock.Now())
 		if err != nil && !errors.Is(err, domain.ErrAlreadyLinked) {
 			return fail("channel_unavailable")
 		}

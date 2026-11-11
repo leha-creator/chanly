@@ -165,6 +165,9 @@ docker compose -f compose.dev.yml run --rm --no-deps api dev seed
 
 Основной сценарий не публикует технические сообщения в канале:
 
+Принимаются публичные и приватные каналы MAX во всех окружениях, включая production.
+Публичная ссылка и `is_public=true` для подключения, модерации и каталога не требуются.
+
 1. Блогер входит, создаёт организацию с кабинетом `blogger` и вызывает
    `POST /api/v1/blogger/channels/connections`. Ответ содержит `id`, `expires_at`
    и одноразовый `bot_url`. Ссылку показывать кнопкой «Открыть бота в MAX»;
@@ -218,11 +221,11 @@ API MAX не возвращает общий список каналов бот�
 
 Продолжение предыдущего раздела. Права бота поддельный адаптер не даёт, поэтому шаг 1 заменяет их запись в базу; остальное — через API.
 
-1. Канал с правами и публичностью — на модерацию:
+1. Канал с правами бота — на модерацию (публичный или приватный):
 
 ```bash
 docker compose -f compose.dev.yml exec postgres psql -U maxim -d maxim -c \
-  "UPDATE channel SET is_public = true, bot_is_admin = true, bot_permissions = '{write,delete}',
+  "UPDATE channel SET bot_is_admin = true, bot_permissions = '{write,delete}',
    status = 'moderation', status_reason = NULL WHERE status = 'pending_rights'"
 ```
 

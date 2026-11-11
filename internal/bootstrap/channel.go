@@ -97,7 +97,7 @@ func (c channelMAX) SendUserMessage(ctx context.Context, userID int64, text stri
 
 // newChannelService собирает модуль каналов. Порты MAX подключаются только в worker.
 func newChannelService(cfg Config, in *infra, txRunner tx.Runner, queue job.Enqueuer, auditLog audit.Recorder) (*channelapp.Service, *channelpg.Store) {
-	in.log.Debug("channel visibility policy configured", "op", "Bootstrap.Channel", "allow_private", cfg.channelVisibilityPolicy() == domain.AllowPrivateChannels)
+	in.log.Debug("public and private MAX channels accepted", "op", "Bootstrap.Channel")
 	store := channelpg.New(in.pool, in.log.With(logx.KeyModule, "channel"))
 	ch := cfg.Channel
 	day := 24 * time.Hour
@@ -108,7 +108,6 @@ func newChannelService(cfg Config, in *infra, txRunner tx.Runner, queue job.Enqu
 		Catalog: store.Catalog(), Admin: store.AdminChannels(),
 		Alerts: in.alerter, Tx: txRunner, Jobs: queue, Audit: auditLog, Clock: in.clock, Log: in.log,
 		Config: channelapp.Config{
-			Visibility:  cfg.channelVisibilityPolicy(),
 			LinkCodeTTL: cfg.Channel.LinkCodeTTL, LinkCodesPerHour: cfg.Channel.LinkCodesPerHour,
 			UnclaimedTTL: cfg.Channel.UnclaimedTTL, RknThreshold: cfg.Channel.RknThreshold,
 			Pepper: []byte(cfg.AuthCodePepper), BotName: cfg.MAX.BotName,
@@ -128,13 +127,6 @@ func newChannelService(cfg Config, in *infra, txRunner tx.Runner, queue job.Enqu
 	// Availability и Placements не заданы: до модуля размещений работают пустые
 	// реализации (R-11 этапа «Подключение каналов», R-8 этапа «Каталог»).
 	return channelapp.New(deps), store
-}
-
-func (cfg Config) channelVisibilityPolicy() domain.VisibilityPolicy {
-	if cfg.Env == EnvDevelopment {
-		return domain.AllowPrivateChannels
-	}
-	return domain.PublicChannelsOnly
 }
 
 // newMAXWebhook — приём событий MAX (R-3, R-4) с данными клиента для журнала.

@@ -41,9 +41,9 @@ func (e *ApproveBlockedError) Error() string {
 func (e *ApproveBlockedError) Is(target error) bool { return target == ErrApproveBlocked }
 
 // ApproveMissing — условия одобрения, которых нет у канала (S-16, R-18).
-func (c *Channel) ApproveMissing(rknThreshold int, visibility ...VisibilityPolicy) []string {
+func (c *Channel) ApproveMissing(rknThreshold int) []string {
 	missing := []string{}
-	if c.problem(visibility...) != "" {
+	if c.problem() != "" {
 		missing = append(missing, MissingRights)
 	}
 	if c.CategoryID == nil {
@@ -59,11 +59,11 @@ func (c *Channel) ApproveMissing(rknThreshold int, visibility ...VisibilityPolic
 }
 
 // Approve — администратор одобряет канал (S-16 шаг 3): moderation → active.
-func (c *Channel) Approve(adminID uuid.UUID, rknThreshold int, now time.Time, visibility ...VisibilityPolicy) (StatusChange, error) {
+func (c *Channel) Approve(adminID uuid.UUID, rknThreshold int, now time.Time) (StatusChange, error) {
 	if c.Status != StatusModeration {
 		return StatusChange{}, ErrNotInModeration
 	}
-	if missing := c.ApproveMissing(rknThreshold, visibility...); len(missing) > 0 {
+	if missing := c.ApproveMissing(rknThreshold); len(missing) > 0 {
 		return StatusChange{}, &ApproveBlockedError{Missing: missing}
 	}
 	change := StatusChange{ChannelID: c.ID, From: c.Status, To: StatusActive}
@@ -99,7 +99,7 @@ const (
 
 // RknChecked — администратор сверил номер с реестром (R-18): состояние проверки,
 // кто и когда; затем правило РКН (R-16) возвращает канал из rkn_required или оставляет.
-func (c *Channel) RknChecked(result RknCheckResult, adminID uuid.UUID, rknThreshold int, now time.Time, visibility ...VisibilityPolicy) (StatusChange, error) {
+func (c *Channel) RknChecked(result RknCheckResult, adminID uuid.UUID, rknThreshold int, now time.Time) (StatusChange, error) {
 	if c.Status == StatusUnclaimed || c.Status == StatusDisconnected || c.RknNumber == "" {
 		return StatusChange{}, ErrRknNotCheckable
 	}
@@ -112,7 +112,7 @@ func (c *Channel) RknChecked(result RknCheckResult, adminID uuid.UUID, rknThresh
 		return StatusChange{}, &RuleError{Field: "result", Reason: "unknown"}
 	}
 	c.RknCheckedAt, c.RknCheckedBy = &now, &adminID
-	return c.resolve(rknThreshold, now, visibility...), nil
+	return c.resolve(rknThreshold, now), nil
 }
 
 // RknRecheckDue — номер подтверждён раньше, чем interval назад: администратору пора
@@ -145,12 +145,12 @@ func (c *Channel) Block(now time.Time) (StatusChange, error) {
 }
 
 // Unblock — снятие блокировки (R-7): канал снова проходит модерацию; без прав — pending_rights.
-func (c *Channel) Unblock(rknThreshold int, now time.Time, visibility ...VisibilityPolicy) (StatusChange, error) {
+func (c *Channel) Unblock(rknThreshold int, now time.Time) (StatusChange, error) {
 	if c.Status != StatusBlocked {
 		return StatusChange{}, ErrNotBlocked
 	}
 	c.Status, c.StatusReason = StatusModeration, ""
-	change := c.resolve(rknThreshold, now, visibility...)
+	change := c.resolve(rknThreshold, now)
 	change.From = StatusBlocked
 	return change, nil
 }

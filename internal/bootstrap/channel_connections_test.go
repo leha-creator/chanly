@@ -12,8 +12,10 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	accountdomain "github.com/leha-creator/chanly/internal/account/domain"
 	"github.com/leha-creator/chanly/internal/apigen"
 	channelapp "github.com/leha-creator/chanly/internal/channel/app"
+	"github.com/leha-creator/chanly/internal/channel/channeltest"
 	channeldomain "github.com/leha-creator/chanly/internal/channel/domain"
 	"github.com/leha-creator/chanly/internal/integration/max"
 )
@@ -264,13 +266,12 @@ func TestChannelConnectionCandidatePagination(t *testing.T) {
 			excluded[ch] = true
 		case 23:
 			a.maxFake().SetChat(max.Chat{ChatID: chatID, Type: max.ChatTypeChannel, Title: "Закрытый канал"})
-			excluded[ch] = true
 		}
 	}
 	id, payload := createConnection(t, c)
 	a.startConnection(payload, 5001)
 	v := getConnection(t, c, id)
-	if v.Status != "ready" || len(v.Candidates) != 21 {
+	if v.Status != "ready" || len(v.Candidates) != 22 {
 		t.Fatalf("paginated candidates: %s %d", v.Status, len(v.Candidates))
 	}
 	for _, item := range v.Candidates {
@@ -280,6 +281,61 @@ func TestChannelConnectionCandidatePagination(t *testing.T) {
 	}
 	if r := c.do("POST", "/blogger/channels/connections/"+id.String()+"/claim", map[string]any{"channel_id": uuid.New()}); r.status != 404 {
 		t.Fatalf("unknown candidate %d", r.status)
+	}
+}
+
+func TestPrivateChannelConnectionInProduction(t *testing.T) {
+	cfg := testConfig()
+	inn, name, legal := cfg.ORDPlatform()
+	cfg.ORD.PlatformINN, cfg.ORD.PlatformName, cfg.ORD.PlatformLegalType = inn, name, string(legal)
+	cfg.Env = EnvProduction
+	a := newTestAppWith(t, cfg)
+	c, _ := a.newBlogger("connection.private.production@example.ru")
+	chID := a.discoverConnectionChannel(-911, 5001)
+	a.maxFake().SetChat(max.Chat{ChatID: -911, Type: max.ChatTypeChannel, Title: "Приватный канал", IsPublic: false})
+	a.maxEvent(rightsEvent(-911))
+	a.settle()
+	id, payload := createConnection(t, c)
+	a.startConnection(payload, 5001)
+	v := getConnection(t, c, id)
+	if v.Status != "ready" || len(v.Candidates) != 1 || v.Candidates[0].Id != chID || v.Candidates[0].Link != "" {
+		t.Fatalf("private candidates: %+v", v)
+	}
+	if r := c.do("POST", "/blogger/channels/connections/"+id.String()+"/claim", map[string]any{"channel_id": chID}); r.status != 202 {
+		t.Fatalf("private claim: %d %s", r.status, r.body)
+	}
+	a.settle()
+	if v = getConnection(t, c, id); v.Status != "connected" {
+		t.Fatalf("private connection: %+v", v)
+	}
+	var isPublic bool
+	var status string
+	if err := a.db.Pool.QueryRow(context.Background(), `SELECT is_public,status FROM channel WHERE id=$1`, chID).Scan(&isPublic, &status); err != nil || isPublic || status != "moderation" {
+		t.Fatalf("private persisted: %v %s %v", isPublic, status, err)
+	}
+	path := "/blogger/channels/" + chID.String()
+	if r := c.do("PATCH", path, map[string]any{"category_id": channeltest.CategoryFood}); r.status != 200 {
+		t.Fatalf("private category %d %s", r.status, r.body)
+	}
+	if r := c.do("PUT", path+"/prices", map[string]any{"prices": []map[string]any{{"format_id": "f_1_24", "amount": 300000, "is_enabled": true}}}); r.status != 200 {
+		t.Fatalf("private prices %d %s", r.status, r.body)
+	}
+	admin := a.adminClient("private.moderator@example.ru", accountdomain.AdminModerator)
+	if r := admin.do("POST", "/admin/channels/"+chID.String()+"/approve", nil); r.status != 200 {
+		t.Fatalf("private approval %d %s", r.status, r.body)
+	}
+	a.ordSettle()
+	advertiser := a.newAdvertiser("private.advertiser@example.ru")
+	r := advertiser.do("GET", "/catalog/channels/"+chID.String(), nil)
+	if r.status != 200 {
+		t.Fatalf("private catalog %d %s", r.status, r.body)
+	}
+	var card struct {
+		Link string `json:"link"`
+	}
+	r.json(t, &card)
+	if card.Link != "" {
+		t.Fatalf("invented private link: %q", card.Link)
 	}
 }
 

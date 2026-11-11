@@ -119,7 +119,7 @@ func (s *Service) AdminGet(ctx context.Context, id uuid.UUID) (*AdminChannelView
 func (s *Service) Approve(ctx context.Context, adminID, id uuid.UUID) (*AdminChannelView, error) {
 	const op = "Channel.Approve"
 	err := s.adminDecision(ctx, op, id, func(c *domain.Channel) (domain.StatusChange, audit.Entry, error) {
-		change, err := c.Approve(adminID, s.Config.RknThreshold, s.Clock.Now(), s.Config.Visibility)
+		change, err := c.Approve(adminID, s.Config.RknThreshold, s.Clock.Now())
 		var blocked *domain.ApproveBlockedError
 		if errors.As(err, &blocked) {
 			s.log.WarnContext(ctx, "channel approve blocked", logx.KeyOp, op, KeyChannelID, c.ID, "missing", blocked.Missing)
@@ -156,7 +156,7 @@ func (s *Service) Reject(ctx context.Context, adminID, id uuid.UUID, reason stri
 func (s *Service) SetRknCheck(ctx context.Context, adminID, id uuid.UUID, result domain.RknCheckResult, comment string) (*AdminChannelView, error) {
 	const op = "Channel.SetRknCheck"
 	err := s.adminDecision(ctx, op, id, func(c *domain.Channel) (domain.StatusChange, audit.Entry, error) {
-		change, err := c.RknChecked(result, adminID, s.Config.RknThreshold, s.Clock.Now(), s.Config.Visibility)
+		change, err := c.RknChecked(result, adminID, s.Config.RknThreshold, s.Clock.Now())
 		e := audit.Entry{Action: "channel.rkn_checked", Data: map[string]any{"result": string(result), "rkn_status": c.RknStatus}}
 		if comment != "" {
 			e.Reason = &comment

@@ -167,12 +167,12 @@ erDiagram
 | `organization_id` | `uuid` | нет | Владелец-блогер. Пусто у `unclaimed` |
 | `max_chat_id` | `bigint` | да | Уникально |
 | `title`, `max_description`, `icon_url`, `link` | `text` | нет | Из MAX, обновляются суточно и по событию `chat_title_changed` |
-| `is_public` | `boolean` | да | Из MAX |
+| `is_public` | `boolean` | да | Факт из MAX; не ограничивает подключение, модерацию или каталог |
 | `added_by_max_user_id` | `bigint` | да | Кто добавил бота (из `bot_added`). Адресат личных сообщений бота блогеру (A-41) |
 | `description` | `text` | нет | Описание для каталога, пишет блогер |
 | `category_id` | `uuid` | нет | Обязательно для выхода из `moderation` |
 | `status` | `text` | да | См. §9 |
-| `status_reason` | `text` | нет | Код причины: `not_public`, `missing_rights`, `rkn_required`, текст отказа модерации |
+| `status_reason` | `text` | нет | Код причины: `missing_rights`, `rkn_required`, текст отказа модерации. Исторический `not_public` снимается при обновлении канала |
 | `bot_is_admin` | `boolean` | да | |
 | `bot_permissions` | `text[]` | да | Список прав из MAX |
 | `bot_permissions_checked_at` | `timestamptz` | нет | |
@@ -186,7 +186,7 @@ erDiagram
 | `moderated_at`, `moderated_by` | `timestamptz`, `uuid` | нет | |
 | `ord_platform_ready_at` | `timestamptz` | нет | Площадка канала зарегистрирована в ОРД (принята или подтверждена). Каталог и корзина показывают канал только при непустом значении. Ставит модуль каналов по сигналу маркировки; при `ORD_ENABLED=false` — при одобрении |
 
-Ограничение: канал может быть `active` только при `organization_id is not null`, `is_public`, правах `write` и `delete`, заполненной категории, хотя бы одной включённой цене и (`subscribers_count < 10000` или `rkn_status = 'confirmed'`). В базе ограничение закреплено проверкой `channel_active_requirements` и отложенным триггером-ограничением `channel_active_requires_price` на `channel` и `channel_price`: при фиксации транзакции у канала в `active` есть включённая цена активного формата. Порог РКН — параметр конфигурации `RKN_SUBSCRIBERS_THRESHOLD`, его проверяет модуль каналов.
+Ограничение: канал может быть `active` только при `organization_id is not null`, правах `write` и `delete`, заполненной категории, хотя бы одной включённой цене и (`subscribers_count < 10000` или `rkn_status = 'confirmed'`). В базе ограничение закреплено проверкой `channel_active_requirements` и отложенным триггером-ограничением `channel_active_requires_price` на `channel` и `channel_price`: при фиксации транзакции у канала в `active` есть включённая цена активного формата. Порог РКН — параметр конфигурации `RKN_SUBSCRIBERS_THRESHOLD`, его проверяет модуль каналов.
 
 ### channel_metrics
 

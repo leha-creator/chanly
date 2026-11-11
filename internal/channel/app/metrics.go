@@ -136,7 +136,7 @@ func (s *Service) RefreshMetrics(ctx context.Context, p MetricsPayload) error {
 		if err := s.Metrics.Upsert(ctx, c.ID, snap, now); err != nil {
 			return err
 		}
-		change := c.MetricsRefreshed(info, s.Config.RknThreshold, now, s.Config.Visibility)
+		change := c.MetricsRefreshed(info, s.Config.RknThreshold, now)
 		if err := s.save(ctx, op, c, change); err != nil {
 			return err
 		}

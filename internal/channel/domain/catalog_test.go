@@ -212,8 +212,8 @@ func TestApprove(t *testing.T) {
 	}
 	notPublic := priced(StatusModeration)
 	notPublic.IsPublic = false
-	if _, err := notPublic.Approve(admin, rkn, t0); err == nil {
-		t.Error("closed channel approved")
+	if _, err := notPublic.Approve(admin, rkn, t0); err != nil {
+		t.Errorf("private channel approval: %v", err)
 	}
 	confirmed := priced(StatusModeration)
 	confirmed.SubscribersCount, confirmed.RknStatus = 12000, RknConfirmed
@@ -230,29 +230,40 @@ func TestApprove(t *testing.T) {
 	}
 }
 
-func TestPrivateChannelPolicyPreservesFactsAndRights(t *testing.T) {
+func TestPrivateChannelPreservesFactsAndRights(t *testing.T) {
 	c := priced(StatusModeration)
 	c.IsPublic = false
-	if _, err := c.Approve(admin, rkn, t0, AllowPrivateChannels); err != nil {
+	if _, err := c.Approve(admin, rkn, t0); err != nil {
 		t.Fatal(err)
 	}
 	private := pub
 	private.IsPublic = false
-	c.MetricsRefreshed(private, rkn, t0, AllowPrivateChannels)
+	c.MetricsRefreshed(private, rkn, t0)
 	if c.Status != StatusActive || c.IsPublic {
 		t.Fatalf("metrics lost private eligibility/fact: %s public=%v", c.Status, c.IsPublic)
 	}
-	c.RightsRefreshed(private, Membership{IsAdmin: true, Permissions: []string{"write"}}, rkn, t0, AllowPrivateChannels)
+	c.RightsRefreshed(private, Membership{IsAdmin: true, Permissions: []string{"write"}}, rkn, t0)
 	if c.Status != StatusSuspended || c.StatusReason != ReasonMissingRights {
 		t.Fatal("private policy bypassed delete permission")
 	}
-	c.RightsRefreshed(private, allOK, rkn, t0, AllowPrivateChannels)
+	c.RightsRefreshed(private, allOK, rkn, t0)
 	if c.Status != StatusActive {
 		t.Fatal("private channel did not resume with rights")
 	}
 	c.MetricsRefreshed(private, rkn, t0)
-	if c.Status != StatusSuspended || c.StatusReason != ReasonNotPublic {
-		t.Fatal("default policy accepted private channel")
+	if c.Status != StatusActive || c.IsPublic {
+		t.Fatal("metrics blocked private channel or changed visibility fact")
+	}
+}
+
+func TestLegacyPrivateSuspensionResumes(t *testing.T) {
+	c := priced(StatusSuspended)
+	c.StatusReason = ReasonNotPublic
+	private := pub
+	private.IsPublic = false
+	c.RightsRefreshed(private, allOK, rkn, t0)
+	if c.Status != StatusActive || c.StatusReason != "" || c.IsPublic {
+		t.Fatalf("legacy recovery: %+v", c)
 	}
 }
 

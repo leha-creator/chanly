@@ -234,7 +234,7 @@ func (s *Service) RefreshChannelInfo(ctx context.Context, channelID uuid.UUID) e
 			s.log.DebugContext(ctx, "channel disconnected during refresh, result dropped", logx.KeyOp, op)
 			return nil
 		}
-		change := c.RightsRefreshed(info, m, s.Config.RknThreshold, s.Clock.Now(), s.Config.Visibility)
+		change := c.RightsRefreshed(info, m, s.Config.RknThreshold, s.Clock.Now())
 		if err := s.save(ctx, op, c, change); err != nil {
 			return err
 		}

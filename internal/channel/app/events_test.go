@@ -108,7 +108,7 @@ func TestClosedChannelAndNonChannel(t *testing.T) {
 	e.drain()
 	e.event(channelPost(-100, "mid.1", issued.Code))
 	e.drain()
-	if c := e.channel(-100); c.Status != domain.StatusPendingRights || c.StatusReason != domain.ReasonNotPublic {
+	if c := e.channel(-100); c.Status != domain.StatusModeration || c.StatusReason != "" || c.IsPublic {
 		t.Fatalf("closed channel: %s/%s", c.Status, c.StatusReason)
 	}
 
@@ -124,9 +124,8 @@ func TestClosedChannelAndNonChannel(t *testing.T) {
 	}
 }
 
-func TestPrivateChannelDevelopmentPolicy(t *testing.T) {
+func TestPrivateChannelRequiresBotRights(t *testing.T) {
 	e := newEnv(t)
-	e.svc.Config.Visibility = domain.AllowPrivateChannels
 	closed := publicCh
 	closed.IsPublic = false
 	org := e.org()
@@ -154,7 +153,6 @@ func TestPrivateChannelDevelopmentPolicy(t *testing.T) {
 
 func TestRightsDiscoverChannelWithoutBotAdded(t *testing.T) {
 	e := newEnv(t)
-	e.svc.Config.Visibility = domain.AllowPrivateChannels
 	closed := publicCh
 	closed.IsPublic = false
 	e.max.set(-100, closed, allRights)

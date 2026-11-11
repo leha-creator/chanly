@@ -3753,7 +3753,7 @@
         <mxCell id="blg-channel-add-ph1" value="картинки-подсказки" style="rounded=1;absoluteArcSize=1;arcSize=12;whiteSpace=wrap;html=1;dashed=1;fillColor=#f6f8fb;strokeColor=#c3cad6;fontColor=#6a7484;fontSize=11;" vertex="1" parent="blg-channel-add-box1">
           <mxGeometry x="14" y="165" width="952" height="50" as="geometry" />
         </mxCell>
-        <mxCell id="blg-channel-add-note1" value="💡 Канал должен быть публичным. Страница ждёт событие от бота и сама переходит к настройке канала." style="rounded=1;absoluteArcSize=1;arcSize=10;whiteSpace=wrap;html=1;align=left;spacingLeft=8;spacingRight=6;fillColor=#eaf0ff;strokeColor=none;fontColor=#3d4a66;fontSize=11;" vertex="1" parent="blg-channel-add-box1">
+        <mxCell id="blg-channel-add-note1" value="💡 Подходят публичные и приватные каналы. У бота должны быть права на публикацию и удаление сообщений." style="rounded=1;absoluteArcSize=1;arcSize=10;whiteSpace=wrap;html=1;align=left;spacingLeft=8;spacingRight=6;fillColor=#eaf0ff;strokeColor=none;fontColor=#3d4a66;fontSize=11;" vertex="1" parent="blg-channel-add-box1">
           <mxGeometry x="14" y="223" width="952" height="24" as="geometry" />
         </mxCell>
         <mxCell id="blg-channel-add-in-title" value="Откуда приходят" style="text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;fontSize=12;fontStyle=1;fontSize=13;" vertex="1" parent="1">
