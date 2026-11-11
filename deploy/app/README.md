@@ -260,6 +260,9 @@ TBANK_PRODUCTION_APPROVED=false
 
 Production automation требует отдельного `TBANK_PRODUCTION_APPROVED=true`, dev-флаг не включает его. Диагностический CLI по-прежнему требует `--target production` и выделенной tbank_check БД; обычный worker использует dev-БД. Секреты не хранить в git. Приложение не ограничивает и не отменяет фактический перевод в банке.
 
+Выставление счёта через T-API и возврат к прежнему PDF:
+[BILLING_INVOICE_PROVIDER](TBANK-INVOICES.md). По умолчанию остаётся `local`.
+
 ## Изолированные проверки RocketWork на основном аккаунте
 
 Обычные dev API/worker работают через fake/disabled. Основной токен, `ROCKETWORK_CONTROL_DATABASE_URL`, `ROCKETWORK_POLICY_DATABASE_URL` и `ROCKETWORK_CHECK_ARMING_ID` не передаются им, PR CI или dev workspace. Название APP_ENV само по себе не является границей доверия. При прежнем раскрытии токена владелец меняет его до активации runner и удаляет старые копии; этот workflow не выполняет ротацию автоматически.

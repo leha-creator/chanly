@@ -16,6 +16,7 @@ import (
 	"github.com/leha-creator/chanly/internal/platform/ids"
 	"github.com/leha-creator/chanly/internal/platform/logx"
 	"github.com/leha-creator/chanly/internal/platform/money"
+	"github.com/leha-creator/chanly/internal/platform/storage"
 )
 
 // InvoicePage — страница счетов; NextCursor пуст на последней странице.
@@ -66,11 +67,15 @@ func (s *Service) CreateInvoice(ctx context.Context, orgID, userID uuid.UUID, am
 		Bank: supplier.BankName, BIK: supplier.BankBIK, CorrAccount: supplier.BankCorrAccount,
 		Purpose: paymentPurpose,
 	}
-	pdf, err := s.Renderer.Invoice(domain.InvoiceDoc{
+	doc := domain.InvoiceDoc{
 		PaymentPurpose: paymentPurpose,
 		Number:         inv.Number, IssuedAt: now, ExpiresAt: inv.ExpiresAt, Amount: amount, Supplier: s.Config.Supplier,
 		Payer: inv.Payer, VATNote: s.Config.VATNote,
-	})
+	}
+	if s.Config.InvoiceProvider == "tbank" {
+		return s.createBankInvoice(ctx, inv, doc)
+	}
+	pdf, err := s.Renderer.Invoice(doc)
 	if err != nil {
 		return domain.Invoice{}, err
 	}
@@ -151,6 +156,25 @@ func (s *Service) InvoicePDF(ctx context.Context, orgID, id uuid.UUID) (domain.I
 		return domain.Invoice{}, nil, 0, notFound(err, "invoice")
 	}
 	r, size, err := s.Storage.Get(ctx, inv.PDFStorageKey)
+	if errors.Is(err, storage.ErrNotFound) && s.InvoiceDocuments != nil {
+		doc, lookupErr := s.InvoiceDocuments.InvoiceDocument(ctx, inv.ID)
+		if lookupErr == nil {
+			if s.InvoiceIssuer == nil || doc.ID == uuid.Nil {
+				return inv, nil, 0, bankDocumentUnavailable(inv.ID)
+			}
+			pdf, downloadErr := s.InvoiceIssuer.Download(ctx, doc.PDFURL)
+			if downloadErr != nil {
+				return inv, nil, 0, bankDocumentUnavailable(inv.ID)
+			}
+			if putErr := s.Storage.PutPrivate(ctx, inv.PDFStorageKey, bytes.NewReader(pdf), int64(len(pdf)), "application/pdf"); putErr != nil {
+				return inv, nil, 0, putErr
+			}
+			return inv, io.NopCloser(bytes.NewReader(pdf)), int64(len(pdf)), nil
+		}
+		if !errors.Is(lookupErr, domain.ErrNotFound) {
+			return inv, nil, 0, lookupErr
+		}
+	}
 	if err != nil {
 		return domain.Invoice{}, nil, 0, err
 	}

@@ -22,6 +22,9 @@ type Options struct {
 
 // Register регистрирует периодические задания модуля; после простоя — один запуск.
 func Register(w *job.Worker, svc *app.Service, o Options) {
+	if svc.InvoiceIssuer != nil {
+		w.RegisterPeriodic("archive_bank_invoice_documents", job.Every(5*time.Minute), func(ctx context.Context, _ job.Running) error { return svc.ArchiveBankInvoiceDocuments(ctx) }, job.HandlerOptions{})
+	}
 	w.RegisterPeriodic(app.KindExpireInvoices, job.Every(o.ExpireInterval), func(ctx context.Context, _ job.Running) error {
 		_, err := svc.ExpireInvoices(ctx)
 		return err

@@ -94,6 +94,17 @@ type BankCreditSpend struct {
 	CreatedAt         pgtype.Timestamptz
 }
 
+type BankInvoiceDocument struct {
+	InvoiceID                 pgtype.UUID
+	OrganizationID            pgtype.UUID
+	RequestSnapshot           []byte
+	RemoteID                  pgtype.UUID
+	PdfUrl                    string
+	CreatedAt                 pgtype.Timestamptz
+	ArchivedAt                pgtype.Timestamptz
+	ResolvedWithoutCreationAt pgtype.Timestamptz
+}
+
 type BankOperationIdentity struct {
 	AccountNumber string
 	Alias         string

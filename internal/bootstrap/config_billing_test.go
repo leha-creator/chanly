@@ -38,6 +38,9 @@ func TestBillingConfig(t *testing.T) {
 		key, value, field string
 		ok                bool
 	}{
+		{"BILLING_INVOICE_PROVIDER", "unexpected", "BILLING_INVOICE_PROVIDER", false},
+		{"BILLING_INVOICE_PROVIDER", "local", "", true},
+		{"BILLING_INVOICE_PROVIDER", "tbank", "BILLING_INVOICE_PROVIDER", false},
 		{"CLOSING_ACTS_DAY", "0", "CLOSING_ACTS_DAY", false},
 		{"CLOSING_ACTS_DAY", "1", "", true},
 		{"CLOSING_ACTS_DAY", "28", "", true},

@@ -78,6 +78,7 @@ func (n NopNotifier) Notify(ctx context.Context, notice domain.Notice) error {
 
 // Config — параметры модуля.
 type Config struct {
+	InvoiceProvider string
 	// InvoiceTTL — срок действия счёта (14 суток).
 	InvoiceTTL time.Duration
 	// InvoicesPerUserHour, InvoicesPerIPHour — лимиты выставления (R-11).
@@ -91,6 +92,8 @@ type Config struct {
 
 // Deps — зависимости сервиса; связывает bootstrap.
 type Deps struct {
+	InvoiceIssuer    domain.InvoiceIssuer
+	InvoiceDocuments domain.BankInvoiceDocuments
 	BankSource       domain.BankSource
 	BankSync         domain.BankSyncStore
 	BankIdentity     domain.BankIdentity

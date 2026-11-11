@@ -3,6 +3,7 @@ package bootstrap
 import (
 	"fmt"
 	"regexp"
+	"strings"
 	"time"
 
 	billingapp "github.com/leha-creator/chanly/internal/billing/app"
@@ -12,6 +13,8 @@ import (
 
 // BillingConfig — приём оплаты и учёт денег (этап «Приём оплаты и учёт денег», R-10 … R-16).
 type BillingConfig struct {
+	InvoiceProvider string `env:"BILLING_INVOICE_PROVIDER" envDefault:"local"`
+	InvoicePDFHosts string `env:"TBANK_INVOICE_PDF_HOSTS" envDefault:"business.tbank.ru,business.tinkoff.ru"`
 	// Реквизиты платформы-получателя для счетов и закрывающих документов (R-10); наименование
 	// и ИНН — ORD_PLATFORM_*. Обязательны в production; в development и test — значения разработки.
 	PlatformOGRNIP          string `env:"PLATFORM_OGRNIP"`
@@ -106,7 +109,8 @@ func (c Config) BillingSupplier() billingdomain.Supplier {
 func (c Config) BillingAppConfig() billingapp.Config {
 	b := c.Billing
 	return billingapp.Config{
-		InvoiceTTL: b.InvoiceTTL, InvoicesPerUserHour: b.InvoiceRatePerUser, InvoicesPerIPHour: b.InvoiceRatePerIP,
+		InvoiceProvider: b.InvoiceProvider,
+		InvoiceTTL:      b.InvoiceTTL, InvoicesPerUserHour: b.InvoiceRatePerUser, InvoicesPerIPHour: b.InvoiceRatePerIP,
 		Supplier: c.BillingSupplier(), VATNote: b.InvoiceVATNote,
 	}
 }
@@ -130,6 +134,29 @@ func (c Config) StatementMaxBytes() int {
 // validateBilling — реквизиты платформы, сроки и лимиты (R-10, R-11, R-14 … R-16).
 func (c Config) validateBilling(add func(field, reason string)) {
 	b := c.Billing
+	if b.InvoiceProvider != "" && b.InvoiceProvider != "local" && b.InvoiceProvider != "tbank" {
+		add("BILLING_INVOICE_PROVIDER", "must be local or tbank")
+	}
+	if b.InvoiceProvider == "tbank" {
+		if c.TBank.Mode != "live" || c.TBank.Token == "" {
+			add("BILLING_INVOICE_PROVIDER", "tbank requires live T-API configuration")
+		}
+		if !c.bankAutoSyncEnabled() {
+			add("BILLING_INVOICE_PROVIDER", "tbank requires authorized bank access")
+		}
+		if b.InvoiceVATNote != "Без НДС" {
+			add("INVOICE_VAT_NOTE", "tbank invoice currently supports only Без НДС")
+		}
+		if b.InvoicePDFHosts == "" {
+			add("TBANK_INVOICE_PDF_HOSTS", "must contain trusted PDF hosts")
+		}
+		for _, host := range strings.Split(b.InvoicePDFHosts, ",") {
+			host = strings.TrimSpace(host)
+			if !invoicePDFHostRe.MatchString(host) {
+				add("TBANK_INVOICE_PDF_HOSTS", "must contain exact trusted DNS host names without scheme, port or path")
+			}
+		}
+	}
 	if c.Env == EnvProduction {
 		for field, v := range map[string]string{
 			"PLATFORM_OGRNIP": b.PlatformOGRNIP, "PLATFORM_ADDRESS": b.PlatformAddress,
@@ -175,3 +202,5 @@ func (c Config) validateBilling(add func(field, reason string)) {
 		add("CLOSING_ACTS_TIME", "must be HH:MM")
 	}
 }
+
+var invoicePDFHostRe = regexp.MustCompile(`(?i)^[a-z][a-z0-9-]*(?:\.[a-z0-9][a-z0-9-]*)+$`)

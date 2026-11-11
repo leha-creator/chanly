@@ -1,4 +1,5 @@
-// Package tbank reads T-API statements; it has no payment creation methods.
+// Package tbank reads T-API statements and can issue invoice documents through
+// a separately enabled client. It has no outgoing payment creation methods.
 package tbank
 
 import (

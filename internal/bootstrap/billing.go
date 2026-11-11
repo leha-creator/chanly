@@ -26,7 +26,8 @@ func newBillingService(cfg Config, in *infra, txRunner tx.Runner, auditLog *audi
 	log := in.log.With(logx.KeyModule, "billing")
 	store := billingpg.New(in.pool, log)
 	deps := billingapp.Deps{
-		BankIdentity: store, BankSync: store, BankConfig: cfg.bankSyncConfig(),
+		InvoiceDocuments: store,
+		BankIdentity:     store, BankSync: store, BankConfig: cfg.bankSyncConfig(),
 		Invoices: store.Invoices(), Statements: store.Statements(), BankTransactions: store.BankTransactions(),
 		ClosingActs: store.ClosingActs(), Ledger: bridge.BillingLedger{Svc: ledger},
 		Notifier:      bridge.BillingNotifier{Svc: notifier},
@@ -38,6 +39,16 @@ func newBillingService(cfg Config, in *infra, txRunner tx.Runner, auditLog *audi
 	}
 	if in.storage != nil {
 		deps.Storage = in.storage
+	}
+	// Keep safe PDF download available for already issued bank invoices after a
+	// switch back to local. Their persisted provider, not the current flag, wins.
+	if cfg.TBank.Mode == "live" {
+		issuer, err := in.bankInvoiceIssuer(cfg)
+		if err != nil {
+			in.log.Error("bank invoice issuer unavailable")
+		} else {
+			deps.InvoiceIssuer = issuer
+		}
 	}
 	if cfg.bankAutoSyncEnabled() {
 		source, err := in.bankSource(cfg, false)
@@ -51,7 +62,7 @@ func newBillingService(cfg Config, in *infra, txRunner tx.Runner, auditLog *audi
 		deps.Alerts = in.alerter
 	}
 	bankConfig := cfg.bankSyncConfig()
-	in.log.Info("billing configured", logx.KeyModule, "billing", "invoice_ttl", cfg.Billing.InvoiceTTL.String(),
+	in.log.Info("billing configured", logx.KeyModule, "billing", "invoice_provider", cfg.Billing.InvoiceProvider, "invoice_ttl", cfg.Billing.InvoiceTTL.String(),
 		"check_interval", cfg.Billing.LedgerCheckInterval.String(), "bank_mode", cfg.TBank.Mode, "bank_access", bankConfig.Access, "bank_auto_sync", cfg.bankAutoSyncEnabled())
 	return billingapp.New(deps), store
 }

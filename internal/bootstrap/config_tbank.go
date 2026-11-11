@@ -184,3 +184,20 @@ func (in *infra) bankSource(c Config, diagnostic bool) (domain.BankSource, error
 		return nil, errors.New("bank source disabled")
 	}
 }
+
+func (in *infra) bankInvoiceIssuer(c Config) (domain.InvoiceIssuer, error) {
+	httpClient, err := max.NewHTTPClient(c.TBank.CACertFile)
+	if err != nil {
+		return nil, err
+	}
+	httpClient.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
+	om, lm := in.integrationMetrics()
+	opts := outbound.Options{System: "tbank", HTTP: httpClient, NoRetry: true, Metrics: om}
+	if in.alerter != nil {
+		opts.Alerter = in.alerter
+	}
+	return &tbank.InvoiceClient{Out: outbound.New(in.pool, in.clock, in.log, opts),
+		Limiter: ratelimit.New(in.pool, in.clock, in.log, ratelimit.Options{Metrics: lm}), HTTP: httpClient,
+		BaseURL: c.TBank.BaseURL, Token: c.TBank.Token, Account: c.BillingSupplier().BankAccount,
+		PDFHosts: strings.Split(c.Billing.InvoicePDFHosts, ",")}, nil
+}
