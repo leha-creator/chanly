@@ -1,3 +1,7 @@
+-- release: contract
+-- Outbound checks are widened transactionally; existing system values stay valid.
+-- Enable TBank writes only after retiring old application instances, whose readers
+-- do not know the new system source and nullable file metadata.
 -- +goose Up
 ALTER TABLE outbound_request DROP CONSTRAINT outbound_request_system_check;
 ALTER TABLE outbound_request ADD CONSTRAINT outbound_request_system_check CHECK (system IN ('max','yandex_ord','rocketwork','tbank'));
