@@ -186,6 +186,73 @@ func TestBankCrossSourceAndChangedID(t *testing.T) {
 		})
 	}
 }
+
+func TestBankMoscowDocumentDayDeduplicatesAgainstFile(t *testing.T) {
+	for _, fileFirst := range []bool{true, false} {
+		t.Run(map[bool]string{true: "file-first", false: "api-first"}[fileFirst], func(t *testing.T) {
+			e := newEnv(t)
+			setupBank(e)
+			inv := e.invoice(500000)
+			purpose := "Оплата по счету " + inv.Number
+			in := bankIncoming(e, "7", purpose, "calendar")
+			doc := time.Date(2026, 10, 18, 21, 0, 0, 0, time.UTC)
+			posting := time.Date(2026, 10, 20, 8, 0, 0, 0, time.UTC)
+			in.DocDate = &doc
+			in.ChargeDate = &posting
+			in.OperationDate = posting
+			e.svc.BankSource = pageFunc(func(context.Context, domain.BankQuery) (domain.BankPage, error) {
+				return domain.BankPage{Incoming: []domain.Incoming{in}}, nil
+			})
+			file := statementFile(platformAccount, "calendar-test", payment{7, 500000, "7707083893", purpose})
+			if fileFirst {
+				e.importStatement(file)
+			}
+			if _, err := e.svc.SyncBank(context.Background()); err != nil {
+				t.Fatal(err)
+			}
+			if !fileFirst {
+				res := e.importStatement(file)
+				if res.Duplicates != 1 {
+					t.Fatalf("calendar alias not used: %+v", res)
+				}
+			}
+			if e.balance(e.org) != 500000 || e.count("SELECT count(*) FROM ledger_transaction WHERE kind='deposit'") != 1 || e.count("SELECT count(*) FROM bank_transaction") != 1 {
+				t.Fatal("cross-source duplicate credit")
+			}
+		})
+	}
+}
+
+func TestBankCalendarQuarantineCanBeReprocessedOnce(t *testing.T) {
+	e := newEnv(t)
+	setupBank(e)
+	inv := e.invoice(500000)
+	in := bankIncoming(e, "7", "Оплата по счету "+inv.Number, "held-calendar")
+	doc := time.Date(2026, 10, 18, 21, 0, 0, 0, time.UTC)
+	in.DocDate = &doc
+	in.IdentityConflict = true
+	e.svc.BankSource = pageFunc(func(context.Context, domain.BankQuery) (domain.BankPage, error) {
+		return domain.BankPage{Incoming: []domain.Incoming{in}}, nil
+	})
+	if _, err := e.svc.SyncBank(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if e.balance(e.org) != 0 {
+		t.Fatal("quarantine credited")
+	}
+	in.IdentityConflict = false
+	for i := 0; i < 2; i++ {
+		if _, err := e.svc.SyncBank(context.Background()); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if e.balance(e.org) != 500000 || e.count("SELECT count(*) FROM ledger_transaction WHERE kind='deposit'") != 1 {
+		t.Fatal("reprocessing did not credit exactly once")
+	}
+	if e.count("SELECT count(*) FROM bank_operation_observation WHERE conflict") != 1 {
+		t.Fatal("original quarantine evidence lost")
+	}
+}
 func TestBankResumesAfterPageFailure(t *testing.T) {
 	e := newEnv(t)
 	setupBank(e)

@@ -127,6 +127,36 @@ func TestPayerWhitespaceDoesNotChangeIdentity(t *testing.T) {
 	}
 }
 
+func TestMoscowCalendarDocumentDate(t *testing.T) {
+	for _, tc := range []struct {
+		name, docDate, chargeDate string
+		conflict                  bool
+	}{
+		{"Moscow midnight is a calendar date", "2026-10-18T21:00:00Z", "2026-10-19T10:00:00Z", false},
+		{"other boundary timestamp stays quarantined", "2026-10-18T21:01:00Z", "2026-10-19T10:00:00Z", true},
+		{"ambiguous charge date stays quarantined", "2026-10-18T21:00:00Z", "2026-10-18T21:00:00Z", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var r result
+			if err := json.Unmarshal([]byte(fixture), &r); err != nil {
+				t.Fatal(err)
+			}
+			doc, _ := time.Parse(time.RFC3339, tc.docDate)
+			charge, _ := time.Parse(time.RFC3339, tc.chargeDate)
+			r.Operations[0].DocDate = &doc
+			r.Operations[0].ChargeDate = &charge
+			p, err := normalize(r, query(), "")
+			if err != nil || len(p.Incoming) != 1 {
+				t.Fatalf("normalize: %+v %v", p, err)
+			}
+			in := p.Incoming[0]
+			if in.IdentityConflict != tc.conflict || !in.DocDate.Equal(doc) || in.DocDate.Location() != time.UTC {
+				t.Fatalf("calendar handling: %+v", in)
+			}
+		})
+	}
+}
+
 func TestObservedSandboxExampleIsNeverCredited(t *testing.T) {
 	body, err := os.ReadFile("testdata/sandbox-static-anonymized.json")
 	if err != nil {

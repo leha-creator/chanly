@@ -47,7 +47,9 @@ func (s *Store) ResolveIncoming(ctx context.Context, account string, in domain.I
 			aliases = append(aliases, "external:"+key)
 		}
 		if in.DocDate != nil {
-			aliases = append(aliases, "doc:"+in.DocDate.UTC().Format(time.DateOnly)+":"+in.DocumentNumber+":"+in.PayerINN+":"+in.PayerAccount)
+			// Bank PDF/1C document dates use the Moscow calendar. T-API encodes
+			// midnight of that day as 21:00Z on the previous UTC day.
+			aliases = append(aliases, "doc:"+in.DocDate.In(time.FixedZone("MSK", 3*3600)).Format(time.DateOnly)+":"+in.DocumentNumber+":"+in.PayerINN+":"+in.PayerAccount)
 		}
 	}
 	fp := fingerprint(in)
