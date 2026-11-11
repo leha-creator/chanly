@@ -53,6 +53,32 @@ type Membership struct {
 	Permissions []string `json:"permissions"`
 }
 
+// GetUserMembership reads a specific human's current rights. An absent member
+// has no rights; transport and API failures remain errors.
+func (c *Client) GetUserMembership(ctx context.Context, chatID, userID int64) (Membership, error) {
+	id := strconv.FormatInt(chatID, 10)
+	resp, err := c.do(ctx, request{
+		operation: "GetUserMembership", method: http.MethodGet, path: "/chats/" + url.PathEscape(id) + "/members",
+		query: url.Values{"user_ids": {strconv.FormatInt(userID, 10)}}, object: "chat_id", objectID: id,
+		expected: []int{http.StatusForbidden, http.StatusNotFound},
+	})
+	if err != nil {
+		return Membership{}, err
+	}
+	var result struct {
+		Members []Membership `json:"members"`
+	}
+	if err := json.Unmarshal(resp.Body, &result); err != nil {
+		return Membership{}, job.Permanent(fmt.Errorf("max GetUserMembership: decode: %w", err))
+	}
+	for _, m := range result.Members {
+		if m.UserID == userID {
+			return m, nil
+		}
+	}
+	return Membership{}, nil
+}
+
 // GetChat читает сведения о чате.
 func (c *Client) GetChat(ctx context.Context, chatID int64) (Chat, error) {
 	id := strconv.FormatInt(chatID, 10)

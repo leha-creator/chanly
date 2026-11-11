@@ -88,9 +88,11 @@ type Alerter interface {
 // Deps — зависимости сервиса; связывает bootstrap. ChatReader и ChatManager нужны
 // только в режиме worker.
 type Deps struct {
-	Channels   domain.Channels
-	LinkCodes  domain.LinkCodes
-	Categories domain.Categories
+	Connections     domain.Connections
+	UserMemberships domain.UserMembershipReader
+	Channels        domain.Channels
+	LinkCodes       domain.LinkCodes
+	Categories      domain.Categories
 	// Counter — счётчик каналов на модерации (R-16 этапа «API администратора»); nil — 0.
 	Counter interface {
 		ModerationCount(ctx context.Context) (int, error)

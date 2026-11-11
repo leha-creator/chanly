@@ -9,6 +9,28 @@ import (
 	"github.com/leha-creator/chanly/internal/integration/max"
 )
 
+func (c *Client) SetUserMembership(chatID, userID int64, m max.Membership) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.userMembers == nil {
+		c.userMembers = map[int64]map[int64]max.Membership{}
+	}
+	if c.userMembers[chatID] == nil {
+		c.userMembers[chatID] = map[int64]max.Membership{}
+	}
+	m.UserID = userID
+	m.Permissions = slices.Clone(m.Permissions)
+	c.userMembers[chatID][userID] = m
+}
+
+func (c *Client) GetUserMembership(_ context.Context, chatID, userID int64) (max.Membership, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	m := c.userMembers[chatID][userID]
+	m.Permissions = slices.Clone(m.Permissions)
+	return m, c.failErr
+}
+
 // SetChat задаёт сведения о чате, которые вернёт GetChat.
 func (c *Client) SetChat(chat max.Chat) {
 	c.mu.Lock()

@@ -156,6 +156,20 @@ var cases = map[string]opCase{
 	// блогер
 	"listBloggerChannels":     {user: blg},
 	"createChannelLinkCode":   {user: blg, noBody: true},
+	"createChannelConnection": {user: blg, noBody: true},
+	"getChannelConnection": {user: blg, prepare: func(e *env) (map[string]string, any) {
+		id, _ := prepareConnection(e)
+		return map[string]string{"id": id}, noBodyMarker
+	}},
+	"refreshChannelConnection": {user: blg, prepare: func(e *env) (map[string]string, any) {
+		id, _ := prepareConnection(e)
+		e.do(e.client(""), http.MethodPost, "/_mock/clock", map[string]any{"hours": 0.1}, "")
+		return map[string]string{"id": id}, noBodyMarker
+	}},
+	"claimChannelConnection": {user: blg, prepare: func(e *env) (map[string]string, any) {
+		id, ch := prepareConnection(e)
+		return map[string]string{"id": id}, map[string]any{"channel_id": ch}
+	}},
 	"getBloggerChannel":       {user: blg, params: id(seed.ChannelBlogger1)},
 	"updateBloggerChannel":    {user: blg, params: id(seed.ChannelModerate)},
 	"setBloggerChannelPrices": {user: blg, params: id(seed.ChannelBlogger1)},

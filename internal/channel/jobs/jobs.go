@@ -16,6 +16,29 @@ import (
 
 // Register регистрирует обработчики событий MAX в dispatcher и виды заданий модуля (R-16).
 func Register(w *job.Worker, d *inbound.Dispatcher, svc *app.Service) {
+	d.Handle(inbound.SourceMAX, max.UpdateBotStarted, handle(func(ctx context.Context, _ app.EventRef, u max.Update) error {
+		if u.User == nil || u.User.IsBot {
+			return app.ErrIgnored
+		}
+		if u.ConnectionTokenHash != "" {
+			return svc.StartConnectionHash(ctx, u.UserID(), u.ConnectionTokenHash)
+		}
+		return svc.StartConnection(ctx, u.UserID(), u.Payload)
+	}))
+	w.Register(app.KindScanChannelConnection, func(ctx context.Context, r job.Running) error {
+		var p app.ConnectionPayload
+		if err := decode(r, &p); err != nil {
+			return err
+		}
+		return svc.ScanConnection(ctx, p)
+	}, job.HandlerOptions{})
+	w.Register(app.KindClaimChannelConnection, func(ctx context.Context, r job.Running) error {
+		var p app.ConnectionPayload
+		if err := decode(r, &p); err != nil {
+			return err
+		}
+		return svc.CompleteConnection(ctx, p)
+	}, job.HandlerOptions{})
 	d.Handle(inbound.SourceMAX, max.UpdateBotAdded, handle(func(ctx context.Context, ev app.EventRef, u max.Update) error {
 		return svc.BotAdded(ctx, ev, u.ChatID, u.UserID(), u.IsChannel)
 	}))

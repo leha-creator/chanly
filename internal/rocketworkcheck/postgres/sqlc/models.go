@@ -238,6 +238,27 @@ type ChannelCategory struct {
 	UpdatedAt pgtype.Timestamptz
 }
 
+type ChannelConnection struct {
+	ID             pgtype.UUID
+	OrganizationID pgtype.UUID
+	UserID         pgtype.UUID
+	TokenHash      string
+	MaxUserID      *int64
+	TokenUsedAt    pgtype.Timestamptz
+	ExpiresAt      pgtype.Timestamptz
+	Status         string
+	Reason         string
+	ScanID         pgtype.UUID
+	ChannelID      pgtype.UUID
+	CreatedAt      pgtype.Timestamptz
+	UpdatedAt      pgtype.Timestamptz
+}
+
+type ChannelConnectionCandidate struct {
+	ConnectionID pgtype.UUID
+	ChannelID    pgtype.UUID
+}
+
 type ChannelMetric struct {
 	ID               pgtype.UUID
 	ChannelID        pgtype.UUID

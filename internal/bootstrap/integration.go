@@ -7,6 +7,7 @@ import (
 	accountdomain "github.com/leha-creator/chanly/internal/account/domain"
 	accountpg "github.com/leha-creator/chanly/internal/account/postgres"
 	"github.com/leha-creator/chanly/internal/bootstrap/bridge"
+	channelpg "github.com/leha-creator/chanly/internal/channel/postgres"
 	"github.com/leha-creator/chanly/internal/integration/max"
 	"github.com/leha-creator/chanly/internal/integration/max/maxfake"
 	"github.com/leha-creator/chanly/internal/integration/ord"
@@ -39,6 +40,7 @@ type maxAPI interface {
 	SendUserMessage(ctx context.Context, userID int64, text string) (string, error)
 	GetChat(ctx context.Context, chatID int64) (max.Chat, error)
 	GetMembership(ctx context.Context, chatID int64) (max.Membership, error)
+	GetUserMembership(ctx context.Context, chatID, userID int64) (max.Membership, error)
 	ListMessages(ctx context.Context, chatID int64, from, to time.Time, count int) ([]max.ChannelMessage, error)
 	DeleteMessage(ctx context.Context, chatID int64, messageID string) error
 	LeaveChat(ctx context.Context, chatID int64) error
@@ -105,6 +107,7 @@ func newPlatformJobs(cfg Config, in *infra, accounts *accountpg.Store) *platform
 
 	r := cfg.Retention
 	for _, t := range []cleanup.Task{
+		{Name: "channel_connection", Retention: r.AuthCode, Delete: channelpg.New(in.pool, in.log).Connections().DeleteExpired},
 		{Name: "outbound_request", Retention: r.OutboundRequest, Delete: outbound.DeleteRequests(in.pool)},
 		{Name: "job_finished", Retention: r.JobFinished, Delete: job.DeleteFinished(in.pool, "succeeded", "cancelled")},
 		{Name: "job_failed", Retention: r.JobFailed, Delete: job.DeleteFinished(in.pool, "failed")},

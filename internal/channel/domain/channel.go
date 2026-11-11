@@ -132,6 +132,7 @@ type ChatInfo struct {
 
 // Membership — права бота в канале (GET /chats/{chatId}/members/me).
 type Membership struct {
+	IsOwner     bool
 	IsAdmin     bool
 	Permissions []string
 }

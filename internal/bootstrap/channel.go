@@ -2,6 +2,7 @@ package bootstrap
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"slices"
 	"strings"
@@ -17,6 +18,7 @@ import (
 	"github.com/leha-creator/chanly/internal/platform/inbound"
 	"github.com/leha-creator/chanly/internal/platform/job"
 	"github.com/leha-creator/chanly/internal/platform/logx"
+	"github.com/leha-creator/chanly/internal/platform/outbound"
 	"github.com/leha-creator/chanly/internal/platform/tx"
 )
 
@@ -30,6 +32,14 @@ const maxWebhookPattern = "POST " + BaseURL + "/webhooks/max/{secret}"
 // «Модуль → внешняя система»).
 type channelMAX struct{ api maxAPI }
 
+func channelMAXError(err error) error {
+	var rejected *outbound.RejectedError
+	if errors.As(err, &rejected) && (rejected.Status == http.StatusForbidden || rejected.Status == http.StatusNotFound) {
+		return errors.Join(domain.ErrChannelAccessDenied, err)
+	}
+	return err
+}
+
 var (
 	_ domain.ChatReader    = channelMAX{}
 	_ domain.ChatManager   = channelMAX{}
@@ -39,7 +49,7 @@ var (
 func (c channelMAX) GetChat(ctx context.Context, chatID int64) (domain.ChatInfo, error) {
 	chat, err := c.api.GetChat(ctx, chatID)
 	if err != nil {
-		return domain.ChatInfo{}, err
+		return domain.ChatInfo{}, channelMAXError(err)
 	}
 	return domain.ChatInfo{
 		Title: chat.Title, Description: chat.Description, IconURL: chat.IconURL(), Link: chat.Link,
@@ -50,9 +60,14 @@ func (c channelMAX) GetChat(ctx context.Context, chatID int64) (domain.ChatInfo,
 func (c channelMAX) GetMembership(ctx context.Context, chatID int64) (domain.Membership, error) {
 	m, err := c.api.GetMembership(ctx, chatID)
 	if err != nil {
-		return domain.Membership{}, err
+		return domain.Membership{}, channelMAXError(err)
 	}
 	return domain.Membership{IsAdmin: m.IsAdmin, Permissions: m.Permissions}, nil
+}
+
+func (c channelMAX) GetUserMembership(ctx context.Context, chatID, userID int64) (domain.Membership, error) {
+	m, err := c.api.GetUserMembership(ctx, chatID, userID)
+	return domain.Membership{IsOwner: m.IsOwner, IsAdmin: m.IsAdmin, Permissions: m.Permissions}, channelMAXError(err)
 }
 
 // ListMessages — сообщения канала для метрик (R-14); текст адаптер не читает.
@@ -87,7 +102,8 @@ func newChannelService(cfg Config, in *infra, txRunner tx.Runner, queue job.Enqu
 	ch := cfg.Channel
 	day := 24 * time.Hour
 	deps := channelapp.Deps{
-		Channels: store.Channels(), LinkCodes: store.LinkCodes(), Categories: store.Categories(), Counter: store.Categories(),
+		Connections: store.Connections(),
+		Channels:    store.Channels(), LinkCodes: store.LinkCodes(), Categories: store.Categories(), Counter: store.Categories(),
 		Formats: store.Formats(), Prices: store.Prices(), Unavail: store.Unavailabilities(), Metrics: store.Metrics(),
 		Catalog: store.Catalog(), Admin: store.AdminChannels(),
 		Alerts: in.alerter, Tx: txRunner, Jobs: queue, Audit: auditLog, Clock: in.clock, Log: in.log,
@@ -107,6 +123,7 @@ func newChannelService(cfg Config, in *infra, txRunner tx.Runner, queue job.Enqu
 	if in.max != nil {
 		port := channelMAX{api: in.max}
 		deps.Chats, deps.Bot, deps.Messages = port, port, port
+		deps.UserMemberships = port
 	}
 	// Availability и Placements не заданы: до модуля размещений работают пустые
 	// реализации (R-11 этапа «Подключение каналов», R-8 этапа «Каталог»).
@@ -129,7 +146,8 @@ func newMAXWebhook(cfg Config, in *infra, txRunner tx.Runner, queue job.Enqueuer
 		reg = in.reg
 	}
 	h := channelhttp.NewWebhook(rec, in.alerter, in.clock, in.log, reg, channelhttp.WebhookOptions{
-		PathSecret: cfg.MAX.WebhookPathSecret, HeaderSecret: cfg.MAX.WebhookSecret, SecretHeader: max.SecretHeader,
+		ConnectionPepper: []byte(cfg.AuthCodePepper),
+		PathSecret:       cfg.MAX.WebhookPathSecret, HeaderSecret: cfg.MAX.WebhookSecret, SecretHeader: max.SecretHeader,
 	})
 	if cfg.MAX.WebhookPathSecret == "" {
 		in.log.Warn("max webhook path secret is not set, all webhook requests are rejected", logx.KeyOp, "Bootstrap.Webhook")

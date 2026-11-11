@@ -240,6 +240,27 @@ type ChannelCategory struct {
 	UpdatedAt time.Time
 }
 
+type ChannelConnection struct {
+	ID             uuid.UUID
+	OrganizationID uuid.UUID
+	UserID         uuid.UUID
+	TokenHash      string
+	MaxUserID      *int64
+	TokenUsedAt    *time.Time
+	ExpiresAt      time.Time
+	Status         string
+	Reason         string
+	ScanID         uuid.UUID
+	ChannelID      *uuid.UUID
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+}
+
+type ChannelConnectionCandidate struct {
+	ConnectionID uuid.UUID
+	ChannelID    uuid.UUID
+}
+
 type ChannelMetric struct {
 	ID               uuid.UUID
 	ChannelID        uuid.UUID

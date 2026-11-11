@@ -9,9 +9,11 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
+	"github.com/leha-creator/chanly/internal/channel/domain"
 	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/leha-creator/chanly/internal/platform/alert"
@@ -42,6 +44,7 @@ type Alerter interface {
 
 // WebhookOptions — секреты приёма (R-3).
 type WebhookOptions struct {
+	ConnectionPepper []byte
 	// PathSecret — секретная часть адреса /webhooks/max/{secret}.
 	PathSecret string
 	// HeaderSecret — секрет подписки, который MAX передаёт в заголовке SecretHeader.
@@ -130,8 +133,27 @@ func (h *Webhook) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		return
 	}
+	externalKey := inbound.KeyFromBody(body)
+	if head.UpdateType == "bot_started" {
+		// A caller-supplied internal hash is never trusted. Replace the token
+		// before storing the webhook; the worker only needs its HMAC.
+		var event map[string]json.RawMessage
+		if err := json.Unmarshal(body, &event); err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		delete(event, "connection_token_hash")
+		var payload string
+		_ = json.Unmarshal(event["payload"], &payload)
+		delete(event, "payload")
+		if len(h.opts.ConnectionPepper) > 0 && strings.HasPrefix(payload, "connect_") && len(payload) == 51 {
+			hash := domain.HashConnectionToken(h.opts.ConnectionPepper, strings.TrimPrefix(payload, "connect_"))
+			event["connection_token_hash"], _ = json.Marshal(hash)
+		}
+		body, _ = json.Marshal(event)
+	}
 	dup, err := h.rec.Record(ctx, inbound.Event{
-		Source: inbound.SourceMAX, ExternalKey: inbound.KeyFromBody(body), EventType: head.UpdateType, Payload: body,
+		Source: inbound.SourceMAX, ExternalKey: externalKey, EventType: head.UpdateType, Payload: body,
 	})
 	if err != nil {
 		h.total.WithLabelValues(outcomeError).Inc()

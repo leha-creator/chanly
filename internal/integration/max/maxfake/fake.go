@@ -27,11 +27,12 @@ type Client struct {
 	userErr error
 	seq     int
 
-	chats   map[int64]max.Chat
-	members map[int64]max.Membership
-	deleted []string
-	left    []int64
-	subs    []max.Subscription
+	chats       map[int64]max.Chat
+	members     map[int64]max.Membership
+	userMembers map[int64]map[int64]max.Membership
+	deleted     []string
+	left        []int64
+	subs        []max.Subscription
 
 	messages    map[int64][]max.ChannelMessage
 	messagesErr error

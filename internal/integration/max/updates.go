@@ -10,6 +10,7 @@ import (
 
 // Виды событий Webhook (05 §2.2, объект Update).
 const (
+	UpdateBotStarted                 = "bot_started"
 	UpdateBotAdded                   = "bot_added"
 	UpdateBotRemoved                 = "bot_removed"
 	UpdateBotAdminPermissionsChanged = "bot_admin_permissions_changed"
@@ -22,6 +23,7 @@ const (
 // ChannelUpdateTypes — события, на которые подписывается бот (R-5): каналы, коды
 // подключения и контроль публикаций (R-17 этапа «Автопостинг и контроль»).
 var ChannelUpdateTypes = []string{
+	UpdateBotStarted,
 	UpdateBotAdded, UpdateBotRemoved, UpdateBotAdminPermissionsChanged,
 	UpdateMessageCreated, UpdateMessageEdited, UpdateMessageRemoved, UpdateChatTitleChanged,
 }
@@ -53,8 +55,11 @@ type Message struct {
 
 // Update — событие Webhook MAX. Поля, которых нет у вида события, пустые.
 type Update struct {
-	Type      string `json:"update_type"`
-	Timestamp int64  `json:"timestamp"`
+	// Internal field, computed by our authenticated webhook before persistence.
+	ConnectionTokenHash string `json:"connection_token_hash"`
+	Payload             string `json:"payload"`
+	Type                string `json:"update_type"`
+	Timestamp           int64  `json:"timestamp"`
 	// ChatID — чат события; для message_created берётся из получателя сообщения.
 	ChatID    int64    `json:"chat_id"`
 	User      *User    `json:"user"`

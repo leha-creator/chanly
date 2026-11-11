@@ -1348,10 +1348,13 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
   /blogger/channels/link-code:
     post:
+      deprecated: true
       tags: [blogger-channels]
       operationId: createChannelLinkCode
       summary: Код подключения канала (S-12)
       description: |
+        Устаревший сценарий для прежних клиентов. Новые клиенты используют
+        `/blogger/channels/connections`: подключение через личный диалог без поста в канале.
         Блогер добавляет бота платформы в канал администратором с правами на публикацию
         и удаление сообщений, затем отправляет этот код сообщением в канал; бот связывает
         канал с организацией и удаляет сообщение (A-41). Код из 8 символов действует 60 минут,
@@ -1368,6 +1371,102 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '429': { $ref: '#/components/responses/RateLimited' }
+  /blogger/channels/connections:
+    post:
+      tags: [blogger-channels]
+      operationId: createChannelConnection
+      summary: Подключить канал через личный диалог с ботом
+      description: |
+        Создаёт сессию для текущего пользователя и организации. bot_url возвращается
+        только здесь: откройте ссылку и запустите бота в MAX. Затем добавьте бота
+        администратором канала с write/delete и запустите refresh. Публикаций нет.
+        Ссылка одноразовая, сессия действует CHANNEL_LINK_CODE_TTL.
+        Не больше CHANNEL_LINK_CODES_PER_HOUR сессий организации в час.
+      responses:
+        '201':
+          description: Сессия и одноразовая ссылка
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ChannelConnection'
+                  - type: object
+                    required: [bot_url]
+                    properties:
+                      bot_url: { type: string, format: uri }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '503': { $ref: '#/components/responses/ServiceUnavailable' }
+  /blogger/channels/connections/{id}:
+    get:
+      tags: [blogger-channels]
+      operationId: getChannelConnection
+      summary: Статус подключения и проверенные каналы
+      description: |
+        Доступно только пользователю, создавшему сессию, в той же организации.
+        Кандидаты возвращаются только в ready. Владелец или администратор с write;
+        бот имеет write/delete. checking и connecting — опрашивать до смены статуса.
+        Пустой ready: добавьте бота, проверьте права и повторите refresh.
+        failed/max_unavailable означает сбой MAX, а не отсутствие каналов.
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Текущее состояние
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ChannelConnection' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /blogger/channels/connections/{id}/refresh:
+    post:
+      tags: [blogger-channels]
+      operationId: refreshChannelConnection
+      summary: Проверить доступные каналы в фоне
+      description: |
+        Только после запуска персональной ссылки. Проверяются каналы, обнаруженные
+        из событий MAX; глобального списка каналов API MAX не предоставляет.
+        Повтор во время checking не создаёт новую проверку. Между проверками — 10 секунд.
+        При failed можно повторить refresh; при expired создайте новую сессию.
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '202': { description: Проверка запущена }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+  /blogger/channels/connections/{id}/claim:
+    post:
+      tags: [blogger-channels]
+      operationId: claimChannelConnection
+      summary: Подтвердить выбранный канал
+      description: |
+        Принимает только кандидата этой сессии. Worker заново проверяет права
+        пользователя и бота, затем атомарно привязывает канал. Следите за статусом
+        сессии до connected или failed; 202 ещё не означает подключение.
+        Повтор с тем же channel_id в connecting/connected идемпотентен.
+        Чужая организация никогда не перезаписывается.
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [channel_id]
+              properties:
+                channel_id: { type: string, format: uuid }
+      responses:
+        '202': { description: Подтверждение запущено }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
   /blogger/channels/{id}:
     get:
       tags: [blogger-channels]
@@ -4929,6 +5028,30 @@ components:
         format_id: { $ref: '#/components/schemas/PlacementFormatId' }
         amount: { type: integer, format: int64, minimum: 10000, maximum: 1000000000 }
         is_enabled: { type: boolean }
+    ChannelConnection:
+      type: object
+      required: [id, status, expires_at, candidates]
+      properties:
+        id: { type: string, format: uuid }
+        status:
+          type: string
+          enum: [pending, checking, ready, connecting, connected, failed, expired]
+        expires_at: { type: string, format: date-time }
+        reason:
+          type: string
+          enum: [expired, max_unavailable, user_rights_required, bot_rights_required, not_channel, not_public, linked_to_other, channel_unavailable, channel_changed]
+        channel_id: { type: string, format: uuid }
+        candidates:
+          type: array
+          items: { $ref: '#/components/schemas/ChannelConnectionCandidate' }
+    ChannelConnectionCandidate:
+      type: object
+      required: [id, title, link, icon_url]
+      properties:
+        id: { type: string, format: uuid }
+        title: { type: string }
+        link: { type: string }
+        icon_url: { type: string }
     ChannelLinkCode:
       type: object
       required: [code, expires_at, bot_name, instruction]

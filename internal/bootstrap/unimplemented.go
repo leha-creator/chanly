@@ -282,6 +282,22 @@ func (unimplemented) ListBloggerChannels(context.Context, apigen.ListBloggerChan
 	return nil, apperr.NotImplemented("listBloggerChannels")
 }
 
+func (unimplemented) CreateChannelConnection(context.Context, apigen.CreateChannelConnectionRequestObject) (apigen.CreateChannelConnectionResponseObject, error) {
+	return nil, apperr.NotImplemented("createChannelConnection")
+}
+
+func (unimplemented) GetChannelConnection(context.Context, apigen.GetChannelConnectionRequestObject) (apigen.GetChannelConnectionResponseObject, error) {
+	return nil, apperr.NotImplemented("getChannelConnection")
+}
+
+func (unimplemented) ClaimChannelConnection(context.Context, apigen.ClaimChannelConnectionRequestObject) (apigen.ClaimChannelConnectionResponseObject, error) {
+	return nil, apperr.NotImplemented("claimChannelConnection")
+}
+
+func (unimplemented) RefreshChannelConnection(context.Context, apigen.RefreshChannelConnectionRequestObject) (apigen.RefreshChannelConnectionResponseObject, error) {
+	return nil, apperr.NotImplemented("refreshChannelConnection")
+}
+
 func (unimplemented) CreateChannelLinkCode(context.Context, apigen.CreateChannelLinkCodeRequestObject) (apigen.CreateChannelLinkCodeResponseObject, error) {
 	return nil, apperr.NotImplemented("createChannelLinkCode")
 }

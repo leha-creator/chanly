@@ -153,6 +153,17 @@ type LinkCode struct {
 	ExpiresAt time.Time
 }
 
+// ChannelConnection is the in-memory counterpart of an onboarding session.
+type ChannelConnection struct {
+	ID, OrgID, UserID               uuid.UUID
+	TokenHash                       string
+	MaxUserID                       int64
+	ExpiresAt, CreatedAt, UpdatedAt time.Time
+	Status, Reason                  string
+	Candidates                      []uuid.UUID
+	ChannelID                       *uuid.UUID
+}
+
 type CartItem struct {
 	ID         uuid.UUID
 	OrgID      uuid.UUID
@@ -368,25 +379,26 @@ type RocketworkContractor struct {
 // Data — всё изменяемое состояние заглушки. Сессии хранятся отдельно,
 // чтобы переживать POST /_mock/reset.
 type Data struct {
-	Users         map[uuid.UUID]*User
-	Orgs          map[uuid.UUID]*Organization
-	LegalDocs     []*LegalDocument
-	Acceptances   map[uuid.UUID]map[uuid.UUID]time.Time // org → документ → когда принят
-	Notifications []*Notification
-	Categories    []*Category
-	Formats       []*Format
-	Channels      []*Channel
-	LinkCodes     []*LinkCode
-	CartItems     []*CartItem
-	Media         []*MediaFile
-	Campaigns     []*Campaign
-	Orders        []*Order
-	Placements    []*Placement
-	Invoices      []*Invoice
-	Ledger        []*LedgerEntry
-	ClosingActs   []*ClosingAct
-	Payouts       []*Payout
-	Rocketwork    map[uuid.UUID]*RocketworkContractor
+	Users              map[uuid.UUID]*User
+	Orgs               map[uuid.UUID]*Organization
+	LegalDocs          []*LegalDocument
+	Acceptances        map[uuid.UUID]map[uuid.UUID]time.Time // org → документ → когда принят
+	Notifications      []*Notification
+	Categories         []*Category
+	Formats            []*Format
+	Channels           []*Channel
+	LinkCodes          []*LinkCode
+	ChannelConnections []*ChannelConnection
+	CartItems          []*CartItem
+	Media              []*MediaFile
+	Campaigns          []*Campaign
+	Orders             []*Order
+	Placements         []*Placement
+	Invoices           []*Invoice
+	Ledger             []*LedgerEntry
+	ClosingActs        []*ClosingAct
+	Payouts            []*Payout
+	Rocketwork         map[uuid.UUID]*RocketworkContractor
 	// Администратор (этап «API администратора»).
 	DisputeMessages []*DisputeMessage
 	Approvals       []*Approval
