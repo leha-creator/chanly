@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -11,6 +12,7 @@ import (
 	"github.com/leha-creator/chanly/internal/account/postgres/sqlc"
 	"github.com/leha-creator/chanly/internal/platform/apperr"
 	"github.com/leha-creator/chanly/internal/platform/db"
+	"github.com/leha-creator/chanly/internal/platform/tx"
 )
 
 // platformPhone — телефон строки платформы: поле обязательно, но для платформы не используется.
@@ -18,9 +20,19 @@ const platformPhone = "+70000000000"
 
 var _ domain.PlatformOrganizations = (*Organizations)(nil)
 
-// Platform — организация-платформа; нет — domain.ErrNotFound.
+// Platform serializes singleton bootstrap inside its READ COMMITTED transaction.
+// Lock and SELECT must be separate statements: a SELECT snapshot taken before
+// waiting for the lock could still miss the other startup's committed row.
 func (r *Organizations) Platform(ctx context.Context) (*domain.PlatformOrganization, error) {
 	const op = "Account.Organizations.Platform"
+	if _, ok := tx.FromContext(ctx); !ok {
+		return nil, fmt.Errorf("%s requires a transaction", op)
+	}
+	r.s.debug(ctx, op, "phase", "[FIX] waiting for platform bootstrap lock")
+	if err := r.s.q(ctx).LockPlatformOrganization(ctx); err != nil {
+		return nil, r.s.fail(ctx, op, err)
+	}
+	r.s.debug(ctx, op, "phase", "[FIX] platform bootstrap lock acquired")
 	row, err := r.s.q(ctx).GetPlatformOrganization(ctx)
 	if err != nil {
 		return nil, r.s.fail(ctx, op, err)

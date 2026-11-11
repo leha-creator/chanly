@@ -9,12 +9,28 @@
 # допустимы только в миграции «сжатия», выпускаемой после того, как ни одна работающая версия
 # их не использует; такая миграция помечается строкой «-- release: contract».
 # Изменение или удаление уже существующей миграции — ошибка всегда.
+# Проверенное расширение CHECK допускается только по точному пути и SHA256
+# из reviewed-migration-expansions.txt; это не разрешение произвольного DROP.
 set -Eeuo pipefail
 
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 LOG_COMPONENT=check-migrations
 # shellcheck source=deploy/scripts/lib.sh
 . "$SCRIPT_DIR/lib.sh"
+
+declare -A reviewed_expansions
+manifest="$SCRIPT_DIR/reviewed-migration-expansions.txt"
+if [[ -f $manifest ]]; then
+  while read -r digest path extra; do
+    [[ -z $digest || $digest == \#* ]] && continue
+    if [[ ! $digest =~ ^[a-f0-9]{64}$ || ! $path =~ ^migrations/[A-Za-z0-9_]+\.sql$ ||
+          -n $extra || -n ${reviewed_expansions[$path]+present} ]]; then
+      log error reviewed_expansion_manifest_invalid file="$manifest"
+      exit 2
+    fi
+    reviewed_expansions[$path]=$digest
+  done < "$manifest"
+fi
 
 base=${1:-origin/master}
 root=$(git -C "$SCRIPT_DIR" rev-parse --show-toplevel)
@@ -41,6 +57,16 @@ while IFS=$'\t' read -r status path rest; do
       errors=$((errors + 1)); continue ;;
   esac
   checked=$((checked + 1))
+  if [[ -n ${reviewed_expansions[$path]+present} ]]; then
+    # The comparison is against committed source, like the base...HEAD diff.
+    digest=$(git show "HEAD:$path" | sha256sum | cut -d ' ' -f 1)
+    if [[ $digest != "${reviewed_expansions[$path]}" ]]; then
+      log error reviewed_expansion_digest_mismatch file="$path"
+      errors=$((errors + 1)); continue
+    fi
+    log info migration_reviewed_expansion file="$path" sha256="$digest" note="[FIX] verified transactional CHECK widening"
+    continue
+  fi
   if grep -qiE '^[[:space:]]*--[[:space:]]*release:[[:space:]]*contract[[:space:]]*$' "$path"; then
     log warn migration_contract file="$path" note="contract migration: release only after no running version uses the dropped objects"
     continue

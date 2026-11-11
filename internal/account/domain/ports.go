@@ -104,7 +104,8 @@ type PlatformOrganization struct {
 	Name      string
 }
 
-// PlatformOrganizations — строка платформы.
+// PlatformOrganizations — строка платформы. Platform requires an active
+// transaction and serializes bootstrap until that transaction commits/rolls back.
 type PlatformOrganizations interface {
 	// Platform возвращает ErrNotFound, если строки нет.
 	Platform(ctx context.Context) (*PlatformOrganization, error)

@@ -1,0 +1,8 @@
+# Exact committed contents reviewed for backward-compatible expansion.
+# 00105 transactionally replaces CHECK amount BETWEEN 10000 AND 1000000000
+# with amount BETWEEN 1 AND 1000000000: same column, type and upper bound.
+# Old valid rows remain valid; old readers can read positive kopecks. The
+# production application still enforces 10000. Goose Up is transactional,
+# so no committed state exists with the constraint missing. Down refuses
+# rollback while sub-100-RUB data exists. Do not change the migration file.
+c466e346671008d7a9b9f3ef757c5f644f05f60d81c995784547954fb8c8007a  migrations/00105_channel_price_dev_minimum.sql

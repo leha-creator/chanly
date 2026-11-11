@@ -472,6 +472,16 @@ func (q *Queries) InsertPlatformOrganization(ctx context.Context, arg InsertPlat
 	return err
 }
 
+const lockPlatformOrganization = `-- name: LockPlatformOrganization :exec
+SELECT pg_advisory_xact_lock(hashtextextended('account:platform-organization', 0))
+`
+
+// Singleton bootstrap across API/worker; held until the surrounding transaction ends.
+func (q *Queries) LockPlatformOrganization(ctx context.Context) error {
+	_, err := q.db.Exec(ctx, lockPlatformOrganization)
+	return err
+}
+
 const renamePlatformOrganization = `-- name: RenamePlatformOrganization :exec
 UPDATE organization SET name = $1, contact_name = $1, updated_at = $2 WHERE id = $3 AND is_platform
 `

@@ -67,6 +67,10 @@ SELECT EXISTS (SELECT 1 FROM organization WHERE inn = @inn)::boolean;
 -- Название и ИНН для маркировки поста (модуль post, R-14); без блокировки.
 SELECT name, inn FROM organization WHERE id = @id;
 
+-- name: LockPlatformOrganization :exec
+-- Singleton bootstrap across API/worker; held until the surrounding transaction ends.
+SELECT pg_advisory_xact_lock(hashtextextended('account:platform-organization', 0));
+
 -- name: GetPlatformOrganization :one
 -- Организация-платформа — единственная строка (04 §2, R-5 этапа «Маркировка»).
 SELECT id, legal_type, inn, name FROM organization WHERE is_platform;

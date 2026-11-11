@@ -32,7 +32,9 @@ jobs:
       - name: Environment templates
         run: deploy/scripts/check-env.sh
       - name: Release guard regression checks
-        run: bash deploy/tests/release-guards.sh
+        run: |
+          bash deploy/tests/release-guards.sh
+          bash deploy/tests/migration-guards.sh
       - name: Migrations are compatible with the previous release
         if: github.event_name == 'pull_request'
         run: deploy/scripts/check-migrations.sh "origin/${GITHUB_BASE_REF}"
