@@ -29,10 +29,12 @@ type InvoiceClient struct {
 	PDFHosts                []string
 }
 
-var invoiceDigits = regexp.MustCompile(`^\d{1,15}$`)
+var invoiceDigits = regexp.MustCompile(`^[1-9]\d{0,14}$`)
 
 func (c *InvoiceClient) Send(ctx context.Context, doc domain.InvoiceDoc) (domain.BankInvoiceDocument, error) {
-	number := strings.TrimPrefix(doc.Number, "MX-")
+	// Production rejects zero-padded numbers even though its published schema
+	// accepts them. Keep MX-padding only in our number and payment purpose.
+	number := strings.TrimLeft(strings.TrimPrefix(doc.Number, "MX-"), "0")
 	if !invoiceDigits.MatchString(number) || doc.Amount <= 0 || doc.Supplier.BankAccount != c.Account {
 		return domain.BankInvoiceDocument{}, errors.New("tbank: invalid invoice")
 	}

@@ -47,7 +47,7 @@ func TestInvoiceSendContract(t *testing.T) {
 		raw, _ := json.Marshal(call.Body)
 		var body map[string]any
 		_ = json.Unmarshal(raw, &body)
-		if body["invoiceNumber"] != "000123" || body["customPaymentPurpose"] != "MX-000123. DEV-TBANK-TEST" || !strings.Contains(string(raw), `"price":10.01`) {
+		if body["invoiceNumber"] != "123" || body["customPaymentPurpose"] != "MX-000123. DEV-TBANK-TEST" || !strings.Contains(string(raw), `"price":10.01`) {
 			t.Fatalf("wrong payload: %s", raw)
 		}
 		if body["contacts"] != nil || body["contactPhone"] != nil {
@@ -66,6 +66,16 @@ func TestInvoiceSendContract(t *testing.T) {
 	})
 	if _, err = c.Send(context.Background(), doc); err == nil || calls != 2 {
 		t.Fatal("timeout must be returned without a repeat")
+	}
+}
+
+func TestInvoiceZeroNumberRejectedBeforeRequest(t *testing.T) {
+	c := InvoiceClient{Account: "40802810300010250129"}
+	for _, number := range []string{"MX-000000", "MX-0", "MX-", "MX-00001x"} {
+		_, err := c.Send(context.Background(), domain.InvoiceDoc{Number: number, Amount: 1000, Supplier: domain.Supplier{BankAccount: c.Account}})
+		if err == nil {
+			t.Fatalf("invalid number %q accepted", number)
+		}
 	}
 }
 
