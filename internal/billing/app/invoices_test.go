@@ -27,6 +27,9 @@ func TestCreateInvoice(t *testing.T) {
 	if !bytes.HasPrefix(e.storedPDF(inv.PDFStorageKey), []byte("%PDF")) {
 		t.Fatal("pdf is not stored")
 	}
+	if inv.PaymentDetails == nil || inv.PaymentDetails.Account != e.svc.Config.Supplier.BankAccount || inv.PaymentDetails.Purpose != "Пополнение баланса по счёту № "+inv.Number {
+		t.Fatalf("invoice payment details missing: %+v", inv.PaymentDetails)
+	}
 	if e.count(`SELECT count(*) FROM audit_log WHERE action = 'invoice.issued' AND object_id = $1`, inv.ID.String()) != 1 {
 		t.Fatal("audit entry is missing")
 	}
@@ -37,6 +40,9 @@ func TestCreateInvoice(t *testing.T) {
 	page, err := e.svc.ListInvoices(context.Background(), e.org, "", 1)
 	if err != nil || len(page.Items) != 1 || page.Items[0].ID != second.ID || page.NextCursor == "" {
 		t.Fatalf("first page %+v, %v", page, err)
+	}
+	if page.Items[0].PaymentDetails != nil {
+		t.Fatal("historical invoice must not use current supplier details")
 	}
 	page, err = e.svc.ListInvoices(context.Background(), e.org, page.NextCursor, 1)
 	if err != nil || len(page.Items) != 1 || page.Items[0].ID != inv.ID || page.NextCursor != "" {

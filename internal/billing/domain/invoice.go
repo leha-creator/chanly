@@ -47,6 +47,9 @@ func (p Payer) HasBankDetails() bool { return p.BankAccount != "" && p.BankBIK !
 
 // Invoice — счёт на пополнение баланса (S-06).
 type Invoice struct {
+	// PaymentDetails is returned on issuance from the same snapshot as the PDF.
+	// Historical invoices use their stored PDF, not current supplier settings.
+	PaymentDetails *InvoicePaymentDetails
 	ID             uuid.UUID
 	Number         string
 	OrganizationID uuid.UUID
@@ -61,6 +64,10 @@ type Invoice struct {
 	CancelReason   string
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
+}
+
+type InvoicePaymentDetails struct {
+	Recipient, INN, Account, Bank, BIK, CorrAccount, Purpose string
 }
 
 // ValidateAmount — сумма счёта в пределах.

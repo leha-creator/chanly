@@ -56,9 +56,15 @@ func (s *Service) CreateInvoice(ctx context.Context, orgID, userID uuid.UUID, am
 		CreatedBy: userID, CreatedAt: now, UpdatedAt: now,
 	}
 	inv.PDFStorageKey = "invoices/" + inv.ID.String() + ".pdf"
-	paymentPurpose := ""
+	paymentPurpose := "Пополнение баланса по счёту № " + inv.Number
 	if controlled {
-		paymentPurpose = "Пополнение баланса по счёту № " + inv.Number + ". " + s.BankConfig.PaymentMarker()
+		paymentPurpose += ". " + s.BankConfig.PaymentMarker()
+	}
+	supplier := s.Config.Supplier
+	inv.PaymentDetails = &domain.InvoicePaymentDetails{
+		Recipient: supplier.Name, INN: supplier.INN, Account: supplier.BankAccount,
+		Bank: supplier.BankName, BIK: supplier.BankBIK, CorrAccount: supplier.BankCorrAccount,
+		Purpose: paymentPurpose,
 	}
 	pdf, err := s.Renderer.Invoice(domain.InvoiceDoc{
 		PaymentPurpose: paymentPurpose,

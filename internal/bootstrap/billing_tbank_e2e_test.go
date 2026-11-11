@@ -30,7 +30,19 @@ func TestTBankControlledSmallInvoiceHTTP(t *testing.T) {
 	date := a.clk.Now()
 	svc.BankConfig = billingapp.BankConfig{Access: billingdomain.BankControlled, Start: date.Add(-time.Hour), Period: 24 * time.Hour, Overlap: 24 * time.Hour, StaleAfter: time.Hour, DevRealEnabled: true, DevPaymentCode: "dev-server"}
 	var inv invoiceView
-	adv.do(http.MethodPost, "/invoices", map[string]any{"amount": 10000}).json(t, &inv)
+	issued := adv.do(http.MethodPost, "/invoices", map[string]any{"amount": 10000})
+	issued.json(t, &inv)
+	var paymentView struct {
+		PaymentDetails *struct {
+			Recipient string `json:"recipient"`
+			Account   string `json:"account"`
+			Purpose   string `json:"purpose"`
+		} `json:"payment_details"`
+	}
+	issued.json(t, &paymentView)
+	if paymentView.PaymentDetails == nil || paymentView.PaymentDetails.Recipient != svc.Config.Supplier.Name || paymentView.PaymentDetails.Account != svc.Config.Supplier.BankAccount || paymentView.PaymentDetails.Purpose != "Пополнение баланса по счёту № "+inv.Number+". "+svc.BankConfig.PaymentMarker() {
+		t.Fatalf("missing or incorrect invoice payment details: %+v", paymentView)
+	}
 	for _, amount := range []int64{99, int64(billingdomain.MaxInvoiceAmount) + 1} {
 		if res := adv.do(http.MethodPost, "/invoices", map[string]any{"amount": amount}); res.status != http.StatusUnprocessableEntity {
 			t.Fatalf("amount accepted %d: %d", amount, res.status)

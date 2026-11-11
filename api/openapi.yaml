@@ -4925,7 +4925,20 @@ components:
         paid_at: { type: string, format: date-time }
         paid_amount: { $ref: '#/components/schemas/Money' }
         pdf_url: { type: string, description: Относительный адрес PDF }
+        payment_details: { $ref: '#/components/schemas/InvoicePaymentDetails' }
         created_at: { type: string, format: date-time }
+    InvoicePaymentDetails:
+      type: object
+      description: Реквизиты из того же снимка, что и PDF нового счёта. Возвращаются при создании; для исторических счетов использовать PDF.
+      required: [recipient, inn, account, bank, bik, corr_account, purpose]
+      properties:
+        recipient: { type: string }
+        inn: { type: string }
+        account: { type: string }
+        bank: { type: string }
+        bik: { type: string }
+        corr_account: { type: string }
+        purpose: { type: string, description: Полное назначение платежа для копирования }
     ClosingDocument:
       type: string
       enum: [report, act]

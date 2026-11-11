@@ -19,6 +19,12 @@ func toInvoice(i domain.Invoice) apigen.Invoice {
 	if i.PaidAmount != nil {
 		out.PaidAmount = (*apigen.Money)(i.PaidAmount)
 	}
+	if d := i.PaymentDetails; d != nil {
+		out.PaymentDetails = &apigen.InvoicePaymentDetails{
+			Recipient: d.Recipient, Inn: d.INN, Account: d.Account, Bank: d.Bank,
+			Bik: d.BIK, CorrAccount: d.CorrAccount, Purpose: d.Purpose,
+		}
+	}
 	return out
 }
 
