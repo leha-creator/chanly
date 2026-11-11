@@ -114,6 +114,10 @@ func (unimplemented) ResolveDispute(context.Context, apigen.ResolveDisputeReques
 	return nil, apperr.NotImplemented("resolveDispute")
 }
 
+func (unimplemented) SubscribeAdminEvents(context.Context, apigen.SubscribeAdminEventsRequestObject) (apigen.SubscribeAdminEventsResponseObject, error) {
+	return nil, apperr.NotImplemented("subscribeAdminEvents")
+}
+
 func (unimplemented) ListAdminInvoices(context.Context, apigen.ListAdminInvoicesRequestObject) (apigen.ListAdminInvoicesResponseObject, error) {
 	return nil, apperr.NotImplemented("listAdminInvoices")
 }
@@ -444,6 +448,10 @@ func (unimplemented) ListClosingActs(context.Context, apigen.ListClosingActsRequ
 
 func (unimplemented) GetClosingActPdf(context.Context, apigen.GetClosingActPdfRequestObject) (apigen.GetClosingActPdfResponseObject, error) {
 	return nil, apperr.NotImplemented("getClosingActPdf")
+}
+
+func (unimplemented) SubscribeEvents(context.Context, apigen.SubscribeEventsRequestObject) (apigen.SubscribeEventsResponseObject, error) {
+	return nil, apperr.NotImplemented("subscribeEvents")
 }
 
 func (unimplemented) ListInvoices(context.Context, apigen.ListInvoicesRequestObject) (apigen.ListInvoicesResponseObject, error) {

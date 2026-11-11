@@ -58,6 +58,8 @@ type serverDeps struct {
 	// Routes — обработчики вне strict server: шаблон ServeMux → обработчик (Webhook, R-4).
 	// Слои Before к ним не применяются.
 	Routes map[string]http.Handler
+	// Streams are routed INSIDE Before, AdminGate and OpenAPI validation.
+	Streams map[string]http.Handler
 }
 
 // newHandler собирает корневой HTTP-обработчик.
@@ -121,7 +123,12 @@ func newHandler(d serverDeps) (http.Handler, error) {
 		},
 	})
 
-	var apiChain http.Handler = validator(apiHandler)
+	protected := http.NewServeMux()
+	protected.Handle("/", apiHandler)
+	for pattern, h := range d.Streams {
+		protected.Handle(pattern, h)
+	}
+	var apiChain http.Handler = validator(protected)
 	// Пользователь без роли администратора получает 403 на /admin/* до проверки тела (R-1).
 	apiChain = httpx.AdminGate(BaseURL+"/admin", log)(apiChain)
 	apiChain = httpx.Chain(apiChain, d.Before...)

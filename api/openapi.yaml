@@ -107,6 +107,74 @@ tags:
     description: Управление тестовым сервером. Только в тестовом сервере
 
 paths:
+  /events:
+    get:
+      operationId: subscribeEvents
+      tags: [realtime]
+      summary: SSE v1 — изменения данных текущего пользователя и организации
+      description: |
+        Cookie session; audience определяется сервером, параметры user_id/organization_id
+        не предоставляют доступ. Административные темы сюда не поступают.
+        Сначала ready после регистрации подписки, затем invalidate и heartbeat каждые 15 секунд.
+        Именованные ready, heartbeat, resync_required содержат {"version":1}.
+        invalidate содержит RealtimeInvalidation, JSON не более 4096 символов, без бизнес-данных.
+        После ready/resync_required клиент перечитывает данные обычными GET.
+        Replay/Last-Event-ID отсутствует. При сбое внутреннего reader, overflow или shutdown
+        соединение закрывается; после reconnect новый ready требует resync.
+        Права проверяются перед каждым сообщением и каждую секунду без продления сессии;
+        ошибка проверки закрывает поток. См. docs/realtime.md для границ задержки.
+      responses:
+        '200':
+          description: UTF-8 SSE, немедленный flush, Cache-Control no-cache
+          headers:
+            Cache-Control:
+              schema: { type: string, enum: [no-cache] }
+          content:
+            text/event-stream:
+              schema: { type: string }
+              example: "event: ready\ndata: {\"version\":1}\n\nevent: heartbeat\ndata: {\"version\":1}\n\n"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '503':
+          description: Reader восстанавливается; повторить подключение после Retry-After
+          headers:
+            Retry-After:
+              schema: { type: string, example: '1' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /admin/events:
+    get:
+      operationId: subscribeAdminEvents
+      tags: [realtime, admin]
+      summary: SSE v1 — административные изменения и личные уведомления
+      description: |
+        Роль: moderator, senior. Организация не требуется. Session/AdminGate и
+        IP allowlist Caddy для /admin/* обязательны. Формат и восстановление как /events.
+        moderator получает channel/order/placement/dispute/ord/organization/counters;
+        finance и audit — только senior. Личные уведомления изолированы по user_id.
+        Смена роли, организации или кабинетов закрывает старый поток.
+      responses:
+        '200':
+          description: UTF-8 SSE v1, ready первым, heartbeat каждые 15 секунд
+          headers:
+            Cache-Control:
+              schema: { type: string, enum: [no-cache] }
+          content:
+            text/event-stream:
+              schema: { type: string }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '503':
+          description: Reader восстанавливается; повторить подключение после Retry-After
+          headers:
+            Retry-After:
+              schema: { type: string, example: '1' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
   # ---------------------------------------------------------------- auth
   /auth/code:
     post:
@@ -4099,6 +4167,35 @@ components:
             request_id: 0190a000-0000-7000-8000-00000000aaaa
 
   schemas:
+    RealtimeControl:
+      type: object
+      additionalProperties: false
+      required: [version]
+      properties:
+        version: { type: integer, enum: [1] }
+    RealtimeInvalidation:
+      type: object
+      additionalProperties: false
+      required: [version, topic]
+      description: |
+        Только имена областей и UUID, не бизнес-данные. post.changed содержит campaign_id;
+        placement.changed — order_id/campaign_id, если доступны. Catalog broadcast не содержит UUID.
+        Несколько затронутых областей дают отдельные события. Уведомления не заменяют changefeed.
+      properties:
+        version: { type: integer, enum: [1] }
+        topic:
+          type: string
+          maxLength: 64
+          pattern: '^[a-z][a-z_.]{0,63}$'
+          enum: [session.changed, notification.changed, balance.changed, invoice.changed, closing_act.changed,
+            order.changed, placement.changed, campaign.changed, post.changed, channel.changed, channel.metrics.changed,
+            cart.changed, media.changed, payout.changed, rocketwork.changed, organization.changed, category.changed, format.changed,
+            admin.channel.changed, admin.order.changed, admin.placement.changed, admin.dispute.changed, admin.finance.changed,
+            admin.ord.changed, admin.organization.changed, admin.audit.changed, admin.counters.changed]
+        object_id: { type: string, format: uuid }
+        order_id: { type: string, format: uuid }
+        campaign_id: { type: string, format: uuid }
+        channel_id: { type: string, format: uuid }
     RocketworkCheck:
       type: object
       additionalProperties: false

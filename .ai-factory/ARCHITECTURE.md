@@ -10,6 +10,14 @@ Dev UI диагностики RocketWork (2026-11-11): `rocketwork-check serve` 
 
 ## Overview
 
+SSE кабинетов: `internal/platform/realtime` читает транзакционный журнал из
+миграции 00107 одним reader на API-реплику и рассылает через bounded hub.
+SQL-триггеры покрывают HTTP/worker/бот/CLI; PostgreSQL snapshot xmin закрывает
+гонку commit-порядка, durable epoch обнаруживает очистку журнала. Короткие
+инфраструктурные pgx-запросы reader/cleanup — явное исключение из sqlc, подобно
+каталогу; новые схемы всё равно включены в генерацию моделей. Streaming routes
+находятся внутри Session/AdminGate/OpenAPI. Подробности: [docs/realtime.md](../docs/realtime.md).
+
 С 2026-11-11 публичность MAX-канала не ограничивает допуск во всех окружениях,
 включая production. Удалена политика публичности из домена и конфигурации сборки.
 `is_public` хранится как факт MAX; права бота, модерация, цена, категория и РКН

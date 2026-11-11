@@ -30,6 +30,7 @@ type Store struct {
 	clock    *clock.Clock
 	log      *slog.Logger
 	seed     SeedFunc
+	streams  map[*Stream]struct{}
 }
 
 // New создаёт хранилище и загружает начальные данные.
@@ -64,9 +65,18 @@ type Tx struct {
 // Вызывающий обязан вызвать возвращённую функцию освобождения.
 func (s *Store) Begin(ctx context.Context) (*Tx, func()) {
 	s.mu.Lock()
+	var before map[string]streamSnapshot
+	if len(s.streams) > 0 {
+		before = s.realtimeSnapshot()
+	}
 	tx := &Tx{s: s, ctx: ctx, D: s.data, Now: s.clock.Now(), log: logx.From(ctx, s.log)}
 	tx.Fired = tx.RunTimers()
-	return tx, s.mu.Unlock
+	return tx, func() {
+		if before != nil {
+			s.publishChanges(before)
+		}
+		s.mu.Unlock()
+	}
 }
 
 // Reset возвращает начальные данные и убирает сдвиг часов. Сессии сохраняются.
@@ -75,6 +85,7 @@ func (s *Store) Reset(ctx context.Context) {
 	defer s.mu.Unlock()
 	s.clock.Reset()
 	s.load(ctx)
+	s.resync()
 	logx.From(ctx, s.log).Info("mock state reset", "op", "Store.Reset")
 }
 
@@ -88,7 +99,11 @@ func (tx *Tx) CreateSession(userID uuid.UUID) string {
 		panic(fmt.Sprintf("crypto/rand: %v", err))
 	}
 	token := hex.EncodeToString(b)
-	tx.s.sessions[token] = &Session{Token: token, UserID: userID, CreatedAt: tx.Now}
+	ttl := 30 * 24 * time.Hour
+	if u := tx.D.Users[userID]; u != nil && u.AdminRole != "" {
+		ttl = 12 * time.Hour
+	}
+	tx.s.sessions[token] = &Session{Token: token, UserID: userID, CreatedAt: tx.Now, ExpiresAt: tx.Now.Add(ttl)}
 	return token
 }
 
@@ -103,7 +118,7 @@ func (s *Store) SessionUser(token string) (uuid.UUID, bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	sess, ok := s.sessions[token]
-	if !ok {
+	if !ok || !s.clock.Now().Before(sess.ExpiresAt) {
 		return uuid.Nil, false
 	}
 	if u, ok := s.data.Users[sess.UserID]; !ok || u.Blocked {

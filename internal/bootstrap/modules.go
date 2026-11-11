@@ -58,6 +58,7 @@ import (
 	"github.com/leha-creator/chanly/internal/platform/metrics"
 	"github.com/leha-creator/chanly/internal/platform/outbound"
 	"github.com/leha-creator/chanly/internal/platform/ratelimit"
+	"github.com/leha-creator/chanly/internal/platform/realtime"
 	"github.com/leha-creator/chanly/internal/platform/secretbox"
 	"github.com/leha-creator/chanly/internal/platform/storage"
 	"github.com/leha-creator/chanly/internal/platform/storage/storagefake"
@@ -335,12 +336,14 @@ type apiImpl struct {
 }
 
 // apiHandler собирает HTTP-обработчик режима api.
-func apiHandler(cfg Config, in *infra, m *modules, reg *metrics.Registry) (http.Handler, error) {
+func apiHandler(ctx context.Context, cfg Config, in *infra, m *modules, reg *metrics.Registry) (http.Handler, error) {
 	trusted, err := httpx.ParsePrefixes(cfg.TrustedProxyCIDRs)
 	if err != nil {
 		return nil, fmt.Errorf("TRUSTED_PROXY_CIDRS: %w", err)
 	}
 	log := in.log.With(logx.KeyModule, "http")
+	hub := realtime.NewHub(128)
+	go realtime.NewReader(in.pool, hub, in.log.With(logx.KeyModule, "realtime")).Run(ctx)
 	return newHandler(serverDeps{
 		Log:     in.log,
 		Clock:   in.clock,
@@ -353,6 +356,10 @@ func apiHandler(cfg Config, in *infra, m *modules, reg *metrics.Registry) (http.
 		Routes: map[string]http.Handler{
 			maxWebhookPattern:        newMAXWebhook(cfg, in, m.txRunner, m.queue, httpx.ClientInfo(trusted)),
 			rocketworkWebhookPattern: newRocketWorkWebhook(in, m.payout, m.txRunner, m.queue, httpx.ClientInfo(trusted)),
+		},
+		Streams: map[string]http.Handler{
+			"GET " + BaseURL + "/events":       realtime.Handler(hub, m.accountHTTP.AuthenticateStream, false, log),
+			"GET " + BaseURL + "/admin/events": realtime.Handler(hub, m.accountHTTP.AuthenticateStream, true, log),
 		},
 		Ready:         in.life.ready(readiness(in.pool)),
 		Authenticated: httpx.Authenticated,

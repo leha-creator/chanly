@@ -918,6 +918,26 @@ type RateLimitBucket struct {
 	RefilledAt pgtype.Timestamptz
 }
 
+type RealtimeEpoch struct {
+	Singleton            bool
+	Generation           int64
+	MaxPrunedID          int64
+	MaxPrunedTransaction interface{}
+}
+
+type RealtimeEvent struct {
+	ID            int64
+	TransactionID interface{}
+	CreatedAt     pgtype.Timestamptz
+	Scope         string
+	AudienceID    pgtype.UUID
+	Topic         string
+	ObjectID      pgtype.UUID
+	OrderID       pgtype.UUID
+	CampaignID    pgtype.UUID
+	ChannelID     pgtype.UUID
+}
+
 type RocketworkContractor struct {
 	ID              pgtype.UUID
 	OrganizationID  pgtype.UUID

@@ -38,6 +38,7 @@ func (h *Handlers) MockShiftClock(ctx context.Context, req api.MockShiftClockReq
 	tx, done := h.st.Begin(ctx) // Begin выполняет просроченные таймеры
 	defer done()
 	results := tx.Fired
+	tx.Resync()
 	h.logger(ctx).Info("mock clock shifted", "op", "Mock.Clock", "hours", req.Body.Hours, "now", tx.Now)
 	return api.MockShiftClock200JSONResponse(clockState(tx, h.st.Clock().Offset(), results)), nil
 }

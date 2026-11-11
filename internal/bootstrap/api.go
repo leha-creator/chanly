@@ -117,7 +117,7 @@ func runAPI(ctx context.Context, cfg Config, log *slog.Logger) error {
 	if err := m.startMarking(ctx); err != nil {
 		return err
 	}
-	h, err := apiHandler(cfg, in, m, reg)
+	h, err := apiHandler(ctx, cfg, in, m, reg)
 	if err != nil {
 		return err
 	}

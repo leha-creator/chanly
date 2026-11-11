@@ -245,6 +245,15 @@ func (s *Service) Login(ctx context.Context, email, code string, ip *netip.Addr,
 
 // Authenticate находит сессию по токену из cookie и продлевает её (07 §4).
 func (s *Service) Authenticate(ctx context.Context, token string) (*Principal, error) {
+	return s.authenticate(ctx, token, true)
+}
+
+// AuthenticateStream checks current access without extending an idle browser session.
+func (s *Service) AuthenticateStream(ctx context.Context, token string) (*Principal, error) {
+	return s.authenticate(ctx, token, false)
+}
+
+func (s *Service) authenticate(ctx context.Context, token string, touch bool) (*Principal, error) {
 	const op = "Account.Authenticate"
 	if token == "" {
 		return nil, apperr.Unauthorized("session is missing")
@@ -271,7 +280,7 @@ func (s *Service) Authenticate(ctx context.Context, token string) (*Principal, e
 		return nil, apperr.Unauthorized("user is blocked")
 	}
 	ttl := domain.SessionTTL(u, s.Config.SessionTTL, s.Config.AdminSessionTTL)
-	if sess.Touch(ttl, now) {
+	if touch && sess.Touch(ttl, now) {
 		if err := s.Sessions.SetExpiresAt(ctx, sess.ID, sess.ExpiresAt, now); err != nil {
 			return nil, err
 		}

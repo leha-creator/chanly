@@ -43,6 +43,16 @@ func New(svc *app.Service, opts Options, log *slog.Logger) *Handlers {
 // Authenticate — проверка сессии для httpx.Session.
 func (h *Handlers) Authenticate(ctx context.Context, token string) (*httpx.Principal, error) {
 	p, err := h.svc.Authenticate(ctx, token)
+	return toHTTPPrincipal(p, err)
+}
+
+// AuthenticateStream deliberately does not renew the cookie session.
+func (h *Handlers) AuthenticateStream(ctx context.Context, token string) (*httpx.Principal, error) {
+	p, err := h.svc.AuthenticateStream(ctx, token)
+	return toHTTPPrincipal(p, err)
+}
+
+func toHTTPPrincipal(p *app.Principal, err error) (*httpx.Principal, error) {
 	if err != nil {
 		return nil, err
 	}

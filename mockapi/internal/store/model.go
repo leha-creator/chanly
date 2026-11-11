@@ -28,6 +28,7 @@ type Session struct {
 	Token     string
 	UserID    uuid.UUID
 	CreatedAt time.Time
+	ExpiresAt time.Time
 }
 
 type Organization struct {

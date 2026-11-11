@@ -93,12 +93,14 @@ func newTestAppWith(t *testing.T, cfg Config) *testApp {
 	if err := m.startMarking(context.Background()); err != nil {
 		t.Fatal(err)
 	}
-	h, err := apiHandler(cfg, in, m, metrics.New())
+	streamCtx, stopStreams := context.WithCancel(context.Background())
+	t.Cleanup(stopStreams)
+	h, err := apiHandler(streamCtx, cfg, in, m, metrics.New())
 	if err != nil {
 		t.Fatal(err)
 	}
 	srv := httptest.NewServer(h)
-	t.Cleanup(srv.Close)
+	t.Cleanup(func() { stopStreams(); srv.Close() })
 
 	spec, err := loadSpec()
 	if err != nil {

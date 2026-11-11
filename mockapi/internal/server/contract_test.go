@@ -85,6 +85,8 @@ func checkoutDraft(e *env) string {
 }
 
 var cases = map[string]opCase{
+	"subscribeEvents":      {user: adv},
+	"subscribeAdminEvents": {user: adm},
 	// auth и общие
 	"requestLoginCode":          {},
 	"login":                     {},
@@ -349,6 +351,10 @@ func TestEveryOperation(t *testing.T) {
 			}
 			if c.query != "" {
 				path += "?" + c.query
+			}
+			if o.id == "subscribeEvents" || o.id == "subscribeAdminEvents" {
+				assertSSEReady(t, e.client(c.user), e.srv.URL+"/api/v1"+path)
+				return
 			}
 			r := e.doH(e.client(c.user), o.method, path, body, contentType, c.header)
 			if c.status != 0 {
