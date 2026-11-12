@@ -85,6 +85,14 @@ dc logs --tail=100 backup
 
 ## Выпуск и откат
 
+Если dev-выпуск остановился на `open /opt/maxim-dev/app.env: permission denied`,
+пользователь `deploy` должен снова стать владельцем файла с правами `600`.
+Для этого есть ручной Actions → **ops** → ветка **dev** →
+`repair_dev_permissions=true`. Операция использует SSH-доступ окружения dev и
+тот же release-lock, изменяет только владельца/права этого файла через Docker,
+не читает и не выводит его содержимое. Production и обычные проверки не затрагиваются.
+После успешной операции повторить dev-выпуск.
+
 Production выпускается автоматически на каждый push/merge в `master` через **deploy**; PR выполняет только проверки. Workflow **release** также доступен вручную и сначала фиксирует полный SHA, проверяет его через backend/ops, затем собирает `ghcr.io/leha-creator/maxim:sha-<full-commit-sha>` и `maxim-postgres:sha-<full-commit-sha>`, копирует файлы стека и запускает на сервере `release.sh --tag sha-<full-commit-sha>`. Выпуски в одно окружение идут по очереди.
 
 Что делает [release.sh](release.sh):

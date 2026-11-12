@@ -10,12 +10,68 @@ on:
         type: string
         required: true
   workflow_dispatch:
+    inputs:
+      repair_dev_permissions:
+        description: "Восстановить deploy:deploy и 600 только для dev app.env"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
 
 jobs:
+  repair-dev-permissions:
+    if: github.event_name == 'workflow_dispatch' && inputs.repair_dev_permissions && github.ref == 'refs/heads/dev'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: dev
+    steps:
+      - name: Restore private dev configuration permissions
+        env:
+          HOST: ${{ vars.DEPLOY_HOST }}
+          USER_NAME: ${{ vars.DEPLOY_USER }}
+          SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          set +x
+          [[ "$HOST" = 194.58.120.196 && "$USER_NAME" = deploy ]]
+          [[ -n "$SSH_KEY" && -n "$KNOWN_HOSTS" ]]
+          umask 077
+          ssh_dir="$RUNNER_TEMP/repair-dev-ssh"
+          mkdir -p "$ssh_dir"
+          key_file="$ssh_dir/key"
+          host_file="$ssh_dir/known_hosts"
+          trap 'rm -f "$key_file" "$host_file"' EXIT
+          printf '%s\n' "$SSH_KEY" > "$key_file"
+          printf '%s\n' "$KNOWN_HOSTS" > "$host_file"
+          ssh -T -i "$key_file" -o "UserKnownHostsFile=$host_file" \
+            -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o BatchMode=yes \
+            "$USER_NAME@$HOST" 'flock -w 900 /opt/edge/.release.lock bash -s' <<'REMOTE'
+          set -euo pipefail
+          [[ $(id -un) = deploy ]]
+          [[ $(readlink -f /opt/maxim-dev) = /opt/maxim-dev ]]
+          file=/opt/maxim-dev/app.env
+          [[ -f "$file" && ! -L "$file" ]]
+          uid=$(id -u)
+          gid=$(id -g)
+          echo 'Before:'
+          stat -c '%a %U:%G %n' "$file"
+          if [[ $(stat -c '%u:%g:%a' "$file") != "$uid:$gid:600" ]]; then
+            docker run --rm --network none --read-only --cap-drop ALL \
+              --cap-add CHOWN --cap-add FOWNER --security-opt no-new-privileges:true \
+              --mount "type=bind,src=$file,dst=/repair/app.env" \
+              alpine:3.22@sha256:49340b346798875b5592e5d420241f2f9cfba5f47e62ebb1446a1b34734e898f \
+              sh -ec 'chmod 600 /repair/app.env; chown "$1:$2" /repair/app.env' repair "$uid" "$gid"
+          fi
+          [[ -r "$file" && $(stat -c '%u:%g:%a' "$file") = "$uid:$gid:600" ]]
+          echo 'After:'
+          stat -c '%a %U:%G %n' "$file"
+          echo 'Dev configuration is readable by deploy; contents were not read or changed.'
+          REMOTE
+
   lint:
+    if: ${{ !inputs.repair_dev_permissions }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -88,6 +144,7 @@ jobs:
         run: docker run --rm -i hadolint/hadolint:v2.12.0 < deploy/postgres/Dockerfile
 
   config-check:
+    if: ${{ !inputs.repair_dev_permissions }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
