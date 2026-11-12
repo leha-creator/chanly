@@ -190,3 +190,28 @@ func TestPaidWithoutFinalFinancialDetailsNeverPaysAgain(t *testing.T) {
 		t.Fatal("unreconciled fee posted")
 	}
 }
+
+func TestWorkflowUnlimitedCommissionRecordsActualFeeOnce(t *testing.T) {
+	e, provider, p := workflowEnv(t)
+	e.svc.Config.AgreementTemplate.MaxCommission = 0
+	e.svc.Config.AgreementTemplate.CommissionUnlimited = true
+	ctx := context.Background()
+	if err := e.svc.DrivePayout(ctx, p.ID); !isPostponed(err) {
+		t.Fatal(err)
+	}
+	fee, amount := money.Kopecks(500), p.Amount
+	provider.task.Status = "paid"
+	provider.task.Commission = &fee
+	provider.task.ExecutorAmount = &amount
+	for i := 0; i < 2; i++ {
+		if err := e.svc.DrivePayout(ctx, p.ID); err != nil && !isPostponed(err) {
+			t.Fatal(err)
+		}
+	}
+	if got := e.payout(p.ID); got.Status != domain.StatusSucceeded || got.ProviderFee != fee {
+		t.Fatal("actual provider commission was not recorded")
+	}
+	if provider.creates != 1 || provider.actions["pay"] != 0 || e.count("SELECT count(*) FROM ledger_transaction WHERE payout_id=$1", p.ID) != 1 {
+		t.Fatal("reconciliation duplicated a provider write or ledger entry")
+	}
+}

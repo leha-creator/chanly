@@ -32,6 +32,7 @@ type RocketWorkConfig struct {
 	AccessMode           string `env:"ROCKETWORK_ACCESS_MODE"`
 	Purpose              string `env:"ROCKETWORK_PURPOSE"`
 	ProductionApproved   bool   `env:"ROCKETWORK_PRODUCTION_APPROVED"`
+	DevLiveApproved      bool   `env:"ROCKETWORK_DEV_LIVE_APPROVED"`
 	WithdrawalCompanyINN string `env:"ROCKETWORK_WITHDRAWAL_COMPANY_INN"`
 	WithdrawalBIC        string `env:"ROCKETWORK_WITHDRAWAL_BIC"`
 	WithdrawalAccount    string `env:"ROCKETWORK_WITHDRAWAL_ACCOUNT"`
@@ -50,6 +51,7 @@ type RocketWorkConfig struct {
 	ActRequired          *bool  `env:"ROCKETWORK_ACT_REQUIRED"`
 	TaxRetention         *bool  `env:"ROCKETWORK_TAX_RETENTION"`
 	MaxCommission        *int64 `env:"ROCKETWORK_MAX_COMMISSION_KOPECKS"`
+	CommissionUnlimited  bool   `env:"ROCKETWORK_COMMISSION_UNLIMITED"`
 	// Mode — fake | disabled | live; пусто — fake вне production и disabled в production.
 	Mode string `env:"ROCKETWORK_MODE"`
 	// BaseURL — адрес API; пусто — https://api.rocketwork.ru из OpenAPI.
@@ -89,8 +91,17 @@ func (c Config) rocketWorkAutomationAllowed() bool {
 	if c.RocketWorkAccess() != checkdomain.Automation || r.Purpose != checkdomain.Business {
 		return false
 	}
-	return (c.Env == EnvProduction && r.Target == "production" && r.ProductionApproved) ||
+	return (c.Env == EnvProduction && r.Target == "production" && r.ProductionApproved) || c.rocketWorkDevLiveAllowed() ||
 		(c.Env != EnvProduction && r.Target == "local-emulator" && rwOrigin(r.Target, r.BaseURL))
+}
+
+// A real business workflow on a development site requires separate admission.
+// Test/CI processes and ordinary development configurations remain isolated.
+func (c Config) rocketWorkDevLiveAllowed() bool {
+	r := c.RocketWork
+	return c.Env == EnvDevelopment && r.DevLiveApproved && r.ProductionApproved &&
+		c.RocketWorkMode() == RocketWorkLive && r.WorkflowEnabled &&
+		c.RocketWorkAccess() == checkdomain.Automation && r.Purpose == checkdomain.Business && r.Target == "production"
 }
 
 // RocketWorkMode — режим с подстановкой значения по умолчанию.
@@ -134,8 +145,12 @@ func (c Config) PayoutAppConfig() payoutapp.Config {
 			result.WithdrawalDestination = &payoutdomain.WithdrawalDestination{CompanyINN: r.WithdrawalCompanyINN, BIC: r.WithdrawalBIC, AccountNumber: r.WithdrawalAccount, ExecutorID: r.WithdrawalExecutorID}
 		}
 	}
-	if r.ActRequired != nil && r.TaxRetention != nil && r.MaxCommission != nil {
-		result.AgreementTemplate = &payoutdomain.AgreementTerms{Currency: "RUB", Title: r.TaskTitle, Description: r.TaskDescription, SignatureForm: r.ContractMode, DocumentName: r.DocumentName, DocumentNumber: r.DocumentNumber, DocumentDate: r.DocumentDate, PeriodFrom: r.PeriodFrom, PeriodTo: r.PeriodTo, ActRequired: *r.ActRequired, TaxRetention: *r.TaxRetention, MaxCommission: money.Kopecks(*r.MaxCommission)}
+	if r.ActRequired != nil && r.TaxRetention != nil && (r.MaxCommission != nil || r.CommissionUnlimited) {
+		var maxCommission money.Kopecks
+		if r.MaxCommission != nil {
+			maxCommission = money.Kopecks(*r.MaxCommission)
+		}
+		result.AgreementTemplate = &payoutdomain.AgreementTerms{Currency: "RUB", Title: r.TaskTitle, Description: r.TaskDescription, SignatureForm: r.ContractMode, DocumentName: r.DocumentName, DocumentNumber: r.DocumentNumber, DocumentDate: r.DocumentDate, PeriodFrom: r.PeriodFrom, PeriodTo: r.PeriodTo, ActRequired: *r.ActRequired, TaxRetention: *r.TaxRetention, MaxCommission: maxCommission, CommissionUnlimited: r.CommissionUnlimited}
 	}
 	return result
 }
@@ -148,8 +163,8 @@ func (c Config) validateRocketWorkIsolation(add func(field, reason string)) {
 	if r.ControlDatabaseURL != "" || r.PolicyDatabaseURL != "" || r.ArmingID != "" {
 		add("ROCKETWORK_CONTROL_DATABASE_URL", "control credentials and arming configuration belong only to isolated rocketwork-check")
 	}
-	if c.Env != EnvProduction && r.Target != "local-emulator" && r.Token != "" {
-		add("ROCKETWORK_TOKEN", "ordinary dev/test processes must not receive the primary account token")
+	if c.Env != EnvProduction && r.Target != "local-emulator" && r.Token != "" && !c.rocketWorkDevLiveAllowed() {
+		add("ROCKETWORK_TOKEN", "development live business requires explicit dev and production admission; test processes cannot receive the primary token")
 	}
 	if mode != RocketWorkLive && r.Token != "" {
 		add("ROCKETWORK_TOKEN", "fake/disabled must not receive provider credentials")
@@ -162,7 +177,7 @@ func (c Config) validateRocketWorkIsolation(add func(field, reason string)) {
 		add("ROCKETWORK_ACCESS_MODE", "controlled requires the isolated diagnostic runner")
 	case checkdomain.Automation:
 		if !c.rocketWorkAutomationAllowed() {
-			add("ROCKETWORK_ACCESS_MODE", "automation requires production business admission or a local emulator")
+			add("ROCKETWORK_ACCESS_MODE", "automation requires admitted production/development business or a local emulator")
 		}
 	default:
 		add("ROCKETWORK_ACCESS_MODE", "must be readonly, controlled or automation")
@@ -206,8 +221,11 @@ func (c Config) validateRocketWork(add func(field, reason string)) {
 		if strings.TrimSpace(r.AccountKey) == "" {
 			add("ROCKETWORK_ACCOUNT_KEY", "required for workflow identity")
 		}
-		if r.ActRequired == nil || r.TaxRetention == nil || r.MaxCommission == nil {
+		if r.ActRequired == nil || r.TaxRetention == nil || (r.MaxCommission == nil && !r.CommissionUnlimited) {
 			add("ROCKETWORK_CONTRACT_MODE", "explicit act, tax and commission policy required")
+		}
+		if r.CommissionUnlimited && r.MaxCommission != nil {
+			add("ROCKETWORK_MAX_COMMISSION_KOPECKS", "cannot combine a commission ceiling with unlimited commission")
 		}
 		if template := c.PayoutAppConfig().AgreementTemplate; template != nil {
 			template.Amount, template.ExecutorID, template.EmploymentKind = 1, 1, "selfemployed"

@@ -19,7 +19,7 @@ type WriteAuthorizer interface {
 	AuthorizeWrite(context.Context, WriteRequest) error
 }
 
-// AutomationAuthorization is composed only by the admitted production runtime.
+// AutomationAuthorization is composed only by an admitted business runtime.
 // Local test harnesses have a distinct origin-restricted authorization below.
 type AutomationAuthorization struct{}
 

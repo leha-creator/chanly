@@ -58,29 +58,33 @@ func (b ExecutorBinding) Validate() error {
 // AgreementTerms is the immutable, approved business snapshot. No provider
 // response or passport/bank payload belongs here. Booleans are explicit.
 type AgreementTerms struct {
-	Amount         money.Kopecks `json:"amount_kopecks"`
-	Currency       string        `json:"currency"`
-	ExecutorID     int64         `json:"executor_id"`
-	EmploymentKind string        `json:"employment_kind"`
-	Title          string        `json:"title"`
-	Description    string        `json:"description"`
-	SignatureForm  string        `json:"signature_form"`
-	DocumentName   string        `json:"document_name,omitempty"`
-	DocumentNumber string        `json:"document_number,omitempty"`
-	DocumentDate   string        `json:"document_date,omitempty"`
-	PeriodFrom     string        `json:"period_from,omitempty"`
-	PeriodTo       string        `json:"period_to,omitempty"`
-	ActRequired    bool          `json:"act_required"`
-	TaxRetention   bool          `json:"tax_retention"`
-	Autosignable   bool          `json:"autosignable"`
-	Autocomplete   bool          `json:"autocomplete"`
-	Autopayable    bool          `json:"autopayable"`
-	MaxCommission  money.Kopecks `json:"max_commission_kopecks"`
+	Amount              money.Kopecks `json:"amount_kopecks"`
+	Currency            string        `json:"currency"`
+	ExecutorID          int64         `json:"executor_id"`
+	EmploymentKind      string        `json:"employment_kind"`
+	Title               string        `json:"title"`
+	Description         string        `json:"description"`
+	SignatureForm       string        `json:"signature_form"`
+	DocumentName        string        `json:"document_name,omitempty"`
+	DocumentNumber      string        `json:"document_number,omitempty"`
+	DocumentDate        string        `json:"document_date,omitempty"`
+	PeriodFrom          string        `json:"period_from,omitempty"`
+	PeriodTo            string        `json:"period_to,omitempty"`
+	ActRequired         bool          `json:"act_required"`
+	TaxRetention        bool          `json:"tax_retention"`
+	Autosignable        bool          `json:"autosignable"`
+	Autocomplete        bool          `json:"autocomplete"`
+	Autopayable         bool          `json:"autopayable"`
+	MaxCommission       money.Kopecks `json:"max_commission_kopecks"`
+	CommissionUnlimited bool          `json:"commission_unlimited,omitempty"`
 }
 
 func (a AgreementTerms) Validate() error {
 	if a.Amount <= 0 || a.Currency != "RUB" || a.ExecutorID <= 0 || a.Title == "" || a.Description == "" || a.MaxCommission < 0 {
 		return fmt.Errorf("%w: agreement terms", ErrInvalidPayout)
+	}
+	if a.CommissionUnlimited && a.MaxCommission != 0 {
+		return fmt.Errorf("%w: conflicting commission policy", ErrInvalidPayout)
 	}
 	if a.EmploymentKind != "entrepreneur" && a.EmploymentKind != "selfemployed" {
 		return fmt.Errorf("%w: agreement employment", ErrInvalidPayout)
@@ -99,6 +103,10 @@ func (a AgreementTerms) Validate() error {
 		return fmt.Errorf("%w: signature form", ErrInvalidPayout)
 	}
 	return nil
+}
+
+func (a AgreementTerms) AllowsCommission(fee money.Kopecks) bool {
+	return fee >= 0 && (a.CommissionUnlimited || fee <= a.MaxCommission)
 }
 
 func (a AgreementTerms) Snapshot() ([]byte, string, error) {

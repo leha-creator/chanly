@@ -200,7 +200,8 @@ func (in *infra) connectRocketWork(ctx context.Context, cfg Config) error {
 			Authorizer: authorization,
 			Token:      cfg.RocketWork.Token, WebhookSecret: cfg.RocketWorkWebhookSecret(), PreviousWebhookSecret: []byte(cfg.RocketWork.PreviousWebhookSecret), Rate: cfg.RocketWork.Rate}, log)
 		log.InfoContext(ctx, "rocketwork adapter connected", logx.KeyOp, op, "mode", mode,
-			"contract", "Public API v1", "workflow_enabled", cfg.PayoutAppConfig().ProviderScope != nil, "live_verified", false)
+			"contract", "Public API v1", "workflow_enabled", cfg.PayoutAppConfig().ProviderScope != nil,
+			"dev_live_approved", cfg.rocketWorkDevLiveAllowed(), "live_verified", false)
 	default:
 		in.rocketwork = rocketwork.NewDisabled(log, in.clock.Now)
 		log.InfoContext(ctx, "rocketwork adapter connected", logx.KeyOp, op, "mode", RocketWorkDisabled)

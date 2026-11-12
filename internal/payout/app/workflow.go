@@ -351,7 +351,7 @@ func (s *Service) finishWorkflowPayment(ctx context.Context, p domain.Payout, w 
 	if t.Commission == nil || t.ExecutorAmount == nil {
 		return s.workflowWait("paid; waiting for financial details")
 	}
-	if *t.Commission < 0 || *t.Commission > w.Terms.MaxCommission || *t.ExecutorAmount != w.Terms.Amount {
+	if !w.Terms.AllowsCommission(*t.Commission) || *t.ExecutorAmount != w.Terms.Amount {
 		s.log.WarnContext(ctx, "rocketwork financial reconciliation mismatch", "payout_id", p.ID)
 		return domain.ErrInvalidPayout
 	}

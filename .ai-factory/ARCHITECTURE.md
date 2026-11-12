@@ -1,5 +1,11 @@
 # Architecture: Explicit Architecture (модульный монолит, по слоям)
 
+С 2026-11-12 обычный business workflow RocketWork допускается на dev только
+при одновременном явном dev/live-допуске и полном договорном конфиге
+(`ROCKETWORK_DEV_LIVE_APPROVED`, `ROCKETWORK_PRODUCTION_APPROVED`). Он использует
+прикладную БД и production scope реального аккаунта; test/CI остаются изолированы.
+Это отдельный режим от описанного ниже диагностического UI с фиксированным прогоном.
+
 Dev UI диагностики RocketWork (2026-11-11): `rocketwork-check serve` — отдельная
 доверенная сборка с control-ролью, основным токеном и ровно одним установленным
 прогоном. Обычный dev API обращается к ней через узкий authenticated gateway,
