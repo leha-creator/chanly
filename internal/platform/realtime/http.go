@@ -55,7 +55,9 @@ func Handler(hub *Hub, auth httpx.Authenticator, admin bool, log *slog.Logger) h
 			httpx.WriteError(w, r, log, apperr.Unauthorized("session access changed"))
 			return
 		}
-		sub, err := hub.Subscribe(p, admin)
+		boundaryCtx, boundaryCancel := context.WithTimeout(r.Context(), AccessCheckTimeout)
+		sub, err := hub.SubscribeContext(boundaryCtx, p, admin)
+		boundaryCancel()
 		if err != nil {
 			w.Header().Set("Retry-After", "1")
 			httpx.WriteError(w, r, log, apperr.New(apperr.CodeServiceUnavailable, "realtime reader unavailable"))

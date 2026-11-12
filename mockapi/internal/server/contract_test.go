@@ -85,6 +85,36 @@ func checkoutDraft(e *env) string {
 }
 
 var cases = map[string]opCase{
+	"getAccountSettings":         {user: adv},
+	"updateAccountSettings":      {user: adv, body: map[string]any{"version": 0, "hide_notification_preview": true}},
+	"listAccountSessions":        {user: adv},
+	"revokeOtherAccountSessions": {user: adv, noBody: true},
+	"revokeAccountSession":       {user: adv, noBody: true, params: map[string]string{"id": "00000000-0000-4000-8000-000000000001"}, status: 404},
+	"startEmailChange":           {user: adv, body: map[string]any{"new_email": "settings-new@example.test"}},
+	"confirmEmailChange": {user: adv, prepare: func(e *env) (map[string]string, any) {
+		var ch struct {
+			ID string `json:"id"`
+		}
+		e.do(e.client(adv), "POST", "/me/email-change", map[string]any{"new_email": "settings-new@example.test"}, "").json(e.t, &ch)
+		return map[string]string{"id": ch.ID}, map[string]any{"current_code": "000000", "new_code": "111111"}
+	}},
+	"resendEmailChange": {user: adv, status: 429, prepare: func(e *env) (map[string]string, any) {
+		var ch struct {
+			ID string `json:"id"`
+		}
+		e.do(e.client(adv), "POST", "/me/email-change", map[string]any{"new_email": "settings-new@example.test"}, "").json(e.t, &ch)
+		return map[string]string{"id": ch.ID}, noBodyMarker
+	}},
+	"getNotification": {user: adv, prepare: func(e *env) (map[string]string, any) {
+		var page struct {
+			Items []struct {
+				ID string `json:"id"`
+			} `json:"items"`
+		}
+		e.do(e.client(adv), "GET", "/notifications", nil, "").json(e.t, &page)
+		return map[string]string{"id": page.Items[0].ID}, noBodyMarker
+	}},
+
 	"subscribeEvents":      {user: adv},
 	"subscribeAdminEvents": {user: adm},
 	// auth и общие

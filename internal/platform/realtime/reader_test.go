@@ -139,8 +139,18 @@ func TestLateCommitBelowCursorAndHandshake(t *testing.T) {
 
 func TestRealtimeMigrationDownAndUp(t *testing.T) {
 	d := dbtest.New(t)
-	if err := db.MigrateURL(t.Context(), d.OwnerURL, dbtest.AppRole, db.MigrateDown, logx.Discard()); err != nil {
-		t.Fatal(err)
+	// Roll back later dependent migrations as well; test the boundary at 107.
+	for {
+		var version int64
+		if err := d.Owner.QueryRow(t.Context(), "SELECT coalesce(max(version_id),0) FROM (SELECT DISTINCT ON(version_id) version_id,is_applied FROM goose_db_version ORDER BY version_id,id DESC) v WHERE is_applied").Scan(&version); err != nil {
+			t.Fatal(err)
+		}
+		if version < 107 {
+			break
+		}
+		if err := db.MigrateURL(t.Context(), d.OwnerURL, dbtest.AppRole, db.MigrateDown, logx.Discard()); err != nil {
+			t.Fatal(err)
+		}
 	}
 	var exists bool
 	if err := d.Owner.QueryRow(t.Context(), `SELECT to_regclass('realtime_event') IS NOT NULL`).Scan(&exists); err != nil || exists {

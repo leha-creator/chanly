@@ -11,9 +11,20 @@ import (
 
 // LoginCodeMessage — отправленное письмо с кодом входа.
 type LoginCodeMessage struct {
+	Purpose   string
 	To        string
 	Code      string
 	ExpiresIn time.Duration
+}
+
+func (s *Sender) SendEmailChangeCode(_ context.Context, email, code, purpose string, ttl time.Duration) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.failErr != nil {
+		return s.failErr
+	}
+	s.sent = append(s.sent, LoginCodeMessage{To: email, Code: code, Purpose: purpose, ExpiresIn: ttl})
+	return nil
 }
 
 // Sender запоминает письма вместо отправки.

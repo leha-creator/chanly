@@ -27,6 +27,9 @@ const sendLoginCodeAttempts = 5
 
 // loginCodePayload — полезная нагрузка задания. Почта и код — только в Sealed.
 type loginCodePayload struct {
+	Purpose    string    `json:"purpose,omitempty"`
+	UserID     uuid.UUID `json:"user_id,omitempty"`
+	SentAt     time.Time `json:"sent_at,omitempty"`
 	AuthCodeID uuid.UUID `json:"auth_code_id"`
 	ExpiresAt  time.Time `json:"expires_at"`
 	Sealed     string    `json:"sealed"`
@@ -46,6 +49,11 @@ func (s *Service) RequestLoginCode(ctx context.Context, email string, ip *netip.
 	s.log.DebugContext(ctx, "login code request started", logx.KeyOp, op, "email", logx.MaskEmail(email), "ip", ipAttr)
 
 	err := s.Tx.InTx(ctx, func(ctx context.Context) error {
+		if s.Settings != nil {
+			if err := s.Settings.LockEmails(ctx, []string{email}); err != nil {
+				return err
+			}
+		}
 		now := s.Clock.Now()
 		since := now.Add(-time.Hour)
 		byEmail, err := s.AuthCodes.CountByEmailSince(ctx, email, since)
@@ -128,6 +136,21 @@ func (s *Service) SendLoginCode(ctx context.Context, raw []byte) error {
 	if err := json.Unmarshal(plain, &secret); err != nil {
 		return fmt.Errorf("decode sealed payload: %w", err)
 	}
+	if p.Purpose != "" {
+		c, err := s.Settings.LockEmailChange(ctx, p.UserID, p.AuthCodeID)
+		if err != nil {
+			return emailChallengeError(err)
+		}
+		// PostgreSQL timestamptz stores microseconds; job JSON preserves nanoseconds.
+		if c.ConsumedAt != nil || !c.SentAt.Equal(p.SentAt.Truncate(time.Microsecond)) {
+			return nil
+		}
+		sender, ok := s.Sender.(domain.EmailChangeCodeSender)
+		if !ok {
+			return fmt.Errorf("email change sender unavailable")
+		}
+		return sender.SendEmailChangeCode(ctx, secret.Email, secret.Code, p.Purpose, p.ExpiresAt.Sub(now))
+	}
 	if err := s.Sender.SendLoginCode(ctx, secret.Email, secret.Code, p.ExpiresAt.Sub(now)); err != nil {
 		return err
 	}
@@ -155,6 +178,11 @@ func (s *Service) Login(ctx context.Context, email, code string, ip *netip.Addr,
 		result  *LoginResult
 	)
 	err := s.Tx.InTx(ctx, func(ctx context.Context) error {
+		if s.Settings != nil {
+			if err := s.Settings.LockEmails(ctx, []string{email}); err != nil {
+				return err
+			}
+		}
 		now := s.Clock.Now()
 		lc, err := s.AuthCodes.LatestActiveForUpdate(ctx, email)
 		if errors.Is(err, domain.ErrNotFound) {

@@ -189,6 +189,9 @@ func sessionMiddleware(log *slog.Logger, st *store.Store, next http.Handler) htt
 }
 
 func writeError(w http.ResponseWriter, r *http.Request, e *store.Error) {
+	if e.Code == "rate_limited" {
+		w.Header().Set("Retry-After", fmt.Sprint(e.Details["retry_after"]))
+	}
 	body := api.Error{RequestId: logx.RequestID(r.Context()), Error: api.ErrorBody{Code: api.ErrorCode(e.Code), Message: e.Message}}
 	if e.Details != nil {
 		body.Error.Details = &e.Details

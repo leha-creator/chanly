@@ -91,6 +91,8 @@ func (h *Handlers) MarkAllNotificationsRead(ctx context.Context, _ apigen.MarkAl
 func toAPI(it app.CabinetItem) apigen.Notification {
 	out := apigen.Notification{Id: it.ID, Template: it.Template, Title: it.Title, Text: it.Text,
 		ObjectType: it.ObjectType, IsRead: it.ReadAt != nil, CreatedAt: it.CreatedAt, OrderId: it.OrderID()}
+	group := it.SettingsGroup()
+	out.Group = &group
 	if it.ObjectID != nil {
 		// Объект без UUID (не бывает у текущих событий) в ответ не попадает: схема требует UUID.
 		if id, err := uuid.Parse(*it.ObjectID); err == nil {

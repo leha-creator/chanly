@@ -6,3 +6,9 @@
 # so no committed state exists with the constraint missing. Down refuses
 # rollback while sub-100-RUB data exists. Do not change the migration file.
 c466e346671008d7a9b9f3ef757c5f644f05f60d81c995784547954fb8c8007a  migrations/00105_channel_price_dev_minimum.sql
+
+# 00108 widens notification.status with suppressed in one transaction. Existing
+# values remain valid; old workers treat every non-pending row as completed.
+# Down converts suppressed to failed before restoring the original CHECK.
+# Covered by account settings delivery and migration round-trip tests.
+2a52bf0e921d1b7221276bad7a734c674ef77d43746509398429ec6ba7cf34d5  migrations/00108_account_settings.sql

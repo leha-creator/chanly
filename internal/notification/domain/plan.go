@@ -47,6 +47,7 @@ func Plan(n Notice, a Audience, newID func() uuid.UUID, now time.Time) ([]Notifi
 	if link := Link(n); link != "" {
 		payload[DataLink] = link
 	}
+	payload["_settings_role"] = string(n.Role)
 	var org *uuid.UUID
 	if n.OrganizationID != uuid.Nil {
 		id := n.OrganizationID

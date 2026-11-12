@@ -5,6 +5,7 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/leha-creator/chanly/internal/platform/httpx"
@@ -12,6 +13,7 @@ import (
 
 // Event is the complete SSE v1 invalidate payload. Audience never goes on the wire.
 type Event struct {
+	Mode       string     `json:"mode,omitempty"`
 	Version    int        `json:"version"`
 	Topic      string     `json:"topic"`
 	ObjectID   *uuid.UUID `json:"object_id,omitempty"`
@@ -23,6 +25,7 @@ type Event struct {
 var topicPattern = regexp.MustCompile(`^[a-z][a-z_.]{0,63}$`)
 
 type Record struct {
+	CreatedAt   time.Time
 	ID          int64
 	Transaction uint64
 	Scope       string
@@ -46,7 +49,7 @@ func (r Record) allowed(p *httpx.Principal, admin bool) bool {
 	switch r.Scope {
 	case "user":
 		return r.AudienceID != nil && *r.AudienceID == p.UserID &&
-			(!admin || r.Event.Topic == "session.changed" || r.Event.Topic == "notification.changed")
+			(!admin || r.Event.Topic == "session.changed" || r.Event.Topic == "notification.changed" || r.Event.Topic == "notification.created" || r.Event.Topic == "settings.changed")
 	case "organization":
 		return !admin && p.OrganizationID != nil && r.AudienceID != nil && *p.OrganizationID == *r.AudienceID
 	case "admin":

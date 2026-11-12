@@ -18,3 +18,7 @@ func (s *Store) DeleteExpiredSessions(ctx context.Context, before time.Time, bat
 	s.debug(ctx, "Account.DeleteExpiredSessions", "before", before)
 	return s.q(ctx).DeleteExpiredSessions(ctx, sqlc.DeleteExpiredSessionsParams{Before: before, Batch: batch})
 }
+
+func (s *Store) DeleteExpiredEmailChanges(ctx context.Context, before time.Time, batch int32) (int64, error) {
+	return s.q(ctx).DeleteExpiredEmailChanges(ctx, sqlc.DeleteExpiredEmailChangesParams{Before: before, Batch: batch})
+}

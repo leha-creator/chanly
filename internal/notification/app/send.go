@@ -48,6 +48,18 @@ func (s *Service) Send(ctx context.Context, id uuid.UUID) error {
 		s.log.DebugContext(ctx, "notification already handled", logx.KeyOp, op, "status", n.Status, KeyChannel, n.Channel)
 		return nil
 	}
+	allowed, err := s.deliveryPolicy(ctx, n)
+	if err != nil {
+		return err
+	}
+	if !allowed {
+		return s.finish(ctx, id, func(n *domain.Notification) {
+			n.Status = domain.StatusSuppressed
+			n.UpdatedAt = s.Clock.Now()
+			reason := "settings_disabled"
+			n.LastError = &reason
+		})
+	}
 	start := s.Clock.Now()
 	s.log.DebugContext(ctx, "notification send started", logx.KeyOp, op, KeyTemplate, n.Template, KeyChannel, n.Channel,
 		"attempt", n.Attempts+1)

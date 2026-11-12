@@ -16,6 +16,7 @@ type StreamEvent struct {
 }
 
 type Invalidation struct {
+	Mode       string     `json:"mode,omitempty"`
 	Version    int        `json:"version"`
 	Topic      string     `json:"topic"`
 	ObjectID   *uuid.UUID `json:"object_id,omitempty"`
@@ -137,6 +138,9 @@ func (s *Store) realtimeSnapshot() map[string]streamSnapshot {
 	}
 	admin := func(topic string, source any) { add("admin", uuid.Nil, topic, nil, nil, nil, nil, source, "") }
 	d := s.data
+	for id, settings := range d.Settings {
+		add("user", id, "settings.changed", nil, nil, nil, nil, settings, "")
+	}
 	for id, u := range d.Users {
 		add("user", id, "session.changed", nil, nil, nil, nil, u, "")
 	}
@@ -238,7 +242,7 @@ func (s *Store) publishChanges(before map[string]streamSnapshot) {
 			allowed := false
 			switch e.Scope {
 			case "user":
-				allowed = e.Audience == st.identity.User && (!st.admin || e.Event.Topic == "session.changed" || e.Event.Topic == "notification.changed")
+				allowed = e.Audience == st.identity.User && (!st.admin || e.Event.Topic == "session.changed" || e.Event.Topic == "notification.changed" || e.Event.Topic == "notification.created" || e.Event.Topic == "settings.changed")
 			case "organization":
 				allowed = !st.admin && st.identity.Org != nil && *st.identity.Org == e.Audience
 			case "catalog":
@@ -251,6 +255,18 @@ func (s *Store) publishChanges(before map[string]streamSnapshot) {
 			if allowed {
 				select {
 				case st.Events <- StreamEvent{Name: "invalidate", Data: e.Event}:
+					if e.Event.Topic == "notification.changed" {
+						if _, existed := before[k]; !existed {
+							created := e.Event
+							created.Topic = "notification.created"
+							created.Mode = "live"
+							select {
+							case st.Events <- StreamEvent{Name: "invalidate", Data: created}:
+							default:
+								s.closeStream(st)
+							}
+						}
+					}
 				default:
 					s.closeStream(st)
 				}

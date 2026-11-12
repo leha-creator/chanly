@@ -119,6 +119,9 @@ paths:
         Именованные ready, heartbeat, resync_required содержат {"version":1}.
         invalidate содержит RealtimeInvalidation, JSON не более 4096 символов, без бизнес-данных.
         После ready/resync_required клиент перечитывает данные обычными GET.
+        notification.created — отдельная INSERT-only тема, object_id — ID уведомления,
+        mode=live; только для созданных после подписки. settings.changed изолирована по пользователю.
+        notification.changed и прочие темы никогда не означают новое уведомление.
         Replay/Last-Event-ID отсутствует. При сбое внутреннего reader, overflow или shutdown
         соединение закрывается; после reconnect новый ready требует resync.
         Права проверяются перед каждым сообщением и каждую секунду без продления сессии;
@@ -261,6 +264,163 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Me' }
         '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /me/settings:
+    get:
+      tags: [auth]
+      operationId: getAccountSettings
+      summary: Настройки и доступный каталог доставки
+      responses:
+        '200':
+          description: Успешно
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AccountSettings' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+    patch:
+      tags: [auth]
+      operationId: updateAccountSettings
+      summary: Частичное обновление с обязательной версией
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AccountSettingsPatch' }
+      responses:
+        '200':
+          description: Успешно
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AccountSettings' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+  /me/sessions:
+    get:
+      tags: [auth]
+      operationId: listAccountSessions
+      summary: Собственные активные сеансы
+      responses:
+        '200':
+          description: Успешно
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AccountSessions' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+  /me/sessions/others:
+    delete:
+      tags: [auth]
+      operationId: revokeOtherAccountSessions
+      summary: Завершить остальные сеансы
+      responses:
+        '204':
+          description: Выполнено
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+  /me/sessions/{id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string, format: uuid }
+    delete:
+      tags: [auth]
+      operationId: revokeAccountSession
+      summary: Завершить выбранный другой сеанс
+      responses:
+        '204':
+          description: Выполнено
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+  /me/email-change:
+    post:
+      tags: [auth]
+      operationId: startEmailChange
+      summary: Выслать разные коды на текущую и новую почту
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/EmailChangeStart' }
+      responses:
+        '202':
+          description: Успешно
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EmailChange' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+  /me/email-change/{id}/confirm:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      tags: [auth]
+      operationId: confirmEmailChange
+      summary: Подтвердить обе почты и атомарно изменить адрес
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/EmailChangeConfirm' }
+      responses:
+        '204':
+          description: Выполнено
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+  /me/email-change/{id}/resend:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      tags: [auth]
+      operationId: resendEmailChange
+      summary: Заменить оба кода; срок challenge не продлевается
+      responses:
+        '202':
+          description: Успешно
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EmailChange' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+        '429': { $ref: '#/components/responses/RateLimited' }
 
   # ---------------------------------------------------------------- organizations
   /organizations:
@@ -462,6 +622,28 @@ paths:
         '204': { description: Отмечено }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
+  /notifications/{id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      tags: [auth]
+      operationId: getNotification
+      summary: Собственное уведомление по ID
+      responses:
+        '200':
+          description: Успешно
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Notification' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+        '429': { $ref: '#/components/responses/RateLimited' }
   /notifications/{id}/read:
     post:
       tags: [notifications]
@@ -4196,6 +4378,101 @@ components:
       required: [version]
       properties:
         version: { type: integer, enum: [1] }
+    DeliveryChannel:
+      type: string
+      enum: [email, max_bot, browser, sound]
+    QuietHours:
+      type: object
+      additionalProperties: false
+      required: [enabled, start, end, timezone]
+      properties:
+        enabled: { type: boolean }
+        start: { type: string, pattern: '^([01][0-9]|2[0-3]):[0-5][0-9]$' }
+        end: { type: string, pattern: '^([01][0-9]|2[0-3]):[0-5][0-9]$' }
+        timezone: { type: string, enum: [Europe/Moscow] }
+    DeliveryPreference:
+      type: object
+      additionalProperties: false
+      required: [group, event, channel, enabled]
+      properties:
+        group: { type: string, maxLength: 80 }
+        event: { type: string, maxLength: 80 }
+        channel: { $ref: '#/components/schemas/DeliveryChannel' }
+        enabled: { type: boolean }
+    DeliveryOption:
+      type: object
+      required: [group, event, channel, enabled, available, mandatory]
+      properties:
+        group: { type: string }
+        event: { type: string }
+        channel: { $ref: '#/components/schemas/DeliveryChannel' }
+        enabled: { type: boolean }
+        available: { type: boolean }
+        mandatory: { type: boolean }
+        reason: { type: string }
+    AccountSettings:
+      type: object
+      required: [version, hide_notification_preview, quiet_hours, delivery, catalog]
+      properties:
+        version: { type: integer, format: int64, minimum: 0 }
+        hide_notification_preview: { type: boolean }
+        quiet_hours: { $ref: '#/components/schemas/QuietHours' }
+        delivery:
+          type: array
+          items: { $ref: '#/components/schemas/DeliveryPreference' }
+        catalog:
+          type: array
+          items: { $ref: '#/components/schemas/DeliveryOption' }
+    AccountSettingsPatch:
+      type: object
+      additionalProperties: false
+      required: [version]
+      properties:
+        version: { type: integer, format: int64, minimum: 0 }
+        hide_notification_preview: { type: boolean }
+        quiet_hours: { $ref: '#/components/schemas/QuietHours' }
+        delivery:
+          description: Только изменённые переключатели; остальные сохраняются. '*' означает всю группу.
+          type: array
+          maxItems: 512
+          items: { $ref: '#/components/schemas/DeliveryPreference' }
+    AccountSession:
+      type: object
+      required: [id, current, created_at, last_active_at, expires_at]
+      properties:
+        id: { type: string, format: uuid }
+        current: { type: boolean }
+        user_agent: { type: string }
+        created_at: { type: string, format: date-time }
+        last_active_at: { type: string, format: date-time }
+        expires_at: { type: string, format: date-time }
+    AccountSessions:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/AccountSession' }
+    EmailChangeStart:
+      type: object
+      additionalProperties: false
+      required: [new_email]
+      properties:
+        new_email: { type: string, format: email, maxLength: 254 }
+    EmailChangeConfirm:
+      type: object
+      additionalProperties: false
+      required: [current_code, new_code]
+      properties:
+        current_code: { type: string, pattern: '^[0-9]{6}$' }
+        new_code: { type: string, pattern: '^[0-9]{6}$' }
+    EmailChange:
+      type: object
+      required: [id, expires_at, resend_at]
+      properties:
+        id: { type: string, format: uuid }
+        expires_at: { type: string, format: date-time }
+        resend_at: { type: string, format: date-time }
     RealtimeInvalidation:
       type: object
       additionalProperties: false
@@ -4205,12 +4482,13 @@ components:
         placement.changed — order_id/campaign_id, если доступны. Catalog broadcast не содержит UUID.
         Несколько затронутых областей дают отдельные события. Уведомления не заменяют changefeed.
       properties:
+        mode: { type: string, enum: [live], description: Только для notification.created; без replay. }
         version: { type: integer, enum: [1] }
         topic:
           type: string
           maxLength: 64
           pattern: '^[a-z][a-z_.]{0,63}$'
-          enum: [session.changed, notification.changed, balance.changed, invoice.changed, closing_act.changed,
+          enum: [session.changed, settings.changed, notification.created, notification.changed, balance.changed, invoice.changed, closing_act.changed,
             order.changed, placement.changed, campaign.changed, post.changed, channel.changed, channel.metrics.changed,
             cart.changed, media.changed, payout.changed, rocketwork.changed, organization.changed, category.changed, format.changed,
             admin.channel.changed, admin.order.changed, admin.placement.changed, admin.dispute.changed, admin.finance.changed,
@@ -4538,6 +4816,7 @@ components:
       type: object
       required: [id, template, title, text, created_at, is_read]
       properties:
+        group: { type: string, description: Ключ группы настроек доставки. }
         id: { $ref: '#/components/schemas/Uuid' }
         template:
           type: string

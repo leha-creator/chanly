@@ -41,11 +41,12 @@ type Options struct {
 
 // Sender отправляет письма.
 type Sender struct {
-	opts  Options
-	clock clock.Clock
-	log   *slog.Logger
-	tpl   *rendered
-	alert *rendered
+	opts        Options
+	clock       clock.Clock
+	log         *slog.Logger
+	tpl         *rendered
+	alert       *rendered
+	emailChange *rendered
 }
 
 // New создаёт Sender и проверяет, что шаблоны разбираются.
@@ -58,7 +59,11 @@ func New(opts Options, clk clock.Clock, log *slog.Logger) (*Sender, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Sender{opts: opts, clock: clk, log: log, tpl: tpl, alert: alertTpl}, nil
+	changeTpl, err := loadTemplates("email_change")
+	if err != nil {
+		return nil, err
+	}
+	return &Sender{opts: opts, clock: clk, log: log, tpl: tpl, alert: alertTpl, emailChange: changeTpl}, nil
 }
 
 // RenderAlert возвращает тему, текст и HTML письма с оповещением.

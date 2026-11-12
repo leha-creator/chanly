@@ -18,6 +18,7 @@ type Cursor struct {
 
 // Repository — хранение уведомлений. Реализация — notification/postgres.
 type Repository interface {
+	OwnCabinetNotification(context.Context, uuid.UUID, uuid.UUID) (Notification, error)
 	// Insert вставляет строки; повтор ключа (R-10) пропускается. Возвращает вставленные.
 	Insert(ctx context.Context, ns []Notification) ([]Notification, error)
 	// GetForUpdate — уведомление под блокировкой (отправка).

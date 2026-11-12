@@ -12,6 +12,11 @@ OpenAPI; `serverDeps.Routes` для Webhook не используется. Caddy
 IP по `/api/v1/admin/*` до проксирования. Прямой порт API должен оставаться во
 внутренней сети, как и для остальных административных операций.
 
+Пользовательские настройки и отдельный сигнал создания уведомления:
+[правила live, дедупликации и тихих часов](account-settings.md#новое-уведомление-reconnect-и-resync).
+Тема `notification.created` с `mode=live` появляется только при INSERT,
+`settings.changed` требует перечитать предпочтения пользователя.
+
 ## Формат и жизненный цикл
 
 Ответ UTF-8, `Content-Type: text/event-stream`, `Cache-Control: no-cache`.

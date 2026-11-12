@@ -103,7 +103,7 @@ func (tx *Tx) CreateSession(userID uuid.UUID) string {
 	if u := tx.D.Users[userID]; u != nil && u.AdminRole != "" {
 		ttl = 12 * time.Hour
 	}
-	tx.s.sessions[token] = &Session{Token: token, UserID: userID, CreatedAt: tx.Now, ExpiresAt: tx.Now.Add(ttl)}
+	tx.s.sessions[token] = &Session{ID: NewID(), Token: token, UserID: userID, CreatedAt: tx.Now, ExpiresAt: tx.Now.Add(ttl)}
 	return token
 }
 

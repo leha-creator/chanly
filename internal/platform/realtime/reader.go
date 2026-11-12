@@ -33,6 +33,11 @@ type Reader struct {
 }
 
 func NewReader(pool *pgxpool.Pool, hub *Hub, log *slog.Logger) *Reader {
+	hub.creationBoundary = func(ctx context.Context) (time.Time, error) {
+		var at time.Time
+		err := pool.QueryRow(ctx, `SELECT clock_timestamp()`).Scan(&at)
+		return at, err
+	}
 	return &Reader{pool: pool, hub: hub, log: log, seen: make(map[int64]uint64)}
 }
 
@@ -77,7 +82,7 @@ func (r *Reader) snapshot(ctx context.Context, reset bool) (overflow bool, err e
 	if epoch != r.epoch && (prunedID > r.cursor || prunedXID >= r.horizon) {
 		return true, nil
 	}
-	rows, err := tx.Query(ctx, `SELECT id,transaction_id::text,scope,audience_id,topic,object_id,order_id,campaign_id,channel_id
+	rows, err := tx.Query(ctx, `SELECT id,created_at,transaction_id::text,scope,audience_id,topic,object_id,order_id,campaign_id,channel_id
 		FROM realtime_event WHERE id > $1 OR transaction_id >= $2::text::xid8 ORDER BY id LIMIT $3`, r.cursor, strconv.FormatUint(r.horizon, 10), batchLimit+1)
 	if err != nil {
 		return false, err
@@ -87,7 +92,7 @@ func (r *Reader) snapshot(ctx context.Context, reset bool) (overflow bool, err e
 		var e Record
 		var xid string
 		e.Event.Version = 1
-		if err = rows.Scan(&e.ID, &xid, &e.Scope, &e.AudienceID, &e.Event.Topic, &e.Event.ObjectID, &e.Event.OrderID, &e.Event.CampaignID, &e.Event.ChannelID); err != nil {
+		if err = rows.Scan(&e.ID, &e.CreatedAt, &xid, &e.Scope, &e.AudienceID, &e.Event.Topic, &e.Event.ObjectID, &e.Event.OrderID, &e.Event.CampaignID, &e.Event.ChannelID); err != nil {
 			break
 		}
 		e.Transaction, err = strconv.ParseUint(xid, 10, 64)

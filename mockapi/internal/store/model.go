@@ -25,6 +25,7 @@ type User struct {
 }
 
 type Session struct {
+	ID        uuid.UUID
 	Token     string
 	UserID    uuid.UUID
 	CreatedAt time.Time
@@ -381,6 +382,8 @@ type RocketworkContractor struct {
 // Data — всё изменяемое состояние заглушки. Сессии хранятся отдельно,
 // чтобы переживать POST /_mock/reset.
 type Data struct {
+	Settings           map[uuid.UUID]Settings
+	EmailChanges       map[uuid.UUID]*MockEmailChange
 	Users              map[uuid.UUID]*User
 	Orgs               map[uuid.UUID]*Organization
 	LegalDocs          []*LegalDocument
@@ -418,6 +421,7 @@ type Data struct {
 // NewData создаёт пустое состояние.
 func NewData() *Data {
 	return &Data{
+		Settings: map[uuid.UUID]Settings{}, EmailChanges: map[uuid.UUID]*MockEmailChange{},
 		Users:         map[uuid.UUID]*User{},
 		Orgs:          map[uuid.UUID]*Organization{},
 		Acceptances:   map[uuid.UUID]map[uuid.UUID]time.Time{},

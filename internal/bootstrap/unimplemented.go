@@ -482,6 +482,38 @@ func (unimplemented) GetMe(context.Context, apigen.GetMeRequestObject) (apigen.G
 	return nil, apperr.NotImplemented("getMe")
 }
 
+func (unimplemented) StartEmailChange(context.Context, apigen.StartEmailChangeRequestObject) (apigen.StartEmailChangeResponseObject, error) {
+	return nil, apperr.NotImplemented("startEmailChange")
+}
+
+func (unimplemented) ConfirmEmailChange(context.Context, apigen.ConfirmEmailChangeRequestObject) (apigen.ConfirmEmailChangeResponseObject, error) {
+	return nil, apperr.NotImplemented("confirmEmailChange")
+}
+
+func (unimplemented) ResendEmailChange(context.Context, apigen.ResendEmailChangeRequestObject) (apigen.ResendEmailChangeResponseObject, error) {
+	return nil, apperr.NotImplemented("resendEmailChange")
+}
+
+func (unimplemented) ListAccountSessions(context.Context, apigen.ListAccountSessionsRequestObject) (apigen.ListAccountSessionsResponseObject, error) {
+	return nil, apperr.NotImplemented("listAccountSessions")
+}
+
+func (unimplemented) RevokeOtherAccountSessions(context.Context, apigen.RevokeOtherAccountSessionsRequestObject) (apigen.RevokeOtherAccountSessionsResponseObject, error) {
+	return nil, apperr.NotImplemented("revokeOtherAccountSessions")
+}
+
+func (unimplemented) RevokeAccountSession(context.Context, apigen.RevokeAccountSessionRequestObject) (apigen.RevokeAccountSessionResponseObject, error) {
+	return nil, apperr.NotImplemented("revokeAccountSession")
+}
+
+func (unimplemented) GetAccountSettings(context.Context, apigen.GetAccountSettingsRequestObject) (apigen.GetAccountSettingsResponseObject, error) {
+	return nil, apperr.NotImplemented("getAccountSettings")
+}
+
+func (unimplemented) UpdateAccountSettings(context.Context, apigen.UpdateAccountSettingsRequestObject) (apigen.UpdateAccountSettingsResponseObject, error) {
+	return nil, apperr.NotImplemented("updateAccountSettings")
+}
+
 func (unimplemented) ListMedia(context.Context, apigen.ListMediaRequestObject) (apigen.ListMediaResponseObject, error) {
 	return nil, apperr.NotImplemented("listMedia")
 }
@@ -500,6 +532,10 @@ func (unimplemented) ListNotifications(context.Context, apigen.ListNotifications
 
 func (unimplemented) MarkAllNotificationsRead(context.Context, apigen.MarkAllNotificationsReadRequestObject) (apigen.MarkAllNotificationsReadResponseObject, error) {
 	return nil, apperr.NotImplemented("markAllNotificationsRead")
+}
+
+func (unimplemented) GetNotification(context.Context, apigen.GetNotificationRequestObject) (apigen.GetNotificationResponseObject, error) {
+	return nil, apperr.NotImplemented("getNotification")
 }
 
 func (unimplemented) MarkNotificationRead(context.Context, apigen.MarkNotificationReadRequestObject) (apigen.MarkNotificationReadResponseObject, error) {

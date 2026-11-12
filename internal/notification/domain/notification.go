@@ -3,6 +3,7 @@
 package domain
 
 import (
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -21,9 +22,10 @@ const (
 type Status string
 
 const (
-	StatusPending Status = "pending"
-	StatusSent    Status = "sent"
-	StatusFailed  Status = "failed"
+	StatusPending    Status = "pending"
+	StatusSent       Status = "sent"
+	StatusFailed     Status = "failed"
+	StatusSuppressed Status = "suppressed"
 	// StatusRead — только у кабинета (R-4).
 	StatusRead Status = "read"
 )
@@ -148,3 +150,19 @@ func uuidFrom(v any) *uuid.UUID {
 func (n *Notification) MarkExhausted(reason string, now time.Time) {
 	n.Status, n.LastError, n.UpdatedAt = StatusFailed, &reason, now
 }
+
+// SettingsRole preserves the original audience even when cabinets change later.
+func (n Notification) SettingsRole() Role {
+	if role, ok := n.Payload["_settings_role"].(string); ok && role != "" {
+		return Role(role)
+	}
+	link := n.Link()
+	if strings.HasPrefix(link, "/blg/") {
+		return RoleBlogger
+	}
+	if strings.HasPrefix(link, "/adv/") {
+		return RoleAdvertiser
+	}
+	return RoleAdmin
+}
+func (n Notification) SettingsGroup() string { return GroupFor(n.SettingsRole(), n.Template) }

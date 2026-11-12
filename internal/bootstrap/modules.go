@@ -216,7 +216,8 @@ func newModules(cfg Config, in *infra) *modules {
 	accountStore := accountpg.New(in.pool, log.With(logx.KeyModule, "account"))
 
 	deps := accountapp.Deps{
-		Users: accountStore.Users(), AuthCodes: accountStore.AuthCodes(), Sessions: accountStore.Sessions(),
+		Settings: accountStore.AccountSettings(),
+		Users:    accountStore.Users(), AuthCodes: accountStore.AuthCodes(), Sessions: accountStore.Sessions(),
 		Organizations: accountStore.Organizations(), Admin: accountStore.Organizations(), PersonalData: accountStore.PersonalData(), Platform: accountStore.Organizations(), Legal: accountStore.LegalDocuments(),
 		Sender: in.mail, Uploads: auditLog, Tx: txRunner, Jobs: queue, Audit: auditLog, Clock: in.clock, Log: log,
 		Config: accountapp.Config{
@@ -256,6 +257,7 @@ func newModules(cfg Config, in *infra) *modules {
 		Name: "channel_unavailability", Retention: cfg.Retention.ChannelUnavailability, Delete: channelStore.DeleteEndedUnavailability,
 	})
 	platform.cleaner.Add(cleanup.Task{Name: "notification", Retention: cfg.Notification.Retention, Delete: notificationStore.DeleteBefore})
+	platform.cleaner.Add(cleanup.Task{Name: "email_change", Retention: cfg.Retention.AuthCode, Delete: accountStore.DeleteExpiredEmailChanges})
 	m := &modules{
 		cfg:               cfg,
 		in:                in,

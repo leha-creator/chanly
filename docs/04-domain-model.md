@@ -791,7 +791,7 @@ erDiagram
 | `channel` | `text` | да | `max_bot`, `email`, `cabinet` |
 | `template` | `text` | да | Код шаблона из каталога (07 §6) |
 | `payload` | `jsonb` | да | Данные шаблона и ссылка в кабинет (`link`); почта адресата сюда не пишется — читается при отправке |
-| `status` | `text` | да | `pending`, `sent`, `failed`, `read`; `read` — только у `cabinet` |
+| `status` | `text` | да | `pending`, `sent`, `failed`, `read`, `suppressed` (отключено настройками); `read` — только у `cabinet` |
 | `object_type`, `object_id` | | нет | Задаются вместе |
 | `dedupe_key` | `text` | нет | Уникален вместе с `user_id` и `channel`: повтор события второго уведомления не создаёт |
 | `max_user_id` | `bigint` | нет | Только у `max_bot` и обязателен для него: `channel.added_by_max_user_id` |

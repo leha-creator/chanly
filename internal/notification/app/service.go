@@ -51,12 +51,14 @@ func (c *Config) defaults() {
 
 // Deps — зависимости сервиса.
 type Deps struct {
-	Tx         tx.Runner
-	Jobs       job.Enqueuer
-	Repo       domain.Repository
-	Recipients domain.Recipients
-	Channels   domain.Channels
-	Renderer   domain.Renderer
+	SettingsRepo     domain.SettingsRepository
+	SettingsAudience domain.SettingsAudience
+	Tx               tx.Runner
+	Jobs             job.Enqueuer
+	Repo             domain.Repository
+	Recipients       domain.Recipients
+	Channels         domain.Channels
+	Renderer         domain.Renderer
 	// Messenger и Mailer нужны только worker; в api — nil.
 	Messenger domain.Messenger
 	Mailer    domain.Mailer

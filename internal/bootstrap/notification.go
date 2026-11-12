@@ -29,6 +29,7 @@ func newNotificationService(cfg Config, in *infra, txRunner tx.Runner, queue job
 		panic("notification templates: " + err.Error())
 	}
 	deps := notificationapp.Deps{
+		SettingsRepo: store, SettingsAudience: bridge.NotificationSettingsAudience{Users: accounts.Users()},
 		Tx: txRunner, Jobs: queue, Repo: store,
 		Recipients: bridge.NotificationRecipients{Users: accounts.Users()},
 		Channels:   bridge.NotificationChannels{Channels: channels.Channels()},

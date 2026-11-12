@@ -374,6 +374,21 @@ type DisputeMessage struct {
 	CreatedAt    time.Time
 }
 
+type EmailChange struct {
+	ID           uuid.UUID
+	UserID       uuid.UUID
+	CurrentEmail string
+	NewEmail     string
+	CurrentHash  string
+	NewHash      string
+	Attempts     int32
+	Sends        int32
+	SentAt       time.Time
+	ExpiresAt    time.Time
+	ConsumedAt   *time.Time
+	CreatedAt    time.Time
+}
+
 type Hold struct {
 	ID             uuid.UUID
 	PlacementID    uuid.UUID
@@ -1163,6 +1178,15 @@ type User struct {
 	BlockedAt     *time.Time
 	BlockedReason *string
 	AnonymizedAt  *time.Time
+}
+
+type UserSetting struct {
+	UserID                  uuid.UUID
+	Version                 int64
+	HideNotificationPreview bool
+	QuietHours              []byte
+	Delivery                []byte
+	UpdatedAt               time.Time
 }
 
 type Violation struct {

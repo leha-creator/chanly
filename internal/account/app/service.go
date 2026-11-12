@@ -50,6 +50,7 @@ type UploadCounter interface {
 
 // Deps — зависимости сервиса; связывает bootstrap.
 type Deps struct {
+	Settings      domain.AccountSettingsRepository
 	Users         domain.Users
 	AuthCodes     domain.AuthCodes
 	Sessions      domain.Sessions

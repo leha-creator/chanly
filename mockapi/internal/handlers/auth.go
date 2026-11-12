@@ -410,11 +410,7 @@ func (h *Handlers) ListNotifications(ctx context.Context, req api.ListNotificati
 	pg, next, total := page(mine, req.Params.Limit, req.Params.Cursor)
 	items := []api.Notification{}
 	for _, n := range pg {
-		items = append(items, api.Notification{Id: n.ID, Template: n.Template, Title: n.Title, Text: n.Text,
-			ObjectType: n.ObjectType, ObjectId: n.ObjectID, OrderId: n.OrderID, IsRead: n.ReadAt != nil, CreatedAt: n.CreatedAt})
-		if n.Link != "" {
-			items[len(items)-1].Link = ptr(n.Link)
-		}
+		items = append(items, mockNotification(n))
 	}
 	return api.ListNotifications200JSONResponse{Items: items, NextCursor: next, Total: total}, nil
 }
