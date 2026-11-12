@@ -79,6 +79,32 @@ func TestInvoiceZeroNumberRejectedBeforeRequest(t *testing.T) {
 	}
 }
 
+func TestInvoiceDatesUseMoscowCalendar(t *testing.T) {
+	for _, tc := range []struct{ issued, day, due string }{
+		{"2026-12-31T20:59:59Z", "2026-12-31", "2027-01-01"},
+		{"2026-12-31T21:00:00Z", "2027-01-01", "2027-01-02"},
+		{"2028-02-28T21:00:00Z", "2028-02-29", "2028-03-01"},
+	} {
+		t.Run(tc.day, func(t *testing.T) {
+			issued, err := time.Parse(time.RFC3339, tc.issued)
+			if err != nil {
+				t.Fatal(err)
+			}
+			c := InvoiceClient{BaseURL: SandboxURL, Account: "40802810300010250129", Limiter: invoiceLimiter{}, Out: invoiceTransport(func(_ context.Context, call outbound.Call) (outbound.Response, error) {
+				body := call.Body.(map[string]any)
+				if body["invoiceDate"] != tc.day || body["dueDate"] != tc.due {
+					t.Fatalf("wrong invoice dates: %+v", body)
+				}
+				return outbound.Response{Status: 200, Body: []byte(`{"invoiceId":"` + uuid.NewString() + `","pdfUrl":"https://business.tbank.ru/document"}`)}, nil
+			})}
+			_, err = c.Send(context.Background(), domain.InvoiceDoc{Number: "MX-000001", Amount: 1000, IssuedAt: issued, ExpiresAt: issued.Add(24 * time.Hour), Supplier: domain.Supplier{BankAccount: c.Account}})
+			if err != nil {
+				t.Fatal(err)
+			}
+		})
+	}
+}
+
 func TestInvoicePDFDownloadBoundaries(t *testing.T) {
 	calls := 0
 	c := InvoiceClient{PDFHosts: []string{"business.tbank.ru"}, HTTP: &http.Client{Transport: pdfTransport(func(r *http.Request) (*http.Response, error) {

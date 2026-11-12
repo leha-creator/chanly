@@ -196,6 +196,46 @@ func TestNightPaymentPreservesUTCAndRequiresCompleteIdentity(t *testing.T) {
 	}
 }
 
+func TestStatementWindowIsHalfOpenAcrossCalendarBoundaries(t *testing.T) {
+	for _, boundary := range []string{
+		"2026-11-11T21:00:00Z", "2026-11-30T21:00:00Z",
+		"2026-12-31T21:00:00Z", "2028-02-28T21:00:00Z", "2028-02-29T21:00:00Z",
+	} {
+		t.Run(boundary, func(t *testing.T) {
+			at, err := time.Parse(time.RFC3339, boundary)
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, tc := range []struct {
+				name  string
+				delta time.Duration
+				want  int
+			}{
+				{"before start", -time.Nanosecond, 0}, {"at start", 0, 1},
+				{"before end", time.Minute - time.Nanosecond, 1}, {"at end", time.Minute, 0},
+			} {
+				t.Run(tc.name, func(t *testing.T) {
+					var r result
+					if err := json.Unmarshal([]byte(fixture), &r); err != nil {
+						t.Fatal(err)
+					}
+					paid := at.Add(tc.delta).In(time.FixedZone("client offset", 4*3600))
+					r.Operations[0].Date = paid
+					r.Operations[0].DocDate = &paid
+					r.Operations[0].ChargeDate = &paid
+					q := query()
+					q.From = at.In(time.FixedZone("MSK", 3*3600))
+					q.To = q.From.Add(time.Minute)
+					p, err := normalize(r, q, "")
+					if err != nil || len(p.Incoming) != tc.want {
+						t.Fatalf("window result %+v %v", p, err)
+					}
+				})
+			}
+		})
+	}
+}
+
 func TestObservedSandboxExampleIsNeverCredited(t *testing.T) {
 	body, err := os.ReadFile("testdata/sandbox-static-anonymized.json")
 	if err != nil {
