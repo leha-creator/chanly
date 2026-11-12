@@ -94,25 +94,11 @@ func (d executorDTO) executor(kind string) Executor {
 	default:
 		return e
 	}
-	if kind == "selfemployed" {
-		if d.SelfemployedStatus != "validated" {
-			e.Reason, e.NextAction = "selfemployment_unverified", "grant_fns_permissions"
-			return e
-		}
-		profiles := 0
-		for _, p := range d.Profiles {
-			if p.Provider == "rocketwork" {
-				profiles++
-				if p.Status != "validated" {
-					e.Reason = "provider_permissions_unverified"
-					return e
-				}
-			}
-		}
-		if profiles != 1 {
-			e.Reason = "provider_profile_missing_or_ambiguous"
-			return e
-		}
+	// Profiles identify information sources and are optional in the Public API.
+	// Use the provider's readiness and self-employment summary for admission.
+	if kind == "selfemployed" && d.SelfemployedStatus != "validated" {
+		e.Reason, e.NextAction = "selfemployment_unverified", "grant_fns_permissions"
+		return e
 	}
 	e.Status, e.Reason, e.NextAction, e.Known = ContractorActive, "", "", true
 	return e
@@ -133,7 +119,8 @@ func (c *Client) LookupExecutor(ctx context.Context, r ExecutorIdentity) (Execut
 		return Executor{}, fmt.Errorf("%w: executor identity mismatch", ErrFormat)
 	}
 	e := response.Executor.executor(r.EmploymentKind)
-	c.log.DebugContext(ctx, "rocketwork executor readiness read", "status", e.Status, "reason", e.Reason)
+	c.log.DebugContext(ctx, "[FIX] rocketwork executor readiness read", "status", e.Status, "reason", e.Reason,
+		"payment_readiness", response.Executor.PaymentReadiness, "selfemployed_status", response.Executor.SelfemployedStatus)
 	return e, nil
 }
 
@@ -189,7 +176,10 @@ func (c *Client) FindExecutor(ctx context.Context, r ExecutorIdentity) (Executor
 			if match == nil {
 				return Executor{}, false, nil
 			}
-			return match.executor(r.EmploymentKind), true, nil
+			e := match.executor(r.EmploymentKind)
+			c.log.DebugContext(ctx, "[FIX] rocketwork executor readiness read", "status", e.Status, "reason", e.Reason,
+				"payment_readiness", match.PaymentReadiness, "selfemployed_status", match.SelfemployedStatus)
+			return e, true, nil
 		}
 	}
 	return Executor{}, false, fmt.Errorf("%w: executor pagination limit", ErrFormat)
