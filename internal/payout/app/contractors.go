@@ -40,6 +40,9 @@ func viewOf(c domain.Contractor) ContractorView {
 	case "unknown_readiness", "employment_mismatch", "provider_profile_missing_or_ambiguous":
 		action = "contact_support"
 	}
+	if c.LastError != "" {
+		action = "contact_support"
+	}
 	return ContractorView{NextAction: action, Required: true, Status: c.Status, OnboardingURL: c.OnboardingURL, BlockedReason: c.BlockedReason,
 		StatusCheckedAt: c.StatusCheckedAt}
 }
@@ -130,7 +133,7 @@ func (s *Service) Refresh(ctx context.Context, orgID uuid.UUID) (ContractorView,
 	now := s.Clock.Now()
 	j := job.Job{Kind: KindPollContractor, DedupeKey: PollContractorKey(c.ID), Payload: ContractorPayload{ContractorID: c.ID}, RunAt: now,
 		MaxAttempts: PollAttempts}
-	if !c.Registered() {
+	if !c.Registered() && s.Config.ProviderScope == nil {
 		j = job.Job{Kind: KindEnsureContractor, DedupeKey: EnsureContractorKey(orgID), Payload: OrgPayload{OrganizationID: orgID},
 			RunAt: now, MaxAttempts: EnsureAttempts}
 	}
@@ -181,7 +184,12 @@ func (s *Service) EnsureContractor(ctx context.Context, orgID uuid.UUID) error {
 		return err
 	}
 	if s.Config.ProviderScope != nil {
-		return s.ensureVerifiedContractor(ctx, c)
+		err := s.ensureVerifiedContractor(ctx, c)
+		if err != nil {
+			s.contractorError(ctx, c.ID, "executor lookup failed")
+			s.log.WarnContext(ctx, "[FIX] rocketwork connection lookup failed", logx.KeyOrganizationID, orgID)
+		}
+		return err
 	}
 	if c.Registered() && c.OnboardingURL != "" {
 		return s.schedulePoll(ctx, c)
@@ -270,6 +278,10 @@ func (s *Service) PollContractor(ctx context.Context, contractorID uuid.UUID) er
 		pc, err = s.Provider.GetContractor(ctx, c.ExternalID)
 	}
 	if err != nil {
+		if s.Config.ProviderScope != nil && (c.Registered() || !errors.Is(err, domain.ErrProviderNotFound)) {
+			s.contractorError(ctx, c.ID, "executor lookup failed")
+			s.log.WarnContext(ctx, "[FIX] rocketwork status lookup failed", KeyContractorID, c.ID)
+		}
 		return s.providerWait(ctx, op, err)
 	}
 	if c, err = s.applyContractor(ctx, c.ID, pc); err != nil {
