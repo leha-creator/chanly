@@ -169,7 +169,7 @@ func (s *Service) enrich(ctx context.Context, op string, n *domain.Notice) error
 	return nil
 }
 
-// audience — адресаты по роли (R-1); блогеру — пользователь MAX канала (R-3).
+// audience resolves active organization members and their personal MAX bindings.
 func (s *Service) audience(ctx context.Context, n domain.Notice) (domain.Audience, error) {
 	var a domain.Audience
 	var err error
@@ -182,6 +182,19 @@ func (s *Service) audience(ctx context.Context, n domain.Notice) (domain.Audienc
 	}
 	if a.UserIDs, err = s.Recipients.Members(ctx, n.OrganizationID); err != nil {
 		return a, err
+	}
+	if recipients, ok := s.Recipients.(domain.MAXRecipients); ok {
+		a.MAXUsers = make(map[uuid.UUID]int64)
+		for _, user := range a.UserIDs {
+			maxUser, err := recipients.NotificationMAXRecipient(ctx, user)
+			if err != nil {
+				return a, err
+			}
+			if maxUser != 0 {
+				a.MAXUsers[user] = maxUser
+			}
+		}
+		return a, nil
 	}
 	if n.Role != domain.RoleBlogger {
 		return a, nil

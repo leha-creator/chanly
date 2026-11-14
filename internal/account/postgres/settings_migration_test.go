@@ -18,8 +18,19 @@ func TestSettingsMigrationRoundTripWithSuppressedDelivery(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err = db.MigrateURL(t.Context(), d.OwnerURL, dbtest.AppRole, db.MigrateDown, logx.Discard()); err != nil {
-		t.Fatal(err)
+	// Roll back newer migrations too: this test targets the settings migration,
+	// rather than assuming it will always be the latest migration.
+	for {
+		if err = db.MigrateURL(t.Context(), d.OwnerURL, dbtest.AppRole, db.MigrateDown, logx.Discard()); err != nil {
+			t.Fatal(err)
+		}
+		var settingsExist bool
+		if err = d.Owner.QueryRow(t.Context(), "SELECT to_regclass('user_settings') IS NOT NULL").Scan(&settingsExist); err != nil {
+			t.Fatal(err)
+		}
+		if !settingsExist {
+			break
+		}
 	}
 	var status string
 	if err = d.Pool.QueryRow(t.Context(), `SELECT status FROM notification WHERE id=$1`, id).Scan(&status); err != nil || status != "failed" {

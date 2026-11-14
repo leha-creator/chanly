@@ -56,10 +56,11 @@ type Message struct {
 // Update — событие Webhook MAX. Поля, которых нет у вида события, пустые.
 type Update struct {
 	// Internal field, computed by our authenticated webhook before persistence.
-	ConnectionTokenHash string `json:"connection_token_hash"`
-	Payload             string `json:"payload"`
-	Type                string `json:"update_type"`
-	Timestamp           int64  `json:"timestamp"`
+	ConnectionTokenHash   string `json:"connection_token_hash"`
+	NotificationTokenHash string `json:"notification_token_hash"`
+	Payload               string `json:"payload"`
+	Type                  string `json:"update_type"`
+	Timestamp             int64  `json:"timestamp"`
 	// ChatID — чат события; для message_created берётся из получателя сообщения.
 	ChatID    int64    `json:"chat_id"`
 	User      *User    `json:"user"`

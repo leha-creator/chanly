@@ -164,3 +164,18 @@ go test ./...
 SSE добавляет `settings.changed` и INSERT-only `notification.created` с `mode=live`,
 без replay. Внешние письма/MAX, CSRF и сведения реального устройства не моделируются.
 [Полный контракт и инструкция для фронтенда](../docs/account-settings.md).
+
+## Привязка бота MAX для уведомлений
+
+Личная привязка доступна рекламодателю и блогеру через `GET /me/max-bot`,
+`POST /me/max-bot/connections`, `GET /me/max-bot/connections/{id}` и
+`DELETE /me/max-bot`. Настройки относятся к пользователю, подключать канал не нужно.
+Для локальной проверки создайте ссылку и отправьте `POST /webhooks/max/test`:
+
+```json
+{"update_type":"bot_started","payload":"notify_<токен из start ссылки>","user":{"user_id":5001}}
+```
+
+Это имитация проверенного события MAX только в mockapi; реальный сервер проверяет
+секрет webhook. Ссылка действует 10 минут, новая ссылка отзывает предыдущую.
+Сдвиг часов и `POST /_mock/reset` позволяют проверить истечение и сброс привязки.

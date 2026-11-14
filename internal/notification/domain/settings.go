@@ -118,7 +118,7 @@ func (s Settings) Catalog(a SettingsAccess) []DeliveryOption {
 					available = false
 					reason = "admin_alerts_separate"
 				}
-				if ch == "max_bot" && (role != RoleBlogger || !a.MaxBot) {
+				if ch == "max_bot" && (role == RoleAdmin || !a.MaxBot) {
 					available = false
 					reason = "max_bot_unavailable"
 				}

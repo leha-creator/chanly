@@ -498,6 +498,22 @@ func (unimplemented) ResendEmailChange(context.Context, apigen.ResendEmailChange
 	return nil, apperr.NotImplemented("resendEmailChange")
 }
 
+func (unimplemented) DisconnectMaxBot(context.Context, apigen.DisconnectMaxBotRequestObject) (apigen.DisconnectMaxBotResponseObject, error) {
+	return nil, apperr.NotImplemented("disconnectMaxBot")
+}
+
+func (unimplemented) GetMaxBot(context.Context, apigen.GetMaxBotRequestObject) (apigen.GetMaxBotResponseObject, error) {
+	return nil, apperr.NotImplemented("getMaxBot")
+}
+
+func (unimplemented) CreateMaxBotConnection(context.Context, apigen.CreateMaxBotConnectionRequestObject) (apigen.CreateMaxBotConnectionResponseObject, error) {
+	return nil, apperr.NotImplemented("createMaxBotConnection")
+}
+
+func (unimplemented) GetMaxBotConnection(context.Context, apigen.GetMaxBotConnectionRequestObject) (apigen.GetMaxBotConnectionResponseObject, error) {
+	return nil, apperr.NotImplemented("getMaxBotConnection")
+}
+
 func (unimplemented) ListAccountSessions(context.Context, apigen.ListAccountSessionsRequestObject) (apigen.ListAccountSessionsResponseObject, error) {
 	return nil, apperr.NotImplemented("listAccountSessions")
 }

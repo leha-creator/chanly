@@ -1,7 +1,6 @@
 package domain
 
 import (
-	"strings"
 	"testing"
 	"time"
 
@@ -13,10 +12,10 @@ func TestSettingsDefaultsRightsAndMandatory(t *testing.T) {
 	for _, tc := range []struct {
 		roles []Role
 		max   bool
-	}{{nil, false}, {[]Role{RoleAdvertiser}, false}, {[]Role{RoleBlogger}, false}, {[]Role{RoleBlogger}, true}, {[]Role{RoleAdmin}, false}} {
+	}{{nil, false}, {[]Role{RoleAdvertiser}, false}, {[]Role{RoleAdvertiser}, true}, {[]Role{RoleBlogger}, false}, {[]Role{RoleBlogger}, true}, {[]Role{RoleAdmin}, false}, {[]Role{RoleAdmin}, true}} {
 		a := SettingsAccess{Roles: tc.roles, MaxBot: tc.max}
 		for _, o := range s.Catalog(a) {
-			if o.Channel == "max_bot" && o.Available && (!tc.max || !strings.HasPrefix(o.Group, "blogger.")) {
+			if o.Channel == "max_bot" && o.Available && (!tc.max || tc.roles[0] == RoleAdmin) {
 				t.Fatal("MAX leaked")
 			}
 			if (o.Channel == "browser" || o.Channel == "sound") && o.Enabled {

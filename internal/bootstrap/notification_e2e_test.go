@@ -17,6 +17,8 @@ func TestNotificationsEndToEnd(t *testing.T) {
 	const advEmail, blgEmail = "adv.notify.e2e@example.ru", "blg.notify.e2e@example.ru"
 	adv := a.advertiserClient(advEmail)
 	blg := a.bloggerClient(blgEmail)
+	bindMAXBot(t, a, adv, 8)
+	bindMAXBot(t, a, blg, 7)
 	_, pids := a.autopostOrder(adv, blg, "Уведомления")
 	pid := pids[0]
 	a.settle()
@@ -60,6 +62,16 @@ func TestNotificationsEndToEnd(t *testing.T) {
 	}
 	if orderID == "" || !mailedWith(a, advEmail, devCabinetBaseURL+"/adv/orders/"+orderID) {
 		t.Fatalf("no published email for order %q", orderID)
+	}
+
+	var advertiserBotMessage bool
+	for _, m := range a.maxFake().Sent() {
+		if m.UserID == 8 && strings.Contains(m.Text, devCabinetBaseURL+"/adv/orders/"+orderID) {
+			advertiserBotMessage = true
+		}
+	}
+	if !advertiserBotMessage {
+		t.Fatal("no advertiser bot notification with order link")
 	}
 
 	// Снятие по сроку — просмотры в уведомлении и отчёте.

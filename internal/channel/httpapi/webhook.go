@@ -3,7 +3,11 @@ package httpapi
 
 import (
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
 	"crypto/subtle"
+	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"io"
@@ -142,13 +146,35 @@ func (h *Webhook) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		delete(event, "connection_token_hash")
 		var payload string
-		_ = json.Unmarshal(event["payload"], &payload)
-		delete(event, "payload")
+		payloadFields := 0
+		for key, value := range event {
+			switch {
+			case strings.EqualFold(key, "connection_token_hash"), strings.EqualFold(key, "notification_token_hash"):
+				delete(event, key)
+			case strings.EqualFold(key, "payload"):
+				payloadFields++
+				_ = json.Unmarshal(value, &payload)
+				delete(event, key)
+			}
+		}
+		// encoding/json accepts case variants of field names. Ambiguous payloads
+		// must neither survive redaction nor choose a token by random map order.
+		if payloadFields != 1 {
+			payload = ""
+		}
 		if len(h.opts.ConnectionPepper) > 0 && strings.HasPrefix(payload, "connect_") && len(payload) == 51 {
 			hash := domain.HashConnectionToken(h.opts.ConnectionPepper, strings.TrimPrefix(payload, "connect_"))
 			event["connection_token_hash"], _ = json.Marshal(hash)
+		}
+		if len(h.opts.ConnectionPepper) > 0 && strings.HasPrefix(payload, "notify_") {
+			token := strings.TrimPrefix(payload, "notify_")
+			raw, err := base64.RawURLEncoding.DecodeString(token)
+			if err == nil && len(token) == 43 && len(raw) == 32 {
+				mac := hmac.New(sha256.New, h.opts.ConnectionPepper)
+				_, _ = mac.Write([]byte("notification-max-bot:" + token))
+				event["notification_token_hash"], _ = json.Marshal(hex.EncodeToString(mac.Sum(nil)))
+			}
 		}
 		body, _ = json.Marshal(event)
 	}

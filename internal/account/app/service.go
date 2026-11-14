@@ -23,6 +23,7 @@ import (
 
 // Config — параметры модуля; значения по умолчанию — 07 §4.
 type Config struct {
+	MAXBotName        string
 	LoginCodeTTL      time.Duration
 	LoginCodeAttempts int
 	CodesPerEmailHour int
@@ -50,6 +51,7 @@ type UploadCounter interface {
 
 // Deps — зависимости сервиса; связывает bootstrap.
 type Deps struct {
+	MAXBot        domain.MAXBotRepository
 	Settings      domain.AccountSettingsRepository
 	Users         domain.Users
 	AuthCodes     domain.AuthCodes

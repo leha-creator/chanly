@@ -383,6 +383,7 @@ func TestAccountSettingsMAXDeliveryAndUnavailableChannel(t *testing.T) {
 		t.Fatal("unavailable MAX accepted")
 	}
 	ch := a.activeChannel(blg, "Настройки MAX", 1_000_000)
+	bindMAXBot(t, a, blg, 4242)
 	a.settle()
 	before := len(a.maxFake().Sent())
 	r = blg.do("PATCH", "/me/settings", map[string]any{"version": 0, "delivery": []map[string]any{{"group": "blogger.requests", "event": "*", "channel": "max_bot", "enabled": false}}})

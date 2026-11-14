@@ -560,6 +560,15 @@ type Notification struct {
 	UpdatedAt      pgtype.Timestamptz
 }
 
+type NotificationMaxBotConnection struct {
+	ID        pgtype.UUID
+	UserID    pgtype.UUID
+	TokenHash string
+	Status    string
+	CreatedAt pgtype.Timestamptz
+	ExpiresAt pgtype.Timestamptz
+}
+
 type OrdContract struct {
 	ID                       pgtype.UUID
 	Kind                     string
@@ -1176,6 +1185,12 @@ type User struct {
 	BlockedAt     pgtype.Timestamptz
 	BlockedReason *string
 	AnonymizedAt  pgtype.Timestamptz
+}
+
+type UserNotificationMaxBot struct {
+	UserID      pgtype.UUID
+	MaxUserID   int64
+	ConnectedAt pgtype.Timestamptz
 }
 
 type UserSetting struct {

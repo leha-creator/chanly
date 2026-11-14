@@ -131,6 +131,14 @@ func (s *Service) AnonymizeSubject(ctx context.Context, email string, operatorID
 		if err := pd.SaveAnonymized(ctx, u); err != nil {
 			return err
 		}
+		if s.MAXBot != nil {
+			if err := s.MAXBot.ExpireConnections(ctx, u.ID); err != nil {
+				return err
+			}
+			if err := s.MAXBot.Disconnect(ctx, u.ID); err != nil {
+				return err
+			}
+		}
 		if res.SessionsCleared, err = pd.ClearSessions(ctx, u.ID, now); err != nil {
 			return err
 		}

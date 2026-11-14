@@ -159,3 +159,34 @@ func TestStateChanges(t *testing.T) {
 		t.Fatal("repeat read keeps first time")
 	}
 }
+
+func TestPlanPersonalMAXBindingsForBothRoles(t *testing.T) {
+	owner, member, unbound := uuid.New(), uuid.New(), uuid.New()
+	legacy := int64(99)
+	for _, tc := range []struct {
+		role  Role
+		event string
+	}{{RoleAdvertiser, "balance.deposited"}, {RoleBlogger, "payout.succeeded"}} {
+		t.Run(string(tc.role), func(t *testing.T) {
+			a := Audience{UserIDs: []uuid.UUID{owner, member, unbound}, MaxUserID: &legacy, MAXUsers: map[uuid.UUID]int64{owner: 41, member: 42}}
+			rows, err := Plan(Notice{Role: tc.role, Template: tc.event, OrganizationID: uuid.New()}, a, seqIDs(), now)
+			if err != nil {
+				t.Fatal(err)
+			}
+			counts := countBy(rows)
+			if counts[ChannelMaxBot] != 2 || counts[ChannelCabinet] != 3 || counts[ChannelEmail] != 3 {
+				t.Fatalf("channels %v", counts)
+			}
+			for _, row := range rows {
+				bound, _ := row.Payload["_max_bot_binding"].(bool)
+				if row.Channel == ChannelMaxBot {
+					if !bound || row.MaxUserID == nil || *row.MaxUserID != a.MAXUsers[row.UserID] {
+						t.Fatalf("wrong personal recipient %+v", row)
+					}
+				} else if bound {
+					t.Fatal("personal binding marker leaked to email or cabinet")
+				}
+			}
+		})
+	}
+}

@@ -217,6 +217,7 @@ func newModules(cfg Config, in *infra) *modules {
 
 	deps := accountapp.Deps{
 		Settings: accountStore.AccountSettings(),
+		MAXBot:   accountStore.MAXBot(),
 		Users:    accountStore.Users(), AuthCodes: accountStore.AuthCodes(), Sessions: accountStore.Sessions(),
 		Organizations: accountStore.Organizations(), Admin: accountStore.Organizations(), PersonalData: accountStore.PersonalData(), Platform: accountStore.Organizations(), Legal: accountStore.LegalDocuments(),
 		Sender: in.mail, Uploads: auditLog, Tx: txRunner, Jobs: queue, Audit: auditLog, Clock: in.clock, Log: log,
@@ -224,7 +225,7 @@ func newModules(cfg Config, in *infra) *modules {
 			LoginCodeTTL: cfg.Auth.LoginCodeTTL, LoginCodeAttempts: cfg.Auth.LoginCodeAttempts,
 			CodesPerEmailHour: cfg.Auth.CodesPerEmailHour, CodesPerIPHour: cfg.Auth.CodesPerIPHour,
 			SessionTTL: cfg.Auth.SessionTTL, AdminSessionTTL: cfg.Auth.AdminSessionTTL,
-			Pepper: []byte(cfg.AuthCodePepper),
+			Pepper: []byte(cfg.AuthCodePepper), MAXBotName: cfg.MAX.BotName,
 		},
 	}
 	if in.storage != nil {
@@ -301,6 +302,7 @@ func (m *modules) registerJobs(w *job.Worker) {
 	m.platform.register(w, m.cfg, m.in)
 	accountjobs.Register(w, m.account)
 	channeljobs.Register(w, m.platform.dispatcher, m.channel)
+	m.registerMAXBotStarted()
 	postjobs.Register(w, m.post)
 	placementjobs.Register(w, m.placement, placementjobs.Options{
 		PublishRetryWindow: m.cfg.Placement.Control.PublishRetryWindow,

@@ -48,6 +48,18 @@ func (s *Service) Send(ctx context.Context, id uuid.UUID) error {
 		s.log.DebugContext(ctx, "notification already handled", logx.KeyOp, op, "status", n.Status, KeyChannel, n.Channel)
 		return nil
 	}
+	bound, err := s.maxBindingCurrent(ctx, n)
+	if err != nil {
+		return err
+	}
+	if !bound {
+		return s.finish(ctx, id, func(n *domain.Notification) {
+			n.Status = domain.StatusSuppressed
+			n.UpdatedAt = s.Clock.Now()
+			reason := "max_bot_disconnected"
+			n.LastError = &reason
+		})
+	}
 	allowed, err := s.deliveryPolicy(ctx, n)
 	if err != nil {
 		return err
@@ -88,6 +100,23 @@ func (s *Service) Send(ctx context.Context, id uuid.UUID) error {
 			"attempt", n.Attempts+1, "reason", reason, logx.KeyError, err.Error())
 		return err
 	}
+}
+
+// maxBindingCurrent prevents a queued message reaching a disconnected or replaced account.
+func (s *Service) maxBindingCurrent(ctx context.Context, n domain.Notification) (bool, error) {
+	if n.Channel != domain.ChannelMaxBot {
+		return true, nil
+	}
+	recipients, ok := s.Recipients.(domain.MAXRecipients)
+	if !ok {
+		bound, _ := n.Payload["_max_bot_binding"].(bool)
+		return !bound, nil
+	}
+	if n.MaxUserID == nil {
+		return false, nil
+	}
+	current, err := recipients.NotificationMAXRecipient(ctx, n.UserID)
+	return current != 0 && current == *n.MaxUserID, err
 }
 
 // Exhausted — попытки send_notification исчерпаны (OnExhausted): уведомление failed (R-7).

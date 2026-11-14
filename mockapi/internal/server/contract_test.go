@@ -85,6 +85,17 @@ func checkoutDraft(e *env) string {
 }
 
 var cases = map[string]opCase{
+	"listAdminChannelCategories": {user: adm},
+	"getMaxBot":                  {user: adv},
+	"disconnectMaxBot":           {user: adv, noBody: true},
+	"createMaxBotConnection":     {user: adv, noBody: true},
+	"getMaxBotConnection": {user: adv, prepare: func(e *env) (map[string]string, any) {
+		var c struct {
+			ID string `json:"id"`
+		}
+		e.do(e.client(adv), "POST", "/me/max-bot/connections", nil, "").json(e.t, &c)
+		return map[string]string{"id": c.ID}, noBodyMarker
+	}},
 	"getAccountSettings":         {user: adv},
 	"updateAccountSettings":      {user: adv, body: map[string]any{"version": 0, "hide_notification_preview": true}},
 	"listAccountSessions":        {user: adv},

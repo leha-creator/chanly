@@ -27,6 +27,7 @@ import (
 type NotificationRecipients struct{ Users *accountpg.Users }
 
 var _ notificationdomain.Recipients = NotificationRecipients{}
+var _ notificationdomain.MAXRecipients = NotificationRecipients{}
 
 func (b NotificationRecipients) Members(ctx context.Context, orgID uuid.UUID) ([]uuid.UUID, error) {
 	return b.Users.MemberIDs(ctx, orgID)
@@ -38,6 +39,10 @@ func (b NotificationRecipients) Admins(ctx context.Context) ([]uuid.UUID, error)
 
 func (b NotificationRecipients) Email(ctx context.Context, userID uuid.UUID) (string, error) {
 	return b.Users.ActiveEmail(ctx, userID)
+}
+
+func (b NotificationRecipients) NotificationMAXRecipient(ctx context.Context, userID uuid.UUID) (int64, error) {
+	return b.Users.NotificationMAXRecipient(ctx, userID)
 }
 
 // NotificationChannels — notification/domain.Channels поверх channel/postgres (R-3, R-6).

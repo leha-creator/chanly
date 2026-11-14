@@ -381,7 +381,15 @@ type RocketworkContractor struct {
 
 // Data — всё изменяемое состояние заглушки. Сессии хранятся отдельно,
 // чтобы переживать POST /_mock/reset.
+type MaxBotConnection struct {
+	ID, UserID           uuid.UUID
+	TokenHash, Status    string
+	ExpiresAt, CreatedAt time.Time
+}
+
 type Data struct {
+	MaxBotBindings     map[uuid.UUID]int64
+	MaxBotConnections  []*MaxBotConnection
 	Settings           map[uuid.UUID]Settings
 	EmailChanges       map[uuid.UUID]*MockEmailChange
 	Users              map[uuid.UUID]*User
@@ -421,7 +429,8 @@ type Data struct {
 // NewData создаёт пустое состояние.
 func NewData() *Data {
 	return &Data{
-		Settings: map[uuid.UUID]Settings{}, EmailChanges: map[uuid.UUID]*MockEmailChange{},
+		MaxBotBindings: map[uuid.UUID]int64{},
+		Settings:       map[uuid.UUID]Settings{}, EmailChanges: map[uuid.UUID]*MockEmailChange{},
 		Users:         map[uuid.UUID]*User{},
 		Orgs:          map[uuid.UUID]*Organization{},
 		Acceptances:   map[uuid.UUID]map[uuid.UUID]time.Time{},

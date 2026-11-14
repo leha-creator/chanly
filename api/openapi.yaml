@@ -265,6 +265,64 @@ paths:
               schema: { $ref: '#/components/schemas/Me' }
         '401': { $ref: '#/components/responses/Unauthorized' }
 
+  /me/max-bot:
+    get:
+      tags: [auth]
+      operationId: getMaxBot
+      summary: Статус личной привязки бота MAX для уведомлений
+      description: Привязка принадлежит пользователю и действует в кабинетах рекламодателя и блогера независимо от каналов.
+      responses:
+        '200':
+          description: Текущее состояние
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MaxBot' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    delete:
+      tags: [auth]
+      operationId: disconnectMaxBot
+      summary: Отключить личную привязку бота MAX
+      description: Требует X-CSRF-Token. Отзывает также незавершённые ссылки подключения. Повтор безопасен.
+      responses:
+        '204': { description: Привязка отключена }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /me/max-bot/connections:
+    post:
+      tags: [auth]
+      operationId: createMaxBotConnection
+      summary: Создать персональную ссылку подключения бота MAX
+      description: |
+        Требует X-CSRF-Token. Одноразовая ссылка ограничена по времени; предыдущие
+        незавершённые ссылки пользователя отзываются. Подтверждение приходит только
+        из проверенного события bot_started MAX. Нельзя передать произвольный MAX ID.
+        bot_url выдаётся только при создании; не сохранять и не писать в журналы.
+      responses:
+        '201':
+          description: Ссылка подключения создана
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MaxBotConnectionCreated' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '503': { $ref: '#/components/responses/ServiceUnavailable' }
+  /me/max-bot/connections/{id}:
+    get:
+      tags: [auth]
+      operationId: getMaxBotConnection
+      summary: Проверить собственную ссылку подключения бота MAX
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Текущее состояние ссылки
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MaxBotConnection' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
   /me/settings:
     get:
       tags: [auth]
@@ -4414,6 +4472,25 @@ components:
       required: [version]
       properties:
         version: { type: integer, enum: [1] }
+    MaxBot:
+      type: object
+      required: [connected]
+      properties:
+        connected: { type: boolean }
+    MaxBotConnection:
+      type: object
+      required: [id, status, expires_at]
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        status: { type: string, enum: [pending, connected, expired] }
+        expires_at: { type: string, format: date-time }
+    MaxBotConnectionCreated:
+      allOf:
+        - $ref: '#/components/schemas/MaxBotConnection'
+        - type: object
+          required: [bot_url]
+          properties:
+            bot_url: { type: string, format: uri }
     DeliveryChannel:
       type: string
       enum: [email, max_bot, browser, sound]

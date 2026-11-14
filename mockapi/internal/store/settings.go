@@ -54,7 +54,7 @@ func (tx *Tx) AccountSettings(user uuid.UUID) Settings {
 	return DefaultSettings()
 }
 func (tx *Tx) AccountSettingsAccess(u *User) SettingsAccess {
-	out := SettingsAccess{}
+	out := SettingsAccess{MaxBot: tx.D.MaxBotBindings[u.ID] > 0}
 	if u.AdminRole != "" {
 		out.Roles = append(out.Roles, RoleAdmin)
 	}
@@ -66,11 +66,6 @@ func (tx *Tx) AccountSettingsAccess(u *User) SettingsAccess {
 			}
 			if o.IsBlogger {
 				out.Roles = append(out.Roles, RoleBlogger)
-			}
-			for _, ch := range tx.D.Channels {
-				if ch.OrgID != nil && *ch.OrgID == o.ID && ch.BotIsAdmin {
-					out.MaxBot = true
-				}
 			}
 		}
 	}

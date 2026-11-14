@@ -152,6 +152,7 @@ func (h *Handlers) MaxWebhook(ctx context.Context, req api.MaxWebhookRequestObje
 	tx, done := h.st.Begin(ctx)
 	defer done()
 	mockStartConnection(tx, *req.Body)
+	mockStartMaxBotConnection(tx, *req.Body)
 	h.logger(ctx).Info("max webhook received and ignored", "op", "Webhook.Max", "keys", len(*req.Body))
 	return api.MaxWebhook200Response{}, nil
 }

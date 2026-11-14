@@ -264,7 +264,7 @@ const settingsAccess = `-- name: SettingsAccess :one
 SELECT u.admin_role,
 EXISTS(SELECT 1 FROM organization_member m JOIN advertiser_profile p ON p.organization_id=m.organization_id WHERE m.user_id=u.id) AS advertiser,
 EXISTS(SELECT 1 FROM organization_member m JOIN blogger_profile p ON p.organization_id=m.organization_id WHERE m.user_id=u.id) AS blogger,
-EXISTS(SELECT 1 FROM organization_member m JOIN channel c ON c.organization_id=m.organization_id WHERE m.user_id=u.id AND m.role='owner' AND c.added_by_max_user_id IS NOT NULL AND c.added_by_max_user_id<>0) AS max_bot
+EXISTS(SELECT 1 FROM user_notification_max_bot b WHERE b.user_id=u.id) AS max_bot
 FROM "user" u WHERE u.id= $1 AND u.status='active'
 `
 

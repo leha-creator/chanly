@@ -45,6 +45,12 @@ type Recipients interface {
 	Email(ctx context.Context, userID uuid.UUID) (string, error)
 }
 
+// MAXRecipients provides verified personal bot bindings independently of channels.
+// An unbound or inactive user returns zero. Legacy adapters can omit this interface.
+type MAXRecipients interface {
+	NotificationMAXRecipient(context.Context, uuid.UUID) (int64, error)
+}
+
 // ChannelInfo — сведения о канале для текста и адресата бота (R-3, R-6).
 type ChannelInfo struct {
 	Title string

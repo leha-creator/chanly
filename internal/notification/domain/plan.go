@@ -15,15 +15,15 @@ type Audience struct {
 	UserIDs []uuid.UUID
 	// MaxUserID — channel.added_by_max_user_id канала из данных; nil — бота нет.
 	MaxUserID *int64
+	// MAXUsers contains explicitly verified personal recipients, keyed by cabinet user.
+	MAXUsers map[uuid.UUID]int64
 }
 
 // ChannelsFor — каналы доставки стороны (R-2, 07 §6, A-19). Кабинет — всегда.
 func ChannelsFor(r Role) []Channel {
 	switch r {
-	case RoleBlogger:
+	case RoleBlogger, RoleAdvertiser:
 		return []Channel{ChannelCabinet, ChannelMaxBot, ChannelEmail}
-	case RoleAdvertiser:
-		return []Channel{ChannelCabinet, ChannelEmail}
 	default:
 		// Администратору почту и чат дежурных шлёт platform/alert (R-9).
 		return []Channel{ChannelCabinet}
@@ -31,7 +31,7 @@ func ChannelsFor(r Role) []Channel {
 }
 
 // Plan — строки уведомления для адресатов (R-1…R-4). Кабинет — каждому, сразу sent; почта —
-// каждому, pending; бот — одна строка на владельца, если известен пользователь MAX.
+// каждому, pending; бот — каждому пользователю с подтверждённой личной привязкой MAX.
 func Plan(n Notice, a Audience, newID func() uuid.UUID, now time.Time) ([]Notification, error) {
 	t, err := Lookup(n.Template)
 	if err != nil {
@@ -74,7 +74,19 @@ func Plan(n Notice, a Audience, newID func() uuid.UUID, now time.Time) ([]Notifi
 	for _, ch := range ChannelsFor(n.Role) {
 		switch ch {
 		case ChannelMaxBot:
-			if a.MaxUserID == nil || *a.MaxUserID == 0 || len(a.UserIDs) == 0 {
+			for _, user := range a.UserIDs {
+				maxUser := a.MAXUsers[user]
+				if maxUser == 0 {
+					continue
+				}
+				r := row(user, ch)
+				r.MaxUserID = &maxUser
+				r.Payload = maps.Clone(payload)
+				r.Payload["_max_bot_binding"] = true
+				out = append(out, r)
+			}
+			// Compatibility for older adapters; production resolves personal bindings.
+			if n.Role != RoleBlogger || a.MAXUsers != nil || a.MaxUserID == nil || *a.MaxUserID == 0 || len(a.UserIDs) == 0 {
 				continue
 			}
 			r := row(a.UserIDs[0], ch)
