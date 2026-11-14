@@ -108,12 +108,27 @@ func (r *Posts) SaveDraft(ctx context.Context, p domain.Post) error {
 	return nil
 }
 
-func (r *Posts) RemoveMediaFromDrafts(ctx context.Context, orgID, fileID uuid.UUID, now time.Time) (int, error) {
-	const op = "Post.Posts.RemoveMediaFromDrafts"
-	n, err := r.s.q(ctx).RemoveMediaFromDrafts(ctx, sqlc.RemoveMediaFromDraftsParams{FileID: fileID.String(), Now: now, OrganizationID: orgID})
-	if err != nil {
-		return 0, r.s.fail(ctx, op, err)
+func (r *Posts) LockDraftMedia(ctx context.Context, orgID uuid.UUID) error {
+	if err := r.s.q(ctx).LockDraftMedia(ctx, orgID); err != nil {
+		return r.s.fail(ctx, "Post.Posts.LockDraftMedia", err)
 	}
-	r.s.debug(ctx, op, "media_file_id", fileID, "drafts_updated", n)
-	return int(n), nil
+	return nil
+}
+
+func (r *Posts) RemoveMediaFromDrafts(ctx context.Context, orgID, fileID uuid.UUID, now time.Time) ([]domain.Post, error) {
+	const op = "Post.Posts.RemoveMediaFromDrafts"
+	rows, err := r.s.q(ctx).RemoveMediaFromDrafts(ctx, sqlc.RemoveMediaFromDraftsParams{FileID: fileID.String(), Now: now, OrganizationID: orgID})
+	if err != nil {
+		return nil, r.s.fail(ctx, op, err)
+	}
+	posts := make([]domain.Post, 0, len(rows))
+	for _, row := range rows {
+		p, err := r.toPost(ctx, op, row)
+		if err != nil {
+			return nil, err
+		}
+		posts = append(posts, p)
+	}
+	r.s.debug(ctx, op, "media_file_id", fileID, "drafts_updated", len(posts))
+	return posts, nil
 }

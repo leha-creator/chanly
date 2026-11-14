@@ -835,7 +835,8 @@ paths:
       summary: Сменить формат позиции или подтвердить цену
       description: |
         Меняет формат позиции и запоминает текущий итог как показанный (`shown_total_amount`).
-        Запрос с тем же форматом подтверждает изменившуюся цену (снимает `price_changed`).
+        Запрос с тем же форматом подтверждает изменившуюся цену (снимает `price_changed`),
+        в том числе при изменении ставки комиссии площадки. Чтение корзины цену не подтверждает.
         `422` с `details.reason = format_unavailable` — формат не активен или цена выключена.
       parameters:
         - $ref: '#/components/parameters/Id'
@@ -1082,7 +1083,7 @@ paths:
 
         UTM-метки (A-21) в предпросмотре содержат заглушку номера заказа `order_0000000000`
         фиксированной ширины, поэтому длина не занижается. `media_urls` — подписанные ссылки
-        со сроком действия; пока изображения с плашкой или их копии строятся, ссылок на них нет
+        со сроком действия; пока хотя бы одна выбранная производная строится, возвращается пустой массив
         и в `problems` есть `media_processing` — предпросмотр нужно запросить ещё раз.
       parameters:
         - $ref: '#/components/parameters/Id'
@@ -1115,7 +1116,14 @@ paths:
         - `conflict` с `details.reason = campaign_not_draft` — кампания не в `draft`.
         Проверки идут по порядку: поля кампании, корзина, пост. Поэтому `missing_fields` и
         `post_problems` в одном ответе не встречаются, а `cart_changed` приходит раньше проблем поста.
-        Повтор с тем же `Idempotency-Key` возвращает созданный заказ.
+        Повтор с тем же `Idempotency-Key` возвращает созданный заказ с исходными суммами,
+        включая повтор после изменения комиссии. Ставка и суммы фиксируются в размещении
+        при создании: `fee = floor(blogger_amount × fee_rate_bp / 10000)`,
+        `total_amount = blogger_amount + fee`; текущая ставка по умолчанию — 2500 (25%).
+        Исторические размещения 1500 (15%) не пересчитываются при приёмке и возврате.
+        Старая корзина после изменения итога требует подтверждения через `updateCartItem`,
+        иначе возвращается `409 cart_changed`. Деньги — целые копейки; комиссия округляется
+        вниз отдельно для каждой позиции. Клиент использует серверную сумму.
       parameters:
         - $ref: '#/components/parameters/Id'
         - $ref: '#/components/parameters/IdempotencyKey'
@@ -1784,12 +1792,15 @@ paths:
     patch:
       tags: [blogger-channels]
       operationId: updateBloggerChannel
-      summary: Описание, категория, номер РКН
+      summary: Профиль и цены канала одним сохранением
       description: |
+        Optional prices заменяет набор цен вместе с профилем одной транзакцией; отсутствие сохраняет цены.
+        Ошибка любой части откатывает профиль, цены и эффекты. Старый PUT /prices сохраняется.
         Канал из `pending_rights` или `rejected` после правки уходит на модерацию, если права бота в порядке.
         Новый `rkn_number` сбрасывает проверку РКН в `pending`: канал `active` с подписчиками не меньше
         порога РКН уходит в `suspended` с `status_reason = rkn_required` до проверки администратором.
-        Канал в `unclaimed`, `disconnected` или `blocked` не правится — `409` с `details.status`.
+        Канал в `disconnected` или `blocked` не правится — `409` с `details.status`.
+        Unclaimed не имеет организации-владельца: кабинет получает `404`, как для любого чужого канала.
         Неизвестная или архивная категория — `422` с `details.field = category_id`,
         `details.reason = unknown category`.
       parameters:
@@ -1802,6 +1813,7 @@ paths:
             example:
               description: Рецепты на каждый день
               category_id: '0190a000-0000-7000-8000-000000000201'
+              prices: [{ format_id: f_1_24, amount: 300000, is_enabled: true }]
       responses:
         '200':
           description: Канал
@@ -1823,7 +1835,7 @@ paths:
         формат, которого нет в наборе, удаляется. Цена для рекламодателя `total_amount` —
         `amount + floor(amount × комиссия / 10000)`.
 
-        Канал в `unclaimed`, `disconnected` или `blocked` цены не принимает — `409`.
+        Канал в `disconnected` или `blocked` цены не принимает — `409`; unclaimed без владельца — `404`.
         `422` с `details.reason`: `duplicate_format` — формат повторяется; `unknown_format` —
         формата нет среди активных; `active_requires_price` — у канала в `active` должна
         остаться хотя бы одна включённая цена.
@@ -1857,7 +1869,7 @@ paths:
       summary: Добавить интервал недоступности
       description: |
         Интервал, в который блогер не принимает публикации (S-13). Прошедшие интервалы в ответах
-        не показываются. Канал в `unclaimed`, `disconnected` или `blocked` интервалы не принимает — `409`.
+        не показываются. Канал в `disconnected` или `blocked` интервалы не принимает — `409`; unclaimed без владельца — `404`.
         `422` с `details.reason`: `in_past` — начало не раньше конца или конец уже прошёл;
         `too_long` — длиннее 90 суток; `too_far` — начало дальше 365 суток от текущего момента;
         `overlap` — пересекается с интервалом канала (соприкосновение границ — не пересечение);
@@ -2153,6 +2165,9 @@ paths:
         Ставит внеочередной опрос Рокет Ворк и возвращает текущее состояние; новое появится в
         `getRocketworkStatus` после опроса. Онбординг не начат — `status = none` без опроса.
         Не больше 10 запросов пользователя в час.
+        Успешный POST подтверждает запрос проверки, но не её завершение: status_checked_at
+        остаётся прежним до ответа провайдера. Он обновляется и при неизменном статусе.
+        Прямой refresh для active поддерживается; повторный запрос переиспользует задание.
       responses:
         '200':
           description: Текущее состояние
@@ -2396,6 +2411,27 @@ paths:
 
   # ---------------------------------------------------------------- admin: dictionaries
   /admin/channel-categories:
+    get:
+      tags: [admin-dictionaries]
+      operationId: listAdminChannelCategories
+      summary: Все категории каналов, включая архив
+      description: |
+        Роль: senior. Полный справочник, сортировка position, slug. Архив восстанавливается
+        через PATCH archived=false; UUID и slug не меняются. Поиск выполняется клиентом.
+      responses:
+        '200':
+          description: Активные и архивные категории
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/AdminChannelCategory' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
     post:
       tags: [admin-dictionaries]
       operationId: createChannelCategory
@@ -4628,7 +4664,7 @@ components:
     TokenCarrier:
       type: string
       enum: [text, media]
-      description: Где пометка «Реклама» с названием и ИНН
+      description: Где пометка «Реклама» с названием и ИНН; media — только первая картинка новых версий по сохранённому порядку, остальные plain; text — строка в тексте
     TokenPosition:
       type: string
       enum: [link, above, below]
@@ -4743,11 +4779,11 @@ components:
           type: string
           maxLength: 200
           description: |
-            Поля `signer_*` — только у `legal_entity` с кабинетом блогера, там все четыре обязательны;
+            Поля `signer_*` — только у `legal_entity` с кабинетом блогера, обязательны `signer_position` и `signer_name`;
             иначе `422 not_allowed`
         signer_name: { type: string, maxLength: 200 }
-        signer_basis_name: { type: string, maxLength: 200 }
-        signer_basis_number: { type: string, maxLength: 100 }
+        signer_basis_name: { type: string, maxLength: 200, description: Необязательное основание полномочий; пустая строка очищает значение }
+        signer_basis_number: { type: string, maxLength: 100, description: Необязательный номер основания; может передаваться независимо от названия }
         bank_account: { type: string, pattern: '^[0-9]{20}$' }
         bank_name: { type: string, maxLength: 300 }
         bank_corr_account: { type: string, pattern: '^[0-9]{20}$' }
@@ -4789,7 +4825,7 @@ components:
               items: { $ref: '#/components/schemas/Cabinet' }
             tax_document_uploaded:
               type: boolean
-              description: Документ о режиме налогообложения загружен (нужен блогеру)
+              description: Признак необязательного документа блогера; регистрация, включая НПД, разрешена без файла
             created_at: { type: string, format: date-time }
 
     # ------------------------------------------------ legal, notifications
@@ -4942,8 +4978,8 @@ components:
         shown_total_amount: { $ref: '#/components/schemas/Money' }
         current_total_amount:
           allOf: [{ $ref: '#/components/schemas/Money' }]
-          description: Нет, если формат канала выключен
-        price_changed: { type: boolean }
+          description: Текущий итог по действующей комиссии (по умолчанию 25%); нет, если формат канала выключен
+        price_changed: { type: boolean, description: Текущий итог отличается от показанного в том числе после изменения комиссии; GET цену не подтверждает }
         available: { type: boolean, description: Канал виден в каталоге (правила — в `listCatalogChannels`) и формат включён }
     Cart:
       type: object
@@ -5048,8 +5084,8 @@ components:
         media_urls:
           type: array
           description: |
-            Изображения в том виде, в каком уйдут в канал (с плашкой при `token_carrier=media`).
-            Подписанные ссылки со сроком действия; изображения, которые ещё строятся, не входят.
+            Изображения в сохранённом порядке, в том виде, в каком уйдут в канал. При `token_carrier=media` только первая картинка имеет плашку v2, остальные — без плашки (plain). При text все plain.
+            Подписанные ссылки со сроком действия. Пока хотя бы одна выбранная производная не готова, массив пуст и присутствует media_processing; частичный альбом не возвращается.
           items: { type: string, format: uri }
         problems:
           type: array
@@ -5091,6 +5127,7 @@ components:
         final_text: { type: string, description: Есть с состояния `ready` }
         erid: { type: string, description: Есть с состояния `ready` }
         media_urls:
+          description: Публичные ссылки snapshot по сохранённому порядку. Новые media-версии имеют плашку только на первой картинке; старые версии всех статусов сохраняют исходные файлы и не пересчитываются.
           type: array
           items: { type: string, format: uri }
         token_carrier: { $ref: '#/components/schemas/TokenCarrier' }
@@ -5416,7 +5453,7 @@ components:
         is_enabled: { type: boolean }
         total_amount:
           allOf: [{ $ref: '#/components/schemas/Money' }]
-          description: Цена для рекламодателя, с комиссией платформы
+          description: Цена для рекламодателя — amount + floor(amount × ставка / 10000); ставка из конфигурации, по умолчанию 2500 (25%) сверху цены блогера
     BloggerChannel:
       type: object
       required: [id, title, is_public, status, subscribers_count, bot_is_admin, bot_permissions, missing_permissions, rkn_status, rating, prices, unavailability]
@@ -5462,6 +5499,13 @@ components:
         description: { type: string, maxLength: 2000 }
         category_id: { $ref: '#/components/schemas/Uuid' }
         rkn_number: { type: string, maxLength: 50 }
+        prices:
+          type: array
+          description: |
+            Полная замена цен вместе с профилем одной транзакцией. Отсутствие поля сохраняет цены;
+            null запрещён. Пустой массив разрешён, если исходный и итоговый статус не active.
+            У active должен остаться хотя бы один включённый формат даже при одновременной правке РКН.
+          items: { $ref: '#/components/schemas/ChannelPriceInput' }
     ChannelPricesInput:
       type: object
       required: [prices]
@@ -5600,7 +5644,7 @@ components:
         status_checked_at:
           type: string
           format: date-time
-          description: Когда статус последний раз сверен с Рокет Ворк
+          description: Время фактической сверки с Рокет Ворк; запрос refresh сам по себе его не меняет
     RocketworkDocument:
       type: object
       required: [kind, url]

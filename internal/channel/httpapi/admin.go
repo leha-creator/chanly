@@ -191,6 +191,21 @@ func adminCategory(c domain.Category) apigen.AdminChannelCategory {
 	return apigen.AdminChannelCategory{Id: c.ID, Slug: c.Slug, Name: c.Name, Position: c.Position, Archived: c.Archived}
 }
 
+func (h *Handlers) ListAdminChannelCategories(ctx context.Context, _ apigen.ListAdminChannelCategoriesRequestObject) (apigen.ListAdminChannelCategoriesResponseObject, error) {
+	if _, err := h.senior(ctx, "Admin.ListChannelCategories"); err != nil {
+		return nil, err
+	}
+	list, err := h.svc.ListAdminCategories(ctx)
+	if err != nil {
+		return nil, err
+	}
+	items := make([]apigen.AdminChannelCategory, 0, len(list))
+	for _, c := range list {
+		items = append(items, adminCategory(c))
+	}
+	return apigen.ListAdminChannelCategories200JSONResponse{Items: items}, nil
+}
+
 func (h *Handlers) CreateChannelCategory(ctx context.Context, req apigen.CreateChannelCategoryRequestObject) (apigen.CreateChannelCategoryResponseObject, error) {
 	adminID, err := h.senior(ctx, "Admin.CreateChannelCategory")
 	if err != nil {

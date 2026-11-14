@@ -102,6 +102,10 @@ func TestOrdersPlacementsTablesForAppRole(t *testing.T) {
 		t.Fatalf("amount change: want placement_amounts_immutable, got %v", err)
 	}
 
+	if _, err := d.Pool.Exec(ctx, `UPDATE placement SET fee_rate_bp = 2500 WHERE id = $1`, placement); !db.CheckViolation(err, "placement_amounts_immutable") {
+		t.Fatalf("rate change: want placement_amounts_immutable, got %v", err)
+	}
+
 	// История: роль приложения только добавляет записи (04 §1).
 	if _, err := d.Pool.Exec(ctx, `INSERT INTO placement_state_history (id, placement_id, transition, to_status, actor_type,
 		actor_user_id, idempotency_key, created_at) VALUES ($1, $2, 'P-01', 'created', 'advertiser', $3, 'k1', now())`,

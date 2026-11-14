@@ -106,7 +106,9 @@ func (r *Renderer) Render(ctx context.Context, original []byte, p domain.Derivat
 		out, err = r.encodeLike(ctx, src, format)
 	case domain.KindLabeled:
 		img := imaging.Clone(src)
-		drawPlate(img, p.Name, p.INN)
+		if err := drawPlate(img, p.Name, p.INN); err != nil {
+			return domain.Rendered{}, fmt.Errorf("render advertising plate: %w", err)
+		}
 		out, err = r.encodeLike(ctx, img, format)
 	default:
 		return domain.Rendered{}, fmt.Errorf("imaging: unknown derivative kind %q", p.Kind)
@@ -115,6 +117,7 @@ func (r *Renderer) Render(ctx context.Context, original []byte, p domain.Derivat
 		return domain.Rendered{}, err
 	}
 	r.log.DebugContext(ctx, "media derivative rendered", logx.KeyOp, "Post.RenderDerivative", "kind", p.Kind,
+		"render_version", p.Version(),
 		"width", out.Width, "height", out.Height, "size_bytes", len(out.Data),
 		"duration_ms", r.clock.Now().Sub(start).Milliseconds())
 	return out, nil

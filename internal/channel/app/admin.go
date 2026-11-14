@@ -88,7 +88,16 @@ func (s *Service) blockTx(ctx context.Context, op string, id uuid.UUID, decide f
 	})
 }
 
-// CreateCategory — новая категория каналов (R-8): slug уникален, позиция — в конец, если не задана.
+// ListAdminCategories returns the complete dictionary for the senior-only HTTP route.
+func (s *Service) ListAdminCategories(ctx context.Context) ([]domain.Category, error) {
+	list, err := s.Categories.ListAll(ctx)
+	if err == nil {
+		s.log.DebugContext(ctx, "admin channel categories listed", logx.KeyOp, "Channel.ListAdminCategories", "role", "senior", "count", len(list))
+	}
+	return list, err
+}
+
+// CreateCategory creates an active category; archived slugs remain reserved.
 func (s *Service) CreateCategory(ctx context.Context, adminID uuid.UUID, in domain.CategoryInput) (domain.Category, error) {
 	const op = "Channel.CreateCategory"
 	if err := domain.CheckSlug(in.Slug); err != nil {

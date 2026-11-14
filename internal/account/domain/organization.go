@@ -442,7 +442,8 @@ func (o *Organization) validateBlogger() error {
 		{"signer_basis_number", o.SignerBasisNumber},
 	}
 	for _, s := range signer {
-		if o.LegalType == LegalEntity && s.v == nil {
+		optional := s.name == "signer_basis_name" || s.name == "signer_basis_number"
+		if o.LegalType == LegalEntity && s.v == nil && !optional {
 			return apperr.Validation(s.name, ReasonRequired)
 		}
 		if o.LegalType != LegalEntity && s.v != nil {

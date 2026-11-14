@@ -1,90 +1,114 @@
 package domain
 
 import (
+	"errors"
 	"math"
 	"strings"
+	"unicode"
 )
 
-// Шаблон плашки (06 §6.2, R-5). Изменение любого числа — новая PlateTemplateVersion.
-const (
-	// PlateHeightRatio — высота полосы от высоты изображения, не меньше PlateMinHeight.
-	PlateHeightRatio = 0.08
-	PlateMinHeight   = 40
-	// PlateMarginRatio — поле слева и справа от ширины изображения.
-	PlateMarginRatio = 0.02
-	// PlateFontRatio — начальный кегль от высоты полосы.
-	PlateFontRatio = 0.55
-	// PlateMinFontRatio — нижний предел кегля от начального.
-	PlateMinFontRatio = 0.6
-	// PlateEllipsis — знак обрезки названия.
-	PlateEllipsis = "…"
-)
+// Plate v2 geometry is part of PlateTemplateVersion, not runtime configuration.
+const PlateEllipsis = "…"
 
-// PlateText — текст плашки (06 §6.2).
-func PlateText(name, inn string) string { return plateText(name, "", inn) }
+// ErrPlateLayout prevents a successful derivative with missing/clipped marking.
+var ErrPlateLayout = errors.New("advertising plate does not fit the image")
 
-func plateText(name, suffix, inn string) string {
-	return "Реклама. " + name + suffix + ", ИНН " + inn
-}
+func PlateText(name, inn string) string { return "Реклама. " + name + ", ИНН " + inn }
 
-// TextMeasurer — ширина строки в пикселях при кегле size (пикселях). Реализация на
-// шрифте — post/imaging.
+type FontMetrics struct{ Ascent, Descent float64 }
+
+// TextMeasurer uses the same embedded font as the renderer.
 type TextMeasurer interface {
 	Width(text string, size float64) float64
+	Metrics(size float64) FontMetrics
 }
 
-// PlateLayout — раскладка плашки на изображении.
+// PlateLayout describes an inset card in image coordinates.
 type PlateLayout struct {
-	// BarY — верхний край полосы; полоса — от BarY до низа изображения.
-	BarY      int
-	BarHeight int
-	// Margin — поле слева и справа.
-	Margin   int
-	FontSize float64
-	Text     string
-	// Truncated — название обрезано с многоточием.
-	Truncated bool
+	X, Y, Width, Height int
+	Padding, Radius     int
+	FontSize            float64
+	LineHeight          int
+	Ascent              float64
+	Lines               []string
+	Truncated           bool
 }
 
-// LayoutPlate раскладывает плашку (06 §6.2, R-5): полоса во всю ширину внизу высотой
-// 8% изображения, не меньше 40 px; кегль от 55% высоты полосы уменьшается до 60%
-// от начального; если и так не помещается — название обрезается с «…», ИНН целиком.
-func LayoutPlate(width, height int, name, inn string, m TextMeasurer) PlateLayout {
-	bar := max(int(math.Round(float64(height)*PlateHeightRatio)), PlateMinHeight)
-	bar = min(bar, height)
-	margin := max(int(math.Round(float64(width)*PlateMarginRatio)), 1)
-	avail := float64(width - 2*margin)
-	l := PlateLayout{BarY: height - bar, BarHeight: bar, Margin: margin}
-
-	size0 := float64(bar) * PlateFontRatio
-	minSize := size0 * PlateMinFontRatio
-	full := PlateText(name, inn)
-	if w := m.Width(full, size0); w <= avail {
-		l.FontSize, l.Text = size0, full
-		return l
-	} else if size := size0 * avail / w; size >= minSize {
-		// Ширина растёт с кеглем линейно; запас на округление в измерителе.
-		for size > minSize && m.Width(full, size) > avail {
-			size -= 0.25
-		}
-		if m.Width(full, size) <= avail {
-			l.FontSize, l.Text = size, full
-			return l
-		}
+// LayoutPlate wraps the advertiser name onto at most two lines. Only the name
+// may be ellipsized; the advertising label and complete INN must always fit.
+func LayoutPlate(width, height int, name, inn string, m TextMeasurer) (PlateLayout, error) {
+	// About 10 px when an ordinary photo is displayed at 320 px wide. The
+	// height bound keeps panoramic images usable; tiny sources retain 12 px.
+	size := max(12, math.Round(min(float64(width)/32, float64(height)/8)))
+	margin := max(8, int(math.Round(min(float64(width)*0.02, float64(height)*0.05))))
+	padding := max(8, int(math.Round(size/2)))
+	available := float64(width - 2*margin - 2*padding)
+	metrics := m.Metrics(size)
+	if available <= 0 || math.IsInf(metrics.Ascent+metrics.Descent, 0) || math.IsNaN(metrics.Ascent+metrics.Descent) {
+		return PlateLayout{}, ErrPlateLayout
 	}
+	lineHeight := int(math.Ceil(max(size*1.2, metrics.Ascent+metrics.Descent)))
+	l := PlateLayout{X: margin, Padding: padding, Radius: max(6, int(math.Round(size*0.3))), FontSize: size,
+		LineHeight: lineHeight, Ascent: metrics.Ascent}
+	name = strings.Join(strings.Fields(name), " ")
+	full := PlateText(name, inn)
+	if m.Width(full, size) <= available {
+		l.Lines = []string{full}
+	} else {
+		label, tax := "Реклама", "ИНН "+inn
+		if m.Width(label, size) > available || m.Width(tax, size) > available {
+			return PlateLayout{}, ErrPlateLayout
+		}
+		l.Lines = []string{label}
+		remaining := name
+		for i := 0; i < 2 && remaining != ""; i++ {
+			line, rest := plateNameLine(remaining, available, size, m)
+			if i == 1 && rest != "" {
+				line, _ = plateNameLine(remaining, available-m.Width(PlateEllipsis, size), size, m)
+				line = strings.TrimSpace(line) + PlateEllipsis
+				l.Truncated = true
+			}
+			if line == "" || m.Width(line, size) > available {
+				return PlateLayout{}, ErrPlateLayout
+			}
+			l.Lines = append(l.Lines, line)
+			remaining = rest
+		}
+		l.Lines = append(l.Lines, tax)
+	}
+	maxWidth := 0.0
+	for _, line := range l.Lines {
+		maxWidth = max(maxWidth, m.Width(line, size))
+	}
+	l.Width = int(math.Ceil(maxWidth)) + 2*padding
+	l.Height = len(l.Lines)*lineHeight + 2*padding
+	l.Y = height - margin - l.Height
+	if l.Y < margin || l.X+l.Width > width-margin {
+		return PlateLayout{}, ErrPlateLayout
+	}
+	l.Radius = min(l.Radius, l.Width/2, l.Height/2)
+	return l, nil
+}
 
-	// Нижний кегль: подбираем самую длинную часть названия, с которой текст помещается.
-	l.FontSize, l.Truncated = minSize, true
-	runes := []rune(strings.TrimSpace(name))
+// Prefer a word boundary, or a Unicode boundary for an unbroken word.
+func plateNameLine(text string, available, size float64, m TextMeasurer) (string, string) {
+	runes := []rune(text)
 	lo, hi := 0, len(runes)
 	for lo < hi {
 		mid := (lo + hi + 1) / 2
-		if m.Width(plateText(strings.TrimSpace(string(runes[:mid])), PlateEllipsis, inn), minSize) <= avail {
+		if m.Width(string(runes[:mid]), size) <= available {
 			lo = mid
 		} else {
 			hi = mid - 1
 		}
 	}
-	l.Text = plateText(strings.TrimSpace(string(runes[:lo])), PlateEllipsis, inn)
-	return l
+	if lo < len(runes) && !unicode.IsSpace(runes[lo]) {
+		for i := lo - 1; i > 0; i-- {
+			if unicode.IsSpace(runes[i]) {
+				lo = i
+				break
+			}
+		}
+	}
+	return strings.TrimSpace(string(runes[:lo])), strings.TrimSpace(string(runes[lo:]))
 }

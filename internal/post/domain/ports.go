@@ -64,12 +64,15 @@ type Campaigns interface {
 
 // Posts — посты кампаний.
 type Posts interface {
+	// LockDraftMedia serializes draft selection and media deletion in one organization.
+	// Acquire before post/media row locks, inside the caller's transaction.
+	LockDraftMedia(ctx context.Context, orgID uuid.UUID) error
 	Insert(ctx context.Context, p Post) error
 	GetByCampaign(ctx context.Context, orgID, campaignID uuid.UUID) (Post, error)
 	GetByCampaignForUpdate(ctx context.Context, orgID, campaignID uuid.UUID) (Post, error)
 	SaveDraft(ctx context.Context, p Post) error
-	// RemoveMediaFromDrafts убирает файл из черновиков всех постов организации; возвращает число постов.
-	RemoveMediaFromDrafts(ctx context.Context, orgID, fileID uuid.UUID, now time.Time) (int, error)
+	// RemoveMediaFromDrafts returns updated drafts, preserving the remaining order.
+	RemoveMediaFromDrafts(ctx context.Context, orgID, fileID uuid.UUID, now time.Time) ([]Post, error)
 }
 
 // Versions — версии поста.

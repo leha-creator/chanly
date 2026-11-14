@@ -34,16 +34,19 @@ func (s *Service) CreateVersion(ctx context.Context, orgID, campaignID, userID u
 	const op = "Post.CreateVersion"
 	var v domain.Version
 	err := s.Tx.InTx(ctx, func(ctx context.Context) error {
+		if err := s.Posts.LockDraftMedia(ctx, orgID); err != nil {
+			return err
+		}
 		p, err := s.Posts.GetByCampaignForUpdate(ctx, orgID, campaignID)
 		if err != nil {
 			return notFound(err, "campaign")
 		}
 		d := p.Draft
-		params, req, canBuild, err := s.draftParams(ctx, orgID, d)
+		items, req, canBuild, err := s.draftRequirements(ctx, orgID, d)
 		if err != nil {
 			return err
 		}
-		derivs, ready, err := s.readyDerivatives(ctx, d.MediaIDs, params, canBuild)
+		derivs, _, ready, err := s.albumDerivatives(ctx, orgID, items, canBuild)
 		if err != nil {
 			return err
 		}
@@ -65,7 +68,7 @@ func (s *Service) CreateVersion(ctx context.Context, orgID, campaignID, userID u
 		}
 		media := make([]domain.VersionMedia, 0, len(d.MediaIDs))
 		for i, id := range d.MediaIDs {
-			media = append(media, domain.VersionMedia{Position: i, MediaFileID: id, DerivativeID: derivs[id].ID})
+			media = append(media, domain.VersionMedia{Position: i, MediaFileID: id, DerivativeID: derivs[i].ID})
 		}
 		if v, err = domain.NewVersion(ids.New(), p, number, req, body, media, userID, s.Clock.Now()); err != nil {
 			return err
@@ -91,29 +94,6 @@ func (s *Service) CreateVersion(ctx context.Context, orgID, campaignID, userID u
 	s.log.InfoContext(ctx, "post version created", logx.KeyOp, op, KeyPostID, v.PostID, KeyVersionID, v.ID,
 		"number", v.Number, "media_count", len(v.Media), "body_length", domain.Length(v.Body))
 	return v, nil
-}
-
-// readyDerivatives — готовые производные для канала по файлам и признак, что готовы все.
-func (s *Service) readyDerivatives(ctx context.Context, fileIDs []uuid.UUID, params domain.DerivativeParams,
-	canBuild bool) (map[uuid.UUID]domain.Derivative, bool, error) {
-	out := map[uuid.UUID]domain.Derivative{}
-	if len(fileIDs) == 0 {
-		return out, true, nil
-	}
-	if !canBuild {
-		return out, false, nil
-	}
-	list, err := s.Derivatives.ListByFiles(ctx, fileIDs, params.Kind)
-	if err != nil {
-		return nil, false, err
-	}
-	hash := params.Hash()
-	for _, d := range list {
-		if d.ParamsHash == hash && d.Ready() {
-			out[d.MediaFileID] = d
-		}
-	}
-	return out, len(out) == len(fileIDs), nil
 }
 
 // ApproveVersion — администратор одобрил версию (S-17). Роль проверяет вызывающий этап.

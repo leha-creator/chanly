@@ -87,9 +87,9 @@ erDiagram
 | `address` | `text` | нет | Юридический адрес для `legal_entity`, адрес регистрации для `sole_proprietor`. У `self_employed` не запрашивается |
 | `tax_regime` | `text` | нет | Режим налогообложения (§9). Допустимые значения зависят от `legal_type` — таблица ниже |
 | `vat_rate` | `text` | нет | Ставка НДС (§9). Допустимые значения зависят от `tax_regime` — таблица ниже |
-| `tax_document_storage_key`, `tax_document_sha256` | `text` | нет | Файл документа, подтверждающего режим налогообложения |
-| `signer_position`, `signer_name` | `text` | нет | Подписант: должность и ФИО. Только для `legal_entity` |
-| `signer_basis_name`, `signer_basis_number` | `text` | нет | Документ, на основании которого действует подписант: название и номер. Только для `legal_entity` |
+| `tax_document_storage_key`, `tax_document_sha256` | `text` | нет | Необязательный файл документа о режиме; регистрация, в том числе НПД, разрешена без файла |
+| `signer_position`, `signer_name` | `text` | нет | Подписант: обязательные должность и ФИО у блогера `legal_entity`; другим типам запрещены |
+| `signer_basis_name`, `signer_basis_number` | `text` | нет | Необязательные независимые название и номер основания полномочий. Только для блогера `legal_entity`; пропуск PATCH сохраняет, пустая строка очищает |
 | `bank_account`, `bank_name`, `bank_corr_account`, `bank_bik` | `text` | нет | Банковские реквизиты рекламодателя: расчётный счёт, банк, корреспондентский счёт, БИК. Вводятся в разделе «Баланс», печатаются в счёте как реквизиты плательщика (D-26) |
 | `is_platform` | `boolean` | да | `true` у единственной строки — самой платформы (ИП-владельца). Нужна как сторона договоров ОРД |
 | `status` | `text` | да | `active`, `blocked` |
@@ -217,7 +217,7 @@ erDiagram
 
 ### channel_category
 
-`slug text unique`, `name text`, `position integer`, `is_active boolean`. Список фиксированный, меняется администратором (A-14).
+`slug text unique`, `name text`, `position integer`, `is_active boolean`. Справочник управляется senior через существующие POST/PATCH; фиксированного продуктового списка нет. GET `/admin/channel-categories` возвращает весь набор, включая архив (`archived = !is_active`), в порядке position, slug; GET `/channel-categories` — только активные. Архивирование сохраняет связи channel.category_id, восстановление — archived=false. UUID и slug не меняются.
 
 ### placement_format
 
@@ -240,7 +240,7 @@ erDiagram
 | `amount` | `bigint` | да | Цена блогера без комиссии. От 10 000 до 1 000 000 000 копеек |
 | `is_enabled` | `boolean` | да | |
 
-Также `id`, `created_at`, `updated_at`. Набор цен канала заменяется целиком (S-13); строки удаляются.
+Также `id`, `created_at`, `updated_at`. Набор цен канала заменяется целиком (S-13); строки удаляются. Optional `prices` в PATCH профиля объединяет профиль и набор цен одной транзакцией и одним итоговым переходом статуса; прежний PUT цен остаётся. Отсутствие массива сохраняет цены, null запрещён, пустой набор допустим только вне исходного и итогового active. Проверка выбранной категории берёт блокировку строки до commit, сериализуясь с архивированием.
 
 ### channel_unavailability
 
@@ -280,6 +280,8 @@ erDiagram
 
 ### media_derivative
 
+Для новых snapshot с token_carrier=media выбирается labeled v2 только для позиции 0, остальные plain. RenderVersion plain/preview остаётся 1. Одна тройка файл/вид/hash повторно используется в разных альбомах; позиция в hash не входит. Существующие snapshot всех статусов читаются по DerivativeID, не по текущей политике. См. [маркировку медиа](post-media-label.md).
+
 | Поле | Тип | Об. | Пояснение |
 |---|---|---|---|
 | `media_file_id` | `uuid` | да | |
@@ -305,7 +307,7 @@ erDiagram
 | `status` | `text` | да | `draft` — до оплаты; `ordered` — оплачена, есть заказ; `archived`. В кампании может быть несколько заказов; в первой версии — один |
 | `date_from`, `date_to` | `date` | нет | Период дат публикации (A-39). Обязательны к оплате |
 | `time_from`, `time_to` | `time` | нет | Период времени суток, МСК (A-39). Обязательны к оплате |
-| `extra_requirements` | `text` | нет | «Дополнительные требования» — комментарий исполнителю, не длиннее 2000 |
+| `extra_requirements` | `text` | нет | «Дополнительные требования» — до 2000 Unicode-символов; пустая строка допустима, PATCH null запрещён, правка только draft |
 | `order_id` | `uuid` | нет | Заказ кампании; есть с `ordered` (проверка `campaign_ordered_has_order`). Пишет модуль `post` по вызову оформления заказа |
 | `created_by` | `uuid` | да | |
 

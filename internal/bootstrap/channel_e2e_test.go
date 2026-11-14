@@ -306,7 +306,7 @@ func (a *testApp) checkChannelLog(t *testing.T, secrets []string) {
 	for _, m := range []string{
 		"inbound event accepted", "inbound event processed", "inbound event rejected", "channel bot added",
 		"channel linked", "channel status changed", "channel rights refreshed", "channel link code issued",
-		"channel updated", "channel bot removed",
+		"channel saved", "channel bot removed",
 	} {
 		if !strings.Contains(logs, `"msg":"`+m+`"`) {
 			t.Errorf("required log event %q is missing", m)

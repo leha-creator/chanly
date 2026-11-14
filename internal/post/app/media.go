@@ -138,13 +138,22 @@ func (s *Service) Delete(ctx context.Context, orgID, userID, id uuid.UUID) error
 	const op = "Post.DeleteMedia"
 	var drafts int
 	err := s.Tx.InTx(ctx, func(ctx context.Context) error {
+		if err := s.Posts.LockDraftMedia(ctx, orgID); err != nil {
+			return err
+		}
 		now := s.Clock.Now()
 		if err := s.MediaFiles.SoftDelete(ctx, orgID, id, now); err != nil {
 			return notFound(err, "media file")
 		}
-		var err error
-		if drafts, err = s.Posts.RemoveMediaFromDrafts(ctx, orgID, id, now); err != nil {
+		updated, err := s.Posts.RemoveMediaFromDrafts(ctx, orgID, id, now)
+		if err != nil {
 			return err
+		}
+		drafts = len(updated)
+		for _, p := range updated {
+			if err := s.ensureDraftDerivatives(ctx, orgID, p.Draft); err != nil {
+				return err
+			}
 		}
 		return s.Audit.Record(ctx, audit.Entry{
 			Action: actionMediaDeleted, ObjectType: "media_file", ObjectID: id.String(), ActorType: audit.ActorAdvertiser,

@@ -244,7 +244,7 @@ func TestCatalogConfig(t *testing.T) {
 		t.Fatal(err)
 	}
 	ch := cfg.Channel
-	if ch.FeeRateBP != 1500 || ch.RknRecheckInterval != 2160*time.Hour || ch.MetricsSubscribersSpikeBP != 2000 ||
+	if ch.FeeRateBP != 2500 || ch.RknRecheckInterval != 2160*time.Hour || ch.MetricsSubscribersSpikeBP != 2000 ||
 		ch.MetricsViewsMinBP != 100 || ch.UnavailabilityMaxDays != 90 || ch.UnavailabilityHorizonDays != 365 ||
 		ch.UnavailabilityMaxCount != 50 || cfg.Retention.ChannelUnavailability != 720*time.Hour {
 		t.Fatalf("catalog defaults: %+v", ch)

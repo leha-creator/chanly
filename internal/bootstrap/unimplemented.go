@@ -50,6 +50,10 @@ func (unimplemented) MatchBankTransaction(context.Context, apigen.MatchBankTrans
 	return nil, apperr.NotImplemented("matchBankTransaction")
 }
 
+func (unimplemented) ListAdminChannelCategories(context.Context, apigen.ListAdminChannelCategoriesRequestObject) (apigen.ListAdminChannelCategoriesResponseObject, error) {
+	return nil, apperr.NotImplemented("listAdminChannelCategories")
+}
+
 func (unimplemented) CreateChannelCategory(context.Context, apigen.CreateChannelCategoryRequestObject) (apigen.CreateChannelCategoryResponseObject, error) {
 	return nil, apperr.NotImplemented("createChannelCategory")
 }

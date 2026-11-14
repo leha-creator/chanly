@@ -329,6 +329,7 @@ func TestOrganizations(t *testing.T) {
 		t.Fatalf("inn mismatch: %v", ae.Details)
 	}
 	blogger.Fields = accounttest.BloggerFields()
+	blogger.Fields.SignerBasisName, blogger.Fields.SignerBasisNumber = nil, nil
 	o, err = e.svc.CreateOrganization(e.ctx(), p, blogger)
 	if err != nil || o.Blogger == nil || o.Name != *in.Fields.Name {
 		t.Fatalf("add cabinet: %+v %v", o, err)

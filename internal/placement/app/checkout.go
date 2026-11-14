@@ -106,7 +106,7 @@ func (s *Service) Checkout(ctx context.Context, orgID, userID, campaignID uuid.U
 			return err
 		}
 		s.log.InfoContext(ctx, "order created", logx.KeyOp, op, KeyOrderID, order.ID, "order_number", order.Number,
-			"placements", len(placements), "total_amount", int64(order.TotalAmount))
+			"placements", len(placements), "total_amount", int64(order.TotalAmount), "fee_rate_bp", s.Config.FeeRateBP)
 		out = order
 		return nil
 	})

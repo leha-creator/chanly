@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Репетиция выпуска без простоя на своей машине или в CI (07 §8, deploy/app/README.md).
 #
-#   deploy/local/rehearse-release.sh [--keep] [--skip-build]
+#   deploy/local/rehearse-release.sh [--keep] [--skip-build] [--fee-transition]
 #
 # Собирает образ бэкенда двух версий (maxim:rehearsal-v1, -v2) и maxim-postgres:rehearsal,
 # поднимает edge-прокси репетиции и стек deploy/app/compose.yml под проектом maxim-rehearsal,
@@ -21,10 +21,12 @@ LOG_COMPONENT=rehearse-release
 
 KEEP=0
 SKIP_BUILD=0
+FEE_TRANSITION=0
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --keep) KEEP=1; shift ;;
     --skip-build) SKIP_BUILD=1; shift ;;
+    --fee-transition) FEE_TRANSITION=1; shift ;;
     -h|--help) sed -n '2,13p' "$0"; exit 0 ;;
     *) log error invalid_argument arg="$1"; exit 2 ;;
   esac
@@ -90,6 +92,9 @@ cp "$ROOT/deploy/app/compose.yml" "$ROOT/deploy/app/maxim-app.caddy" "$ROOT/depl
   "$SCRIPT_DIR/compose.rehearsal.yml" "$APP/"
 cp "$ROOT/deploy/scripts/lib.sh" "$APP/lib.sh"
 cp "$SCRIPT_DIR/rehearsal.app.env" "$APP/app.env"
+if ((FEE_TRANSITION)); then
+  printf "\nPLATFORM_FEE_RATE_BP=1500\n" >> "$APP/app.env"
+fi
 cp "$SCRIPT_DIR/rehearsal.stack.env" "$APP/stack.env"
 # Пустой сайт до первого выпуска: Caddy стартует с import sites/*.caddy.
 printf '' > "$EDGE/sites/.keep"
@@ -169,6 +174,34 @@ sleep 2
 kill "$LOAD_PID" 2>/dev/null || true
 wait "$LOAD_PID" 2>/dev/null || true
 LOAD_PID=""
+
+# The load is already stopped: a tariff change deliberately uses a maintenance window.
+if ((FEE_TRANSITION)); then
+  expect_fee() {
+    local slot=$1 expected=$2 id actual kind
+    for kind in api worker; do
+      id=$(app ps -q "$kind-$slot")
+      [[ -n $id ]] || { log error fee_process_missing service="$kind-$slot"; exit 1; }
+      # Render only the matching nonsensitive variable, never the full environment.
+      actual=$(docker inspect -f '{{range .Config.Env}}{{if eq . "PLATFORM_FEE_RATE_BP='"$expected"'"}}matched{{end}}{{end}}' "$id")
+      [[ $actual == matched ]] || { log error fee_configuration_mismatch service="$kind-$slot" expected="$expected"; exit 1; }
+    done
+    log info fee_configuration_verified slot="$slot" platform_fee_rate_bp="$expected"
+  }
+  expect_fee b 1500
+  log info rehearsal_step step=fee_cutover_2500
+  app stop api-a api-b worker-a worker-b
+  sed -i 's/^PLATFORM_FEE_RATE_BP=.*/PLATFORM_FEE_RATE_BP=2500/' "$APP/app.env"
+  release --tag rehearsal-v1 --reapply
+  expect_slots a rehearsal-v1
+  expect_fee a 2500
+  log info rehearsal_step step=fee_rollback_1500
+  app stop api-a api-b worker-a worker-b
+  sed -i 's/^PLATFORM_FEE_RATE_BP=.*/PLATFORM_FEE_RATE_BP=1500/' "$APP/app.env"
+  release --rollback
+  expect_slots b rehearsal-v1
+  expect_fee b 1500
+fi
 
 total=$(wc -l < "$RESULTS" | tr -d ' ')
 bad=$(awk '($2 == "/livez" && $3 != "200") || ($2 == "/api/v1/me" && $3 != "401")' "$RESULTS" | wc -l | tr -d ' ')

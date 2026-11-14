@@ -90,7 +90,17 @@ func (q *Queries) InsertPost(ctx context.Context, arg InsertPostParams) error {
 	return err
 }
 
-const removeMediaFromDrafts = `-- name: RemoveMediaFromDrafts :execrows
+const lockDraftMedia = `-- name: LockDraftMedia :exec
+SELECT pg_advisory_xact_lock(hashtextextended('post-media:' || CAST($1::uuid AS text), 0))
+`
+
+// Lock before post/media rows: SaveDraft, CreateVersion and Delete use this order.
+func (q *Queries) LockDraftMedia(ctx context.Context, organizationID uuid.UUID) error {
+	_, err := q.db.Exec(ctx, lockDraftMedia, organizationID)
+	return err
+}
+
+const removeMediaFromDrafts = `-- name: RemoveMediaFromDrafts :many
 UPDATE post SET
     draft = jsonb_set(draft, '{media_ids}', COALESCE(
         (SELECT jsonb_agg(e ORDER BY n) FROM jsonb_array_elements(draft -> 'media_ids') WITH ORDINALITY AS t(e, n)
@@ -98,6 +108,7 @@ UPDATE post SET
         '[]'::jsonb)),
     updated_at = $2
 WHERE organization_id = $3 AND draft -> 'media_ids' @> jsonb_build_array($1::text)
+RETURNING id, organization_id, campaign_id, status, draft, created_at, updated_at
 `
 
 type RemoveMediaFromDraftsParams struct {
@@ -107,12 +118,32 @@ type RemoveMediaFromDraftsParams struct {
 }
 
 // R-15: файл убирается из черновиков всех постов организации, порядок остальных сохраняется.
-func (q *Queries) RemoveMediaFromDrafts(ctx context.Context, arg RemoveMediaFromDraftsParams) (int64, error) {
-	result, err := q.db.Exec(ctx, removeMediaFromDrafts, arg.FileID, arg.Now, arg.OrganizationID)
+func (q *Queries) RemoveMediaFromDrafts(ctx context.Context, arg RemoveMediaFromDraftsParams) ([]Post, error) {
+	rows, err := q.db.Query(ctx, removeMediaFromDrafts, arg.FileID, arg.Now, arg.OrganizationID)
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
-	return result.RowsAffected(), nil
+	defer rows.Close()
+	items := []Post{}
+	for rows.Next() {
+		var i Post
+		if err := rows.Scan(
+			&i.ID,
+			&i.OrganizationID,
+			&i.CampaignID,
+			&i.Status,
+			&i.Draft,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const savePostDraft = `-- name: SavePostDraft :execrows

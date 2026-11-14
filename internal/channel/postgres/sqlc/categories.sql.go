@@ -117,6 +117,44 @@ func (q *Queries) ListActiveCategories(ctx context.Context) ([]ListActiveCategor
 	return items, nil
 }
 
+const listAllCategories = `-- name: ListAllCategories :many
+SELECT id, slug, name, position, is_active FROM channel_category ORDER BY position, slug
+`
+
+type ListAllCategoriesRow struct {
+	ID       uuid.UUID
+	Slug     string
+	Name     string
+	Position int32
+	IsActive bool
+}
+
+func (q *Queries) ListAllCategories(ctx context.Context) ([]ListAllCategoriesRow, error) {
+	rows, err := q.db.Query(ctx, listAllCategories)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListAllCategoriesRow{}
+	for rows.Next() {
+		var i ListAllCategoriesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Slug,
+			&i.Name,
+			&i.Position,
+			&i.IsActive,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const nextCategoryPosition = `-- name: NextCategoryPosition :one
 SELECT (coalesce(max(position), 0) + 10)::int FROM channel_category
 `

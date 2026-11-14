@@ -90,19 +90,18 @@ func (s *Service) Get(ctx context.Context, orgID, id uuid.UUID) (*domain.Channel
 	return c, err
 }
 
-// Update — правка описания, категории и номера РКН (S-12 шаг 5).
+// Update saves profile and optional replacement prices as one domain change.
 func (s *Service) Update(ctx context.Context, orgID, id uuid.UUID, p domain.ProfileUpdate) (*domain.Channel, error) {
-	const op = "Channel.Update"
-	if p.CategoryID != nil {
-		ok, err := s.Categories.ExistsActive(ctx, *p.CategoryID)
-		if err != nil {
-			return nil, err
-		}
-		if !ok {
-			return nil, apperr.Validation("category_id", "unknown category")
-		}
-	}
+	return s.saveBlogger(ctx, orgID, id, &p, p.Prices)
+}
+
+// saveBlogger is shared by PATCH and legacy PUT /prices. All durable effects
+// use the transaction context; only a committed result is logged as success.
+func (s *Service) saveBlogger(ctx context.Context, orgID, id uuid.UUID, p *domain.ProfileUpdate, prices *[]domain.Price) (*domain.Channel, error) {
+	const op = "Channel.SaveBlogger"
 	var out *domain.Channel
+	var changed, priceChanges []string
+	var change domain.StatusChange
 	err := s.Tx.InTx(ctx, func(ctx context.Context) error {
 		c, err := s.Channels.GetForOrganizationForUpdate(ctx, orgID, id)
 		if errors.Is(err, domain.ErrNotFound) {
@@ -111,37 +110,102 @@ func (s *Service) Update(ctx context.Context, orgID, id uuid.UUID, p domain.Prof
 		if err != nil {
 			return err
 		}
-		before := profile(c)
-		change, err := c.UpdateProfile(p, s.Config.RknThreshold, s.Clock.Now())
-		if errors.Is(err, domain.ErrNotEditable) {
-			s.log.WarnContext(ctx, "channel update rejected", logx.KeyOp, op, KeyChannelID, c.ID, "status", c.Status)
-			return apperr.Conflict("channel cannot be edited in its current status").WithDetail("status", string(c.Status))
+		if err := c.CheckCatalogEditable(); err != nil {
+			return notEditable(c)
 		}
-		if err != nil {
-			return err
-		}
-		after := profile(c)
-		var changed []string
-		for k, v := range after {
-			if before[k] != v {
-				changed = append(changed, k)
+		// Lock the selected category until commit, serializing with admin archive.
+		// Omitting category_id preserves an existing (possibly archived) relation.
+		if p != nil && p.CategoryID != nil {
+			category, err := s.Categories.GetForUpdate(ctx, *p.CategoryID)
+			if errors.Is(err, domain.ErrNotFound) || (err == nil && category.Archived) {
+				return apperr.Validation("category_id", "unknown category")
+			}
+			if err != nil {
+				return err
 			}
 		}
-		slices.Sort(changed)
-		if err := s.save(ctx, op, c, change); err != nil {
+		var formats []domain.Format
+		if prices != nil {
+			formats, err = s.Deps.Formats.ListActive(ctx)
+			if err != nil {
+				return err
+			}
+		}
+		before, beforePrices := profile(c), priceMap(c.Prices)
+		change = domain.StatusChange{ChannelID: c.ID, From: c.Status, To: c.Status}
+		if p != nil {
+			change, err = c.UpdateProfileWithPrices(*p, formats, s.Config.RknThreshold, s.Clock.Now(), s.Config.MinPriceAmount)
+		} else {
+			err = c.SetPricesWithMinimum(*prices, formats, s.Clock.Now(), s.Config.MinPriceAmount)
+		}
+		if errors.Is(err, domain.ErrNotEditable) {
+			return notEditable(c)
+		}
+		if err != nil {
+			return ruleError(err)
+		}
+		after, afterPrices := profile(c), priceMap(c.Prices)
+		changed = diffKeys(before, after)
+		priceChanges = diffKeys(beforePrices, afterPrices)
+		if len(changed) == 0 && len(priceChanges) == 0 {
+			out = c
+			return nil
+		}
+		if prices != nil && len(priceChanges) > 0 {
+			if err := s.Prices.Replace(ctx, c.ID, c.Prices, s.Clock.Now()); err != nil {
+				return err
+			}
+		}
+		if err := s.saveWithStatusLog(ctx, op, c, change, false); err != nil {
 			return err
 		}
-		if err := s.Audit.Record(ctx, audit.Entry{
-			Action: "channel.updated", ObjectType: "channel", ObjectID: c.ID.String(),
-			Data: audit.Diff(before, after, changed), ActorType: audit.ActorBlogger,
-		}); err != nil {
-			return err
+		if p != nil && len(changed) > 0 {
+			if err := s.Audit.Record(ctx, audit.Entry{Action: "channel.updated", ObjectType: "channel", ObjectID: c.ID.String(), Data: audit.Diff(before, after, changed), ActorType: audit.ActorBlogger}); err != nil {
+				return err
+			}
 		}
-		s.log.InfoContext(ctx, "channel updated", logx.KeyOp, op, KeyChannelID, c.ID, "status", c.Status, "changed", changed)
+		if prices != nil && len(priceChanges) > 0 {
+			if err := s.Audit.Record(ctx, audit.Entry{Action: "channel.prices_updated", ObjectType: "channel", ObjectID: c.ID.String(), Data: audit.Diff(beforePrices, afterPrices, priceChanges), ActorType: audit.ActorBlogger}); err != nil {
+				return err
+			}
+		}
 		out = c
 		return nil
 	})
-	return out, err
+	if err != nil {
+		if e, ok := apperr.As(err); ok {
+			s.log.WarnContext(ctx, "channel save rejected", logx.KeyOp, op, KeyChannelID, id, "code", e.Code, "field", e.Details["field"], "reason", e.Details["reason"])
+		} else {
+			s.log.ErrorContext(ctx, "channel save transaction failed", logx.KeyOp, op, KeyChannelID, id)
+		}
+		return nil, err
+	}
+	if len(changed) > 0 || len(priceChanges) > 0 {
+		if change.Changed() {
+			s.logStatusChange(ctx, op, out, change)
+		}
+		fields := append([]string{}, changed...)
+		if len(priceChanges) > 0 {
+			fields = append(fields, "prices")
+		}
+		slices.Sort(fields)
+		message := "channel updated"
+		if p == nil {
+			message = "[FIX] channel prices updated"
+		}
+		s.log.InfoContext(ctx, message, logx.KeyOp, op, KeyChannelID, id, "changed", fields, "status", out.Status, "enabled_count", len(out.EnabledFormats()))
+	}
+	return out, nil
+}
+
+func diffKeys(before, after map[string]any) []string {
+	changed := []string{}
+	for _, key := range unionKeys(before, after) {
+		if before[key] != after[key] {
+			changed = append(changed, key)
+		}
+	}
+	return changed
 }
 
 func profile(c *domain.Channel) map[string]any {

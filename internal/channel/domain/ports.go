@@ -68,6 +68,8 @@ type Category struct {
 // Categories — справочник категорий.
 type Categories interface {
 	ListActive(ctx context.Context) ([]Category, error)
+	// ListAll includes archived categories, ordered by position and slug.
+	ListAll(ctx context.Context) ([]Category, error)
 	// ExistsActive сообщает, что категория есть и включена.
 	ExistsActive(ctx context.Context, id uuid.UUID) (bool, error)
 	// Insert — новая категория; slug занят — ErrCategoryExists.

@@ -100,8 +100,28 @@ func TestParamsHash(t *testing.T) {
 	}
 }
 
-func TestNeededKind(t *testing.T) {
-	if domain.NeededKind(domain.CarrierMedia) != domain.KindLabeled || domain.NeededKind(domain.CarrierText) != domain.KindPlain {
-		t.Fatal("NeededKind")
+func TestNeededKindAt(t *testing.T) {
+	for _, carrier := range []domain.TokenCarrier{domain.CarrierMedia, domain.CarrierText} {
+		for position := range domain.DefaultAlbumLimit {
+			want := domain.KindPlain
+			if carrier == domain.CarrierMedia && position == 0 {
+				want = domain.KindLabeled
+			}
+			if got := domain.NeededKindAt(carrier, position); got != want {
+				t.Fatalf("%s position %d: %s, want %s", carrier, position, got, want)
+			}
+		}
+	}
+}
+
+func TestCurrentDerivativeHashes(t *testing.T) {
+	const name, inn = "ООО Василёк", "7707083893"
+	if got := domain.NewDerivativeParams(domain.KindLabeled, name, inn).Hash(); got != domain.ParamsHash(domain.KindLabeled, 2, name, inn) {
+		t.Fatal("current plate must use v2")
+	}
+	for _, kind := range []domain.DerivativeKind{domain.KindPlain, domain.KindPreview} {
+		if got := domain.NewDerivativeParams(kind, name, inn).Hash(); got != domain.ParamsHash(kind, 1, "", "") {
+			t.Fatalf("%s render hash changed", kind)
+		}
 	}
 }

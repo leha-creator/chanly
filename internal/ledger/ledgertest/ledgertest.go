@@ -60,10 +60,16 @@ type Placement struct {
 // created с ценой блогера blogger и комиссией 15 %.
 func NewPlacement(t testing.TB, pool *pgxpool.Pool, advertiser uuid.UUID, blogger money.Kopecks) Placement {
 	t.Helper()
+	return NewPlacementWithFee(t, pool, advertiser, blogger, 1500)
+}
+
+// NewPlacementWithFee creates an immutable placement snapshot at the supplied platform rate.
+func NewPlacementWithFee(t testing.TB, pool *pgxpool.Pool, advertiser uuid.UUID, blogger money.Kopecks, feeRateBP int) Placement {
+	t.Helper()
 	ctx := context.Background()
 	user := User(t, pool)
 	bloggerOrg := Organization(t, pool, accountdomain.SelfEmployed, "Блогер")
-	fee := blogger.ShareBP(1500)
+	fee := blogger.ShareBP(feeRateBP)
 	p := Placement{
 		ID: ids.New(), VersionID: ids.New(), OrderID: ids.New(), ChannelID: ids.New(),
 		AdvertiserID: advertiser, BloggerID: bloggerOrg, BloggerAmount: blogger, FeeAmount: fee, TotalAmount: blogger + fee,
@@ -93,8 +99,8 @@ func NewPlacement(t testing.TB, pool *pgxpool.Pool, advertiser uuid.UUID, blogge
 			window_start, window_end, time_from, time_to, post_version_id, status, status_changed_at, fee_rate_bp,
 			blogger_amount, fee_amount, total_amount, created_at, updated_at)
 			VALUES ($1, $2, $3, $4, 'f_1_24', 1, 24, '2026-10-20 21:00:00+00', '2026-10-22 21:00:00+00', '09:00', '21:00',
-			$5, 'created', now(), 1500, $6, $7, $8, now(), now())`,
-			[]any{p.ID, p.OrderID, p.ChannelID, bloggerOrg, p.VersionID, int64(blogger), int64(fee), int64(p.TotalAmount)}},
+			$5, 'created', now(), $9, $6, $7, $8, now(), now())`,
+			[]any{p.ID, p.OrderID, p.ChannelID, bloggerOrg, p.VersionID, int64(blogger), int64(fee), int64(p.TotalAmount), feeRateBP}},
 	}
 	for _, s := range steps {
 		if _, err := pool.Exec(ctx, s.stmt, s.args...); err != nil {

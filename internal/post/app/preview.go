@@ -30,11 +30,11 @@ func (s *Service) Preview(ctx context.Context, orgID, campaignID uuid.UUID) (Pre
 		return PreviewView{}, notFound(err, "campaign")
 	}
 	d := p.Draft
-	params, req, canBuild, err := s.draftParams(ctx, orgID, d)
+	items, req, canBuild, err := s.draftRequirements(ctx, orgID, d)
 	if err != nil {
 		return PreviewView{}, err
 	}
-	urls, ready, err := s.channelMedia(ctx, orgID, d.MediaIDs, params, canBuild)
+	urls, ready, err := s.channelMedia(ctx, orgID, items, canBuild)
 	if err != nil {
 		return PreviewView{}, err
 	}
@@ -53,59 +53,36 @@ func (s *Service) Preview(ctx context.Context, orgID, campaignID uuid.UUID) (Pre
 	return v, nil
 }
 
-// channelMedia — подписанные ссылки готовых производных для канала по порядку
-// альбома и признак, что готовы все. Неготовые ставятся к построению (идемпотентно).
-func (s *Service) channelMedia(ctx context.Context, orgID uuid.UUID, fileIDs []uuid.UUID, params domain.DerivativeParams,
-	canBuild bool) ([]string, bool, error) {
+// channelMedia returns the complete ordered album or no URLs while processing.
+func (s *Service) channelMedia(ctx context.Context, orgID uuid.UUID, items []albumRequirement, canBuild bool) ([]string, bool, error) {
 	urls := []string{}
-	if len(fileIDs) == 0 {
-		return urls, true, nil
-	}
-	if !canBuild {
-		return urls, false, nil
-	}
-	live, err := s.MediaFiles.LiveSubset(ctx, orgID, fileIDs)
+	selected, missing, ready, err := s.albumDerivatives(ctx, orgID, items, canBuild)
 	if err != nil {
 		return nil, false, err
-	}
-	liveIDs := make(map[uuid.UUID]bool, len(live))
-	for _, f := range live {
-		liveIDs[f.ID] = true
-	}
-	list, err := s.Derivatives.ListByFiles(ctx, fileIDs, params.Kind)
-	if err != nil {
-		return nil, false, err
-	}
-	hash := params.Hash()
-	byFile := make(map[uuid.UUID]domain.Derivative, len(list))
-	for _, d := range list {
-		if d.ParamsHash == hash {
-			byFile[d.MediaFileID] = d
-		}
-	}
-	ready := true
-	var missing []uuid.UUID
-	for _, id := range fileIDs {
-		if !liveIDs[id] {
-			continue
-		}
-		d, ok := byFile[id]
-		if !ok || !d.Ready() {
-			ready = false
-			missing = append(missing, id)
-			continue
-		}
-		u, err := s.Storage.PresignGet(ctx, d.StorageKey, s.Config.URLTTL)
-		if err != nil {
-			return nil, false, err
-		}
-		urls = append(urls, u)
 	}
 	if len(missing) > 0 {
-		// Производной нет (реквизиты сменились без сохранения) или её очистил purge_media.
-		err := s.Tx.InTx(ctx, func(ctx context.Context) error {
-			for _, id := range missing {
-				if err := s.ensureDerivative(ctx, orgID, id, params); err != nil {
+		// Recheck live files under the SaveDraft/Delete lock before enqueuing.
+		err = s.Tx.InTx(ctx, func(ctx context.Context) error {
+			if err := s.Posts.LockDraftMedia(ctx, orgID); err != nil {
+				return err
+			}
+			ids := make([]uuid.UUID, len(missing))
+			for i, item := range missing {
+				ids[i] = item.FileID
+			}
+			live, err := s.MediaFiles.LiveSubset(ctx, orgID, ids)
+			if err != nil {
+				return err
+			}
+			liveIDs := make(map[uuid.UUID]bool, len(live))
+			for _, f := range live {
+				liveIDs[f.ID] = true
+			}
+			for _, item := range missing {
+				if !liveIDs[item.FileID] {
+					continue
+				}
+				if err := s.ensureDerivative(ctx, orgID, item.FileID, item.Params); err != nil {
 					return err
 				}
 			}
@@ -115,5 +92,15 @@ func (s *Service) channelMedia(ctx context.Context, orgID uuid.UUID, fileIDs []u
 			return nil, false, err
 		}
 	}
-	return urls, ready, nil
+	if !ready {
+		return urls, false, nil
+	}
+	for _, d := range selected {
+		u, err := s.Storage.PresignGet(ctx, d.StorageKey, s.Config.URLTTL)
+		if err != nil {
+			return nil, false, err
+		}
+		urls = append(urls, u)
+	}
+	return urls, true, nil
 }

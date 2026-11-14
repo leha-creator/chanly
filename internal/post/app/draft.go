@@ -54,6 +54,9 @@ func (s *Service) SaveDraft(ctx context.Context, orgID, userID, campaignID uuid.
 
 	var saved domain.Post
 	err = s.Tx.InTx(ctx, func(ctx context.Context) error {
+		if err := s.Posts.LockDraftMedia(ctx, orgID); err != nil {
+			return err
+		}
 		p, err := s.Posts.GetByCampaignForUpdate(ctx, orgID, campaignID)
 		if err != nil {
 			return notFound(err, "campaign")
@@ -125,37 +128,22 @@ func (s *Service) missingMedia(ctx context.Context, orgID uuid.UUID, ids []uuid.
 	return uuid.Nil, nil
 }
 
-// draftParams — параметры производной, которая уйдёт в канал, по текущим реквизитам.
-// ok = false — плашку не построить: у организации нет реквизитов (проблема requisites_missing).
-func (s *Service) draftParams(ctx context.Context, orgID uuid.UUID, d domain.Draft) (domain.DerivativeParams, domain.Requisites, bool, error) {
-	req, err := s.Requisites.Requisites(ctx, orgID)
-	if err != nil {
-		return domain.DerivativeParams{}, domain.Requisites{}, false, err
-	}
-	kind := domain.NeededKind(d.TokenCarrier)
-	if kind == domain.KindLabeled && !req.Complete() {
-		return domain.DerivativeParams{}, req, false, nil
-	}
-	return domain.NewDerivativeParams(kind, req.Name, req.INN), req, true, nil
-}
-
-// ensureDraftDerivatives ставит к построению производные изображений черновика (R-6).
+// ensureDraftDerivatives queues only the variants selected for the saved positions.
 func (s *Service) ensureDraftDerivatives(ctx context.Context, orgID uuid.UUID, d domain.Draft) error {
 	if len(d.MediaIDs) == 0 {
 		return nil
 	}
-	params, _, ok, err := s.draftParams(ctx, orgID, d)
-	if err != nil || !ok {
+	items, _, canBuild, err := s.draftRequirements(ctx, orgID, d)
+	if err != nil || !canBuild {
 		return err
 	}
-	for _, id := range d.MediaIDs {
-		if err := s.ensureDerivative(ctx, orgID, id, params); err != nil {
+	for _, item := range items {
+		if err := s.ensureDerivative(ctx, orgID, item.FileID, item.Params); err != nil {
 			return err
 		}
 	}
 	return nil
 }
-
 func (s *Service) draftView(ctx context.Context, p domain.Post) (DraftView, error) {
 	v := DraftView{Post: p, Media: []MediaView{}}
 	if len(p.Draft.MediaIDs) == 0 {

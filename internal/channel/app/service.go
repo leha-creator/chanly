@@ -44,7 +44,7 @@ type Config struct {
 	EarlyCodeWindow time.Duration
 	// EarlyCodeRetry — через сколько повторить разбор такого кода.
 	EarlyCodeRetry time.Duration
-	// FeeRateBP — комиссия платформы в базисных пунктах (PLATFORM_FEE_RATE_BP, A-30: 1500).
+	// FeeRateBP — комиссия платформы в базисных пунктах (PLATFORM_FEE_RATE_BP, A-30: 2500).
 	FeeRateBP int
 	// MinPriceAmount is wired by bootstrap; zero retains the production floor.
 	MinPriceAmount money.Kopecks
@@ -199,6 +199,10 @@ func (n NopAvailability) ChannelRestored(ctx context.Context, c domain.StatusCha
 // save сохраняет канал и сообщает о смене доступности в той же транзакции (R-11).
 // Смена состояния пишется в журнал действий и журнал приложения.
 func (s *Service) save(ctx context.Context, op string, c *domain.Channel, change domain.StatusChange) error {
+	return s.saveWithStatusLog(ctx, op, c, change, true)
+}
+
+func (s *Service) saveWithStatusLog(ctx context.Context, op string, c *domain.Channel, change domain.StatusChange, logStatus bool) error {
 	if err := s.Channels.Save(ctx, c); err != nil {
 		if errors.Is(err, domain.ErrStaleVersion) {
 			return apperr.Conflict("channel was changed concurrently").WithCause(err)
@@ -228,6 +232,13 @@ func (s *Service) save(ctx context.Context, op string, c *domain.Channel, change
 	if err := s.notify(ctx, c, change); err != nil {
 		return err
 	}
+	if logStatus {
+		s.logStatusChange(ctx, op, c, change)
+	}
+	return nil
+}
+
+func (s *Service) logStatusChange(ctx context.Context, op string, c *domain.Channel, change domain.StatusChange) {
 	level := slog.LevelInfo
 	if change.AvailabilityLost() {
 		level = slog.LevelWarn
@@ -239,7 +250,6 @@ func (s *Service) save(ctx context.Context, op string, c *domain.Channel, change
 	}
 	s.log.Log(ctx, level, "channel status changed", logx.KeyOp, op, KeyChannelID, c.ID,
 		"from", change.From, "to", change.To, "reason", logReason, "missing", c.MissingPermissions())
-	return nil
 }
 
 func orgOf(c *domain.Channel) uuid.UUID {

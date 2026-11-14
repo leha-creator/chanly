@@ -75,6 +75,20 @@ func (r *LinkCodes) CountSince(ctx context.Context, orgID uuid.UUID, since time.
 // Categories — справочник категорий каналов.
 type Categories struct{ s *Store }
 
+func (r *Categories) ListAll(ctx context.Context) ([]domain.Category, error) {
+	const op = "Channel.Categories.ListAll"
+	rows, err := r.s.q(ctx).ListAllCategories(ctx)
+	if err != nil {
+		return nil, r.s.fail(ctx, op, err)
+	}
+	r.s.debug(ctx, op, "count", len(rows))
+	out := make([]domain.Category, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, domain.Category{ID: row.ID, Slug: row.Slug, Name: row.Name, Position: int(row.Position), Archived: !row.IsActive})
+	}
+	return out, nil
+}
+
 func (r *Categories) ListActive(ctx context.Context) ([]domain.Category, error) {
 	const op = "Channel.Categories.ListActive"
 	rows, err := r.s.q(ctx).ListActiveCategories(ctx)

@@ -72,6 +72,9 @@ func Run(ctx context.Context, p RunParams) int {
 		return 1
 	}
 	log := logx.New(p.Stdout, cfg.Level(), component)
+	if cfgMode == ModeAPI || cfgMode == ModeWorker {
+		log.Info("platform fee configured", logx.KeyOp, "Bootstrap.Config", "mode", cfgMode, "env", cfg.Env, "platform_fee_rate_bp", cfg.Channel.FeeRateBP)
+	}
 	if mode == ModeConfig {
 		// Конфигурация уже проверена LoadConfig; подключений не делаем.
 		log.Info("config valid", logx.KeyOp, "Bootstrap.ConfigCheck", "mode", cfgMode, "env", cfg.Env, "version", p.Version)

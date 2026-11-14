@@ -25,6 +25,10 @@ func buildDedupeKey(fileID uuid.UUID, kind domain.DerivativeKind, hash string) s
 func (s *Service) ensureDerivative(ctx context.Context, orgID, fileID uuid.UUID, p domain.DerivativeParams) error {
 	hash := p.Hash()
 	d, pending, err := s.Derivatives.Ensure(ctx, fileID, p.Kind, hash, s.Clock.Now())
+	if err == nil {
+		s.log.DebugContext(ctx, "album derivative ensured", logx.KeyOp, "Post.EnsureDerivative", KeyDerivativeID, d.ID,
+			"kind", p.Kind, "render_version", p.Version(), "pending", pending)
+	}
 	if err != nil || !pending {
 		return err
 	}
@@ -85,7 +89,7 @@ func (s *Service) BuildDerivative(ctx context.Context, p BuildPayload) error {
 	}
 	out, err := s.Renderer.Render(ctx, original, params)
 	if err != nil {
-		if errors.Is(err, domain.ErrUndecodable) || errors.Is(err, domain.ErrDerivativeTooLarge) {
+		if errors.Is(err, domain.ErrUndecodable) || errors.Is(err, domain.ErrDerivativeTooLarge) || errors.Is(err, domain.ErrPlateLayout) {
 			s.log.ErrorContext(ctx, "media derivative failed", logx.KeyOp, op, KeyMediaFileID, f.ID, "kind", d.Kind,
 				KeyDerivativeID, d.ID, logx.KeyError, err.Error())
 			return job.Permanent(err)

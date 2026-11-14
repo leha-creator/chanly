@@ -1,6 +1,7 @@
 package domain_test
 
 import (
+	"errors"
 	"strings"
 	"testing"
 	"unicode/utf8"
@@ -8,71 +9,65 @@ import (
 	"github.com/leha-creator/chanly/internal/post/domain"
 )
 
-// fixedMeasurer — каждый символ шириной в половину кегля.
 type fixedMeasurer struct{}
 
 func (fixedMeasurer) Width(text string, size float64) float64 {
 	return float64(utf8.RuneCountInString(text)) * size * 0.5
 }
+func (fixedMeasurer) Metrics(size float64) domain.FontMetrics {
+	return domain.FontMetrics{Ascent: size * 0.8, Descent: size * 0.2}
+}
 
 func TestLayoutPlate(t *testing.T) {
 	m := fixedMeasurer{}
-	const inn = "7707083893"
-
-	t.Run("bar height", func(t *testing.T) {
-		for _, tt := range []struct{ h, bar int }{{160, 40}, {300, 40}, {500, 40}, {1000, 80}, {7680, 614}} {
-			l := domain.LayoutPlate(2000, tt.h, "А", inn, m)
-			if l.BarHeight != tt.bar || l.BarY != tt.h-tt.bar {
-				t.Errorf("height %d: bar %d at %d, want %d", tt.h, l.BarHeight, l.BarY, tt.bar)
+	for _, size := range [][2]int{{160, 160}, {640, 480}, {800, 1000}, {7680, 160}, {160, 7680}, {7680, 7680}} {
+		for _, name := range []string{"ООО «Василёк»", strings.Repeat("Очень длинное название ", 20), strings.Repeat("я", 300)} {
+			for _, inn := range []string{"7707083893", "123456789012"} {
+				l, err := domain.LayoutPlate(size[0], size[1], name, inn, m)
+				if err != nil {
+					t.Fatalf("%v: %v", size, err)
+				}
+				if l.X < 8 || l.Y < 8 || l.X+l.Width > size[0]-8 || l.Y+l.Height > size[1]-8 || l.FontSize < 12 || len(l.Lines) > 4 {
+					t.Fatalf("%v: %+v", size, l)
+				}
+				for _, line := range l.Lines {
+					if !utf8.ValidString(line) || m.Width(line, l.FontSize) > float64(l.Width-2*l.Padding) {
+						t.Fatalf("line outside card: %+v", l)
+					}
+				}
+				text := strings.Join(l.Lines, " ")
+				if !strings.HasPrefix(text, "Реклама") || !strings.HasSuffix(text, "ИНН "+inn) {
+					t.Fatalf("marking lost: %q", text)
+				}
+				if l.Truncated && (len(l.Lines) < 3 || !strings.HasSuffix(l.Lines[len(l.Lines)-2], "…")) {
+					t.Fatalf("bad ellipsis: %+v", l)
+				}
 			}
 		}
-	})
+	}
+}
 
-	t.Run("short name keeps initial size", func(t *testing.T) {
-		l := domain.LayoutPlate(2000, 1000, "ООО Ромашка", inn, m)
-		if l.FontSize != 80*0.55 || l.Truncated || l.Text != "Реклама. ООО Ромашка, ИНН 7707083893" {
-			t.Fatalf("%+v", l)
+func TestLayoutPlateWrapAndErrors(t *testing.T) {
+	l, err := domain.LayoutPlate(160, 160, "ООО «Василёк»", "7707083893", fixedMeasurer{})
+	if err != nil || l.Truncated || len(l.Lines) < 3 {
+		t.Fatalf("short Cyrillic name: %+v %v", l, err)
+	}
+	for _, size := range [][2]int{{0, 0}, {20, 20}, {160, 20}} {
+		if _, err := domain.LayoutPlate(size[0], size[1], "Имя", "7707083893", fixedMeasurer{}); !errors.Is(err, domain.ErrPlateLayout) {
+			t.Fatalf("%v: %v", size, err)
 		}
-		if l.Margin != 40 {
-			t.Fatalf("margin %d", l.Margin)
-		}
-	})
+	}
+}
 
-	t.Run("long name shrinks font", func(t *testing.T) {
-		// Ширина 1000, поля по 20: доступно 960. Начальный кегль 44 → 22 px на символ, помещается 43 символа.
-		name := strings.Repeat("н", 40) // текст 65 символов
-		l := domain.LayoutPlate(1000, 1000, name, inn, m)
-		if l.Truncated || l.FontSize >= 44 || l.FontSize < 44*0.6 {
-			t.Fatalf("%+v", l)
+func TestLayoutPlateScalesSpacingWithText(t *testing.T) {
+	for _, dimensions := range [][2]int{{640, 480}, {1536, 1152}, {7680, 7680}} {
+		l, err := domain.LayoutPlate(dimensions[0], dimensions[1], "ООО Василёк", "7707083893", fixedMeasurer{})
+		if err != nil {
+			t.Fatal(err)
 		}
-		if m.Width(l.Text, l.FontSize) > 960 {
-			t.Fatalf("text does not fit: %+v", l)
+		scale := 320 / float64(dimensions[0])
+		if l.FontSize*scale < 9.5 || l.FontSize*scale > 10.5 || float64(l.Padding)*scale < 4 || float64(l.X)*scale < 6 || float64(l.Radius)*scale < 2.5 {
+			t.Fatalf("spacing is lost when %v is displayed at 320px: %+v", dimensions, l)
 		}
-	})
-
-	t.Run("very long name truncated, inn whole", func(t *testing.T) {
-		name := strings.Repeat("н", 300)
-		l := domain.LayoutPlate(1000, 1000, name, inn, m)
-		if !l.Truncated || l.FontSize != 44*0.6 {
-			t.Fatalf("%+v", l)
-		}
-		if !strings.HasSuffix(l.Text, "…, ИНН "+inn) || !strings.HasPrefix(l.Text, "Реклама. н") {
-			t.Fatalf("text %q", l.Text)
-		}
-		if m.Width(l.Text, l.FontSize) > 960 {
-			t.Fatalf("text does not fit: %q", l.Text)
-		}
-		// Ещё один символ названия уже не помещается.
-		longer := strings.Replace(l.Text, "…", "н…", 1)
-		if m.Width(longer, l.FontSize) <= 960 {
-			t.Fatalf("name cut too short: %q", l.Text)
-		}
-	})
-
-	t.Run("narrow image keeps inn", func(t *testing.T) {
-		l := domain.LayoutPlate(160, 160, "Очень длинное название организации", inn, m)
-		if !strings.HasSuffix(l.Text, "ИНН "+inn) {
-			t.Fatalf("text %q", l.Text)
-		}
-	})
+	}
 }

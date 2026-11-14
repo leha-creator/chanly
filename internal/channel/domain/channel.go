@@ -371,11 +371,17 @@ type ProfileUpdate struct {
 	Description *string
 	CategoryID  *uuid.UUID
 	RknNumber   *string
+	// Prices nil preserves the set; a non-nil empty slice removes all prices.
+	Prices *[]Price
 }
 
 // UpdateProfile применяет правку блогера. rknThreshold — порог подписчиков, с
 // которого нужен номер в реестре РКН (D-11, 07 §8).
 func (c *Channel) UpdateProfile(p ProfileUpdate, rknThreshold int, now time.Time) (StatusChange, error) {
+	return c.UpdateProfileWithPrices(p, nil, rknThreshold, now, 0)
+}
+
+func (c *Channel) updateProfile(p ProfileUpdate, rknThreshold int, now time.Time) (StatusChange, error) {
 	switch c.Status {
 	case StatusUnclaimed, StatusDisconnected, StatusBlocked:
 		return StatusChange{}, ErrNotEditable

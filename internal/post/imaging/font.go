@@ -41,3 +41,13 @@ func (Measurer) Width(text string, size float64) float64 {
 	defer face.Close()
 	return math.Ceil(float64(font.MeasureString(face, text)) / 64)
 }
+
+func (Measurer) Metrics(size float64) domain.FontMetrics {
+	face, err := newFace(size)
+	if err != nil {
+		return domain.FontMetrics{Ascent: math.Inf(1)}
+	}
+	defer face.Close()
+	m := face.Metrics()
+	return domain.FontMetrics{Ascent: float64(m.Ascent) / 64, Descent: float64(m.Descent) / 64}
+}

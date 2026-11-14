@@ -157,9 +157,9 @@ func TestRemoveMediaFromDrafts(t *testing.T) {
 	p2 := save(org, user, []uuid.UUID{b, a})
 	foreign := save(other, otherUser, []uuid.UUID{a})
 
-	n, err := st.Posts().RemoveMediaFromDrafts(ctx, org, a, now.Add(time.Hour))
-	if err != nil || n != 2 {
-		t.Fatalf("removed from %d drafts, err %v", n, err)
+	updated, err := st.Posts().RemoveMediaFromDrafts(ctx, org, a, now.Add(time.Hour))
+	if err != nil || len(updated) != 2 {
+		t.Fatalf("removed from %d drafts, err %v", len(updated), err)
 	}
 	for _, p := range []domain.Post{p1, p2} {
 		got, err := st.Posts().GetByCampaign(ctx, org, p.CampaignID)

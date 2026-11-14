@@ -12,6 +12,7 @@ import (
 	"github.com/leha-creator/chanly/internal/platform/apperr"
 	"github.com/leha-creator/chanly/internal/platform/httpx"
 	"github.com/leha-creator/chanly/internal/platform/logx"
+	"github.com/leha-creator/chanly/internal/platform/money"
 )
 
 // cabinetBlogger — кабинет, которому доступны операции каналов (07 §4).
@@ -97,8 +98,16 @@ func (h *Handlers) UpdateBloggerChannel(ctx context.Context, req apigen.UpdateBl
 		return nil, err
 	}
 	b := req.Body
+	var prices *[]domain.Price
+	if b.Prices != nil {
+		items := make([]domain.Price, 0, len(*b.Prices))
+		for _, item := range *b.Prices {
+			items = append(items, domain.Price{FormatID: item.FormatId, Amount: money.Kopecks(item.Amount), IsEnabled: item.IsEnabled})
+		}
+		prices = &items
+	}
 	c, err := h.svc.Update(ctx, org, req.Id, domain.ProfileUpdate{
-		Description: b.Description, CategoryID: b.CategoryId, RknNumber: b.RknNumber,
+		Description: b.Description, CategoryID: b.CategoryId, RknNumber: b.RknNumber, Prices: prices,
 	})
 	if err != nil {
 		return nil, err

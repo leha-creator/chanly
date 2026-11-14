@@ -206,7 +206,7 @@ func (d Derivative) Ready() bool { return d.Status == DerivativeReady && d.Purge
 // Версии построения (R-5). Меняются вместе с кодом построения, а не конфигурацией:
 // новая версия даёт новый params_hash, уже зафиксированные версии поста не перестраиваются.
 const (
-	PlateTemplateVersion = 1
+	PlateTemplateVersion = 2
 	RenderVersion        = 1
 )
 
@@ -239,16 +239,21 @@ func NewDerivativeParams(kind DerivativeKind, name, inn string) DerivativeParams
 
 // Hash — params_hash производной.
 func (p DerivativeParams) Hash() string {
-	v := RenderVersion
-	if p.Kind == KindLabeled {
-		v = PlateTemplateVersion
-	}
-	return ParamsHash(p.Kind, v, p.Name, p.INN)
+	return ParamsHash(p.Kind, p.Version(), p.Name, p.INN)
 }
 
-// NeededKind — какая производная уходит в канал (06 §6.2): с плашкой при пометке в медиафайле.
-func NeededKind(c TokenCarrier) DerivativeKind {
-	if c == CarrierMedia {
+// Version is the rendering algorithm used for this kind, independent of album position.
+func (p DerivativeParams) Version() int {
+	if p.Kind == KindLabeled {
+		return PlateTemplateVersion
+	}
+	return RenderVersion
+}
+
+// NeededKindAt selects media for a new snapshot by its saved, zero-based album
+// position. Read existing snapshots by DerivativeID; never apply this policy again.
+func NeededKindAt(c TokenCarrier, position int) DerivativeKind {
+	if c == CarrierMedia && position == 0 {
 		return KindLabeled
 	}
 	return KindPlain

@@ -192,3 +192,48 @@ func TestUnimplementedOperationWithSession(t *testing.T) {
 		t.Fatalf("stub: %d %s", wr.Code, wr.Body)
 	}
 }
+
+func TestOrganizationOptionalBloggerFieldsHTTP(t *testing.T) {
+	a := newTestApp(t)
+	for _, addCabinet := range []bool{false, true} {
+		c := a.client()
+		if addCabinet {
+			c.login("optional-add@example.ru")
+		} else {
+			c.login("optional-create@example.ru")
+		}
+		body := advertiserBody()
+		if addCabinet {
+			if r := c.do(http.MethodPost, "/organizations", body); r.status != http.StatusCreated {
+				t.Fatalf("advertiser: %d %s", r.status, r.body)
+			}
+		}
+		body["cabinet"] = "blogger"
+		body["kpp"], body["tax_regime"], body["vat_rate"] = "770701001", "osno", "vat_22"
+		body["signer_position"], body["signer_name"] = "Директор", "Иван Тестов"
+		r := c.do(http.MethodPost, "/organizations", body)
+		if r.status != http.StatusCreated && r.status != http.StatusOK {
+			t.Fatalf("blogger without basis: %d %s", r.status, r.body)
+		}
+		for _, patch := range []map[string]string{
+			{"signer_basis_name": "Устав"}, {"signer_basis_number": "1"}, {"contact_name": "Контакт"}, {"signer_basis_name": "", "signer_basis_number": ""},
+		} {
+			if r := c.do(http.MethodPatch, "/organizations/current", patch); r.status != http.StatusOK {
+				t.Fatalf("patch: %d %s", r.status, r.body)
+			}
+		}
+		r = c.do(http.MethodPatch, "/organizations/current", map[string]string{"signer_name": ""})
+		if _, details := r.errorCode(t); r.status != http.StatusUnprocessableEntity || details["field"] != "signer_name" {
+			t.Fatalf("required signer: %d %s", r.status, r.body)
+		}
+	}
+	c := a.client()
+	c.login("optional-self@example.ru")
+	in := accounttest.BloggerSelfEmployed()
+	r := c.do(http.MethodPost, "/organizations", map[string]any{"cabinet": "blogger", "legal_type": "self_employed", "inn": in.INN, "name": *in.Fields.Name, "contact_name": *in.Fields.ContactName, "phone": *in.Fields.Phone})
+	var org map[string]any
+	r.json(t, &org)
+	if r.status != http.StatusCreated || org["tax_document_uploaded"] != false || org["tax_regime"] != "npd" || org["vat_rate"] != "none" {
+		t.Fatalf("self-employed without file: %d %s", r.status, r.body)
+	}
+}

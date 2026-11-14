@@ -120,7 +120,9 @@ func newTestAppWith(t *testing.T, cfg Config) *testApp {
 func testConfig() Config {
 	cfg, err := LoadConfig(map[string]string{
 		"APP_ENV": "test", "DATABASE_URL": "postgres://unused", "APP_SECRETS_KEY": base64.StdEncoding.EncodeToString(bytes.Repeat([]byte{3}, 32)),
-		"AUTH_CODE_PEPPER": strings.Repeat("x", 32), "S3_ENDPOINT": "unused", "S3_BUCKET_PRIVATE": "b",
+		// Existing scenarios deliberately keep historical 15% amounts; the fee transition test checks the new default.
+		"PLATFORM_FEE_RATE_BP": "1500",
+		"AUTH_CODE_PEPPER":     strings.Repeat("x", 32), "S3_ENDPOINT": "unused", "S3_BUCKET_PRIVATE": "b",
 		"S3_ACCESS_KEY": "a", "S3_SECRET_KEY": "s",
 		"MAX_WEBHOOK_PATH_SECRET": testWebhookPath, "MAX_WEBHOOK_SECRET": testWebhookSecret, "MAX_BOT_NAME": "@maxim_test_bot",
 	}, ModeAPI)

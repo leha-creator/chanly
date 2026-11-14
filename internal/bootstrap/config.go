@@ -117,7 +117,7 @@ type ChannelConfig struct {
 	// RknRecheckInterval — через сколько подтверждённый номер РКН пора проверить снова (06 §6.3, R-17).
 	RknRecheckInterval time.Duration `env:"RKN_RECHECK_INTERVAL" envDefault:"2160h"`
 	// FeeRateBP — комиссия платформы сверху цены блогера, базисные пункты (06 §3, A-30).
-	FeeRateBP int `env:"PLATFORM_FEE_RATE_BP" envDefault:"1500"`
+	FeeRateBP int `env:"PLATFORM_FEE_RATE_BP" envDefault:"2500"`
 	// Пороги флагов аномалий метрик (05 §2.7, R-15).
 	MetricsSubscribersSpikeBP int `env:"METRICS_SUBSCRIBERS_SPIKE_BP" envDefault:"2000"`
 	MetricsViewsMinBP         int `env:"METRICS_VIEWS_MIN_BP" envDefault:"100"`

@@ -168,7 +168,7 @@ func TestNewOrganizationRejects(t *testing.T) {
 		{"self-employed on usn", func() NewOrganizationInput { in := bloggerSE(); in.Fields.TaxRegime = ptr(TaxUSN); return in }, "tax_regime", ReasonInvalidValue},
 		{"vat not for regime", func() NewOrganizationInput { in := bloggerLE(); in.Fields.VatRate = ptr(Vat5); return in }, "vat_rate", ReasonInvalidValue},
 		{"legal entity blogger without kpp", func() NewOrganizationInput { in := bloggerLE(); in.Fields.KPP = nil; return in }, "kpp", ReasonRequired},
-		{"legal entity blogger without signer", func() NewOrganizationInput { in := bloggerLE(); in.Fields.SignerBasisNumber = nil; return in }, "signer_basis_number", ReasonRequired},
+		{"legal entity blogger without signer", func() NewOrganizationInput { in := bloggerLE(); in.Fields.SignerName = nil; return in }, "signer_name", ReasonRequired},
 		{"self-employed with signer", func() NewOrganizationInput { in := bloggerSE(); in.Fields.SignerName = s("Кто-то"); return in }, "signer_name", ReasonNotAllowed},
 		{"legal entity with blogger full name", func() NewOrganizationInput {
 			in := bloggerLE()
@@ -285,6 +285,51 @@ func TestSetTaxDocument(t *testing.T) {
 	b, _ := NewOrganization(uuid.New(), bloggerSE(), now)
 	if err := b.SetTaxDocument(FileRef{StorageKey: "k", SHA256: "h"}, now); err != nil || b.TaxDocument == nil {
 		t.Fatalf("blogger tax document: %v", err)
+	}
+}
+
+func TestSignerBasisOptional(t *testing.T) {
+	for _, basis := range []Fields{{}, {SignerBasisName: s("Устав")}, {SignerBasisNumber: s("1")}} {
+		in := bloggerLE()
+		in.Fields.SignerBasisName, in.Fields.SignerBasisNumber = basis.SignerBasisName, basis.SignerBasisNumber
+		o, err := NewOrganization(uuid.New(), in, now)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := o.Update(Fields{Phone: s("+79990000009")}, now); err != nil {
+			t.Fatal(err)
+		}
+		if (o.SignerBasisName == nil) != (basis.SignerBasisName == nil) || (o.SignerBasisNumber == nil) != (basis.SignerBasisNumber == nil) {
+			t.Fatal("omitted PATCH changed basis")
+		}
+		if o.SignerBasisName != nil && *o.SignerBasisName != *basis.SignerBasisName || o.SignerBasisNumber != nil && *o.SignerBasisNumber != *basis.SignerBasisNumber {
+			t.Fatal("omitted PATCH changed basis value")
+		}
+		if _, err := o.Update(Fields{SignerBasisName: s("  "), SignerBasisNumber: s("")}, now); err != nil {
+			t.Fatal(err)
+		}
+		if o.SignerBasisName != nil || o.SignerBasisNumber != nil {
+			t.Fatal("basis was not cleared")
+		}
+	}
+	in := bloggerLE()
+	in.Fields.SignerBasisName, in.Fields.SignerBasisNumber = nil, nil
+	o, err := NewOrganization(uuid.New(), advertiserLE(), now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := o.AddCabinet(CabinetBlogger, in.Fields, now); err != nil {
+		t.Fatal(err)
+	}
+	for _, field := range []string{"signer_basis_name", "signer_basis_number"} {
+		in := bloggerSE()
+		if field == "signer_basis_name" {
+			in.Fields.SignerBasisName = s("Устав")
+		} else {
+			in.Fields.SignerBasisNumber = s("1")
+		}
+		_, err := NewOrganization(uuid.New(), in, now)
+		wantValidation(t, err, field, ReasonNotAllowed)
 	}
 }
 
