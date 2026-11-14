@@ -60,6 +60,19 @@ __DOMAIN__ {
             header Content-Type "application/json"
             respond `{"error":{"code":"forbidden","message":"admin api is not available from this address"}}` 403
         }
+        handle /api/landing/contact {
+            request_body {
+                max_size 32KB
+            }
+            reverse_proxy chanly-landing-contact:8091 {
+                header_up -Authorization
+                header_up X-Real-IP {remote_host}
+                transport http {
+                    dial_timeout 3s
+                    response_header_timeout 30s
+                }
+            }
+        }
         @backend path /api /api/* /docs /docs/* /openapi.json /readyz /healthz /livez
         handle @backend {
             reverse_proxy __PREFIX__-api-a:8080 __PREFIX__-api-b:8080 {
