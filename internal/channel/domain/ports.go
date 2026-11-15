@@ -116,6 +116,9 @@ type Unavailabilities interface {
 
 // Metrics — суточные снимки метрик (channel_metrics, R-19).
 type Metrics interface {
+	// Checkpoint and RecordViews are used under the channel's transaction lock.
+	Checkpoint(ctx context.Context, channelID uuid.UUID) (*ViewsCheckpoint, error)
+	RecordViews(ctx context.Context, channelID uuid.UUID, c ViewsCheckpoint) error
 	// Upsert записывает снимок суток; повтор в те же сутки перезаписывает его.
 	Upsert(ctx context.Context, channelID uuid.UUID, s MetricsSnapshot, now time.Time) error
 	// LastBefore — последний снимок раньше даты date; nil, если его нет.

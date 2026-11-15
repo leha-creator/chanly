@@ -103,7 +103,7 @@ func (s *Service) CatalogChannel(ctx context.Context, id uuid.UUID) (*domain.Cat
 	if err != nil {
 		return nil, err
 	}
-	history, err := s.Metrics.Recent(ctx, id, catalogHistoryDays)
+	history, err := s.recentMetrics(ctx, id)
 	if err != nil {
 		return nil, err
 	}
@@ -120,4 +120,25 @@ func (s *Service) CatalogChannel(ctx context.Context, id uuid.UUID) (*domain.Cat
 	slices.SortFunc(unavail, func(a, b domain.Unavailability) int { return a.StartsAt.Compare(b.StartsAt) })
 	s.log.DebugContext(ctx, "catalog channel read", logx.KeyOp, op, KeyChannelID, id, "history", len(history), "unavailability", len(unavail))
 	return &domain.CatalogCard{CatalogItem: *item, History: history, Unavailability: unavail}, nil
+}
+
+func (s *Service) recentMetrics(ctx context.Context, id uuid.UUID) ([]domain.MetricsSnapshot, error) {
+	// Include the preceding day outside the visible window so its first point
+	// can still report a real change. Recent returns stored dates oldest first.
+	list, err := s.Metrics.Recent(ctx, id, catalogHistoryDays+1)
+	if err != nil {
+		return nil, err
+	}
+	for i := range list {
+		list[i].SubscribersChange = nil
+		if i > 0 && list[i].Date.Equal(list[i-1].Date.AddDate(0, 0, 1)) {
+			delta := int64(list[i].SubscribersCount) - int64(list[i-1].SubscribersCount)
+			list[i].SubscribersChange = &delta
+		}
+	}
+	day := domain.MetricsDate(s.Clock.Now())
+	cutoff := day.AddDate(0, 0, -(catalogHistoryDays - 1))
+	return slices.DeleteFunc(list, func(m domain.MetricsSnapshot) bool {
+		return m.Date.Before(cutoff) || m.Date.After(day)
+	}), nil
 }

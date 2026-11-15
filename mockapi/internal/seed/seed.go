@@ -199,6 +199,7 @@ func Load(d *store.Data, now time.Time) {
 			Subscribers: c.subs, AvgViews: c.views, PostsPerWeek: float64(7 + i%5), RknStatus: "not_required",
 			Rating: 100 - i%4*5, AnomalyFlags: c.anomaly, Prices: map[string]*store.Price{}, CreatedAt: day(-30 - i),
 		}
+		x.MetricsHistory = demoMetrics(now, x.Subscribers, x.AvgViews)
 		if c.category {
 			x.CategoryID = ptr(ID(c.cat))
 		}

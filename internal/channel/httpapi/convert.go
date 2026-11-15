@@ -53,6 +53,8 @@ func metricsHistory(list []domain.MetricsSnapshot) []apigen.ChannelMetricsPoint 
 	for _, m := range list {
 		out = append(out, apigen.ChannelMetricsPoint{
 			Date: openapi_types.Date{Time: m.Date}, SubscribersCount: m.SubscribersCount, AvgViews: m.AvgViews,
+			NewViews: m.NewViews, ObservedAt: m.ObservedAt, ViewsPeriodStartedAt: m.ViewsPeriodStartedAt,
+			SubscribersChange: m.SubscribersChange,
 		})
 	}
 	return out

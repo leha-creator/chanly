@@ -212,6 +212,9 @@ func (s *Service) saveWithStatusLog(ctx context.Context, op string, c *domain.Ch
 	if !change.Changed() {
 		return nil
 	}
+	if err := s.enqueueInitialMetrics(ctx, op, c, change); err != nil {
+		return err
+	}
 	switch {
 	case change.AvailabilityLost():
 		if err := s.Availability.ChannelUnavailable(ctx, change); err != nil {

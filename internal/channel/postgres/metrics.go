@@ -28,6 +28,7 @@ func (r *Metrics) Upsert(ctx context.Context, channelID uuid.UUID, m domain.Metr
 		ID: ids.New(), ChannelID: channelID, Date: date(m.Date), SubscribersCount: int32(m.SubscribersCount),
 		AvgViews: int32Ptr(m.AvgViews), EngagementBp: int32Ptr(m.EngagementBP), PostsPerWeek: m.PostsPerWeek,
 		AnomalyFlags: flags, Now: now,
+		NewViews: m.NewViews, ObservedAt: m.ObservedAt, ViewsPeriodStartedAt: m.ViewsPeriodStartedAt,
 	}); err != nil {
 		return r.s.fail(ctx, op, err)
 	}
@@ -45,6 +46,7 @@ func (r *Metrics) LastBefore(ctx context.Context, channelID uuid.UUID, day time.
 		return nil, r.s.fail(ctx, op, err)
 	}
 	s := snapshot(row.Date, row.SubscribersCount, row.AvgViews, row.EngagementBp, row.PostsPerWeek, row.AnomalyFlags)
+	s.NewViews, s.ObservedAt, s.ViewsPeriodStartedAt = row.NewViews, row.ObservedAt, row.ViewsPeriodStartedAt
 	return &s, nil
 }
 
@@ -56,11 +58,54 @@ func (r *Metrics) Recent(ctx context.Context, channelID uuid.UUID, n int) ([]dom
 	}
 	out := make([]domain.MetricsSnapshot, 0, len(rows))
 	for _, row := range rows {
-		out = append(out, snapshot(row.Date, row.SubscribersCount, row.AvgViews, row.EngagementBp, row.PostsPerWeek, row.AnomalyFlags))
+		m := snapshot(row.Date, row.SubscribersCount, row.AvgViews, row.EngagementBp, row.PostsPerWeek, row.AnomalyFlags)
+		m.NewViews, m.ObservedAt, m.ViewsPeriodStartedAt = row.NewViews, row.ObservedAt, row.ViewsPeriodStartedAt
+		out = append(out, m)
 	}
 	slices.Reverse(out) // старые первыми
 	r.s.debug(ctx, op, "channel_id", channelID, "count", len(out))
 	return out, nil
+}
+
+func (r *Metrics) Checkpoint(ctx context.Context, channelID uuid.UUID) (*domain.ViewsCheckpoint, error) {
+	const op = "Channel.Metrics.Checkpoint"
+	row, err := r.s.q(ctx).GetMetricsCheckpoint(ctx, channelID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, r.s.fail(ctx, op, err)
+	}
+	posts, err := r.s.q(ctx).ListMessageViewCounters(ctx, channelID)
+	if err != nil {
+		return nil, r.s.fail(ctx, op, err)
+	}
+	c := &domain.ViewsCheckpoint{ObservedAt: row.ObservedAt, Complete: row.Complete, DayInvalid: row.DayInvalid, Counters: make(map[string]int64, len(posts))}
+	for _, p := range posts {
+		c.Counters[p.MessageID] = p.Views
+	}
+	return c, nil
+}
+
+func (r *Metrics) RecordViews(ctx context.Context, channelID uuid.UUID, c domain.ViewsCheckpoint) error {
+	const op = "Channel.Metrics.RecordViews"
+	q := r.s.q(ctx)
+	if err := q.UpsertMetricsCheckpoint(ctx, sqlc.UpsertMetricsCheckpointParams{
+		ChannelID: channelID, ObservedAt: c.ObservedAt, Complete: c.Complete, DayInvalid: c.DayInvalid,
+	}); err != nil {
+		return r.s.fail(ctx, op, err)
+	}
+	if err := q.DeleteMessageViewCounters(ctx, channelID); err != nil {
+		return r.s.fail(ctx, op, err)
+	}
+	ids, views := make([]string, 0, len(c.Counters)), make([]int64, 0, len(c.Counters))
+	for id, v := range c.Counters {
+		ids, views = append(ids, id), append(views, v)
+	}
+	if err := q.InsertMessageViewCounters(ctx, sqlc.InsertMessageViewCountersParams{ChannelID: channelID, MessageIds: ids, ViewCounts: views}); err != nil {
+		return r.s.fail(ctx, op, err)
+	}
+	return nil
 }
 
 func snapshot(d pgtype.Date, subs int32, avg, eng *int32, ppw pgtype.Numeric, flags []string) domain.MetricsSnapshot {

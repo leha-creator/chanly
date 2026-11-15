@@ -6,8 +6,6 @@ import (
 	"strings"
 	"time"
 
-	openapi_types "github.com/oapi-codegen/runtime/types"
-
 	"maxim/mockapi/internal/api"
 	"maxim/mockapi/internal/store"
 )
@@ -182,16 +180,23 @@ func (h *Handlers) GetCatalogChannel(ctx context.Context, req api.GetCatalogChan
 	return out, nil
 }
 
-// metricsHistory — выдуманная история за 30 суток: плавный рост к текущему числу подписчиков.
+// metricsHistory returns stored observations only. New channels have no history;
+// synthetic demonstration history is installed explicitly by seed.Load.
 func metricsHistory(tx *store.Tx, c *store.Channel) []api.ChannelMetricsPoint {
 	out := []api.ChannelMetricsPoint{}
-	for i := 29; i >= 0; i-- {
-		d := tx.Now.AddDate(0, 0, -i)
-		subs := c.Subscribers - i*c.Subscribers/200
-		out = append(out, api.ChannelMetricsPoint{
-			Date:             openapi_types.Date{Time: time.Date(d.Year(), d.Month(), d.Day(), 0, 0, 0, 0, time.UTC)},
-			SubscribersCount: subs, AvgViews: ptr(c.AvgViews - i*c.AvgViews/300),
-		})
+	y, m, d := tx.Now.In(time.FixedZone("MSK", 3*60*60)).Date()
+	today := time.Date(y, m, d, 0, 0, 0, 0, time.UTC)
+	observations := slices.Clone(c.MetricsHistory)
+	slices.SortFunc(observations, func(a, b api.ChannelMetricsPoint) int { return a.Date.Time.Compare(b.Date.Time) })
+	for i, point := range observations {
+		point.SubscribersChange = nil
+		if i > 0 && observations[i-1].Date.Time.AddDate(0, 0, 1).Equal(point.Date.Time) {
+			change := int64(point.SubscribersCount) - int64(observations[i-1].SubscribersCount)
+			point.SubscribersChange = &change
+		}
+		if !point.Date.Time.Before(today.AddDate(0, 0, -29)) && !point.Date.Time.After(today) {
+			out = append(out, point)
+		}
 	}
 	return out
 }

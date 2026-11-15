@@ -88,10 +88,18 @@ func (c MetricsConfig) PageSize() int { return metricsMessagesPerPage }
 type MetricsSnapshot struct {
 	Date             time.Time
 	SubscribersCount int
-	AvgViews         *int
-	EngagementBP     *int
-	PostsPerWeek     *float64
-	AnomalyFlags     []string
+	// SubscribersChange is derived for transport from consecutive calendar-day
+	// totals. It is never persisted and is unknown without yesterday's snapshot.
+	SubscribersChange *int64
+	AvgViews          *int
+	EngagementBP      *int
+	PostsPerWeek      *float64
+	AnomalyFlags      []string
+	// NewViews counts available-post increments over the actual observed period.
+	// Unknown includes the baseline, incomplete counters, resets and skipped days.
+	NewViews             *int64
+	ObservedAt           *time.Time
+	ViewsPeriodStartedAt *time.Time
 }
 
 // ComputeMetrics считает снимок по 05 §2.7 и R-14, R-15. Сообщения бота платформы

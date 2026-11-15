@@ -36,6 +36,33 @@ func metricsStatus(s domain.Status) bool {
 	return s == domain.StatusModeration || s == domain.StatusActive || s == domain.StatusSuspended
 }
 
+// enqueueInitialMetrics runs inside the status-change transaction so a newly
+// eligible channel does not wait for the next daily scheduler and spread offset.
+// The saved version identifies this transition, including reconnects; a separate
+// key keeps an already scheduled daily refresh from delaying the first snapshot.
+func (s *Service) enqueueInitialMetrics(ctx context.Context, op string, c *domain.Channel, change domain.StatusChange) error {
+	// BotAdded can restore suspended before refresh_channel_info reads the bot's
+	// rights. Wait for that authoritative read, then refresh on restoration too.
+	if !metricsStatus(change.To) || !c.BotIsAdmin || len(c.MissingPermissions()) > 0 ||
+		(metricsStatus(change.From) && !change.AvailabilityRestored()) {
+		return nil
+	}
+	now := s.Clock.Now()
+	date := domain.MetricsDate(now).Format(time.DateOnly)
+	key := fmt.Sprintf("initial_channel_metrics:%s:%d", c.ID, c.LockVersion)
+	if err := s.Jobs.Enqueue(ctx, job.Job{
+		Kind: KindRefreshChannelMetrics, DedupeKey: key,
+		Payload: MetricsPayload{ChannelID: c.ID, Date: date}, RunAt: now, MaxAttempts: RefreshMetricsMaxAttempts,
+	}); err != nil {
+		s.log.ErrorContext(ctx, "[FIX] initial channel metrics enqueue failed", logx.KeyOp, op,
+			KeyChannelID, c.ID, logx.KeyError, err)
+		return err
+	}
+	s.log.InfoContext(ctx, "[FIX] initial channel metrics queued", logx.KeyOp, op,
+		KeyChannelID, c.ID, "date", date, "status", c.Status)
+	return nil
+}
+
 // ScheduleMetrics — задание schedule_channel_metrics (R-13): по каждому каналу ставит
 // refresh_channel_metrics со смещением внутри суток по id канала, чтобы запросы к
 // MAX шли равномерно (07 §2). Повтор в те же сутки заданий не дублирует (dedupe_key).
@@ -79,7 +106,7 @@ func (s *Service) ScheduleMetrics(ctx context.Context) error {
 func (s *Service) RefreshMetrics(ctx context.Context, p MetricsPayload) error {
 	const op = "Channel.RefreshMetrics"
 	ctx = logx.With(ctx, KeyChannelID, p.ChannelID.String())
-	day, err := time.Parse(time.DateOnly, p.Date)
+	_, err := time.Parse(time.DateOnly, p.Date)
 	if err != nil {
 		return job.Permanent(fmt.Errorf("refresh metrics: bad date %q: %w", p.Date, err))
 	}
@@ -103,6 +130,10 @@ func (s *Service) RefreshMetrics(ctx context.Context, p MetricsPayload) error {
 		return err
 	}
 
+	// Timestamp the read before external calls. A slower older request must not
+	// overwrite a newer checkpoint after acquiring the channel lock.
+	observedAt := s.Clock.Now()
+	day := domain.MetricsDate(observedAt)
 	info, err := s.Chats.GetChat(ctx, chatID)
 	if job.IsPermanent(err) {
 		// R-20: канала нет в MAX (404) — без повторов; канал отключат события бота.
@@ -111,7 +142,7 @@ func (s *Service) RefreshMetrics(ctx context.Context, p MetricsPayload) error {
 	if err != nil {
 		return err
 	}
-	msgs, err := s.readMessages(ctx, op, chatID)
+	msgs, complete, err := s.readMessages(ctx, op, chatID, observedAt)
 	if err != nil {
 		return err
 	}
@@ -126,14 +157,35 @@ func (s *Service) RefreshMetrics(ctx context.Context, p MetricsPayload) error {
 			s.log.InfoContext(ctx, "channel metrics skipped", logx.KeyOp, op, "status", c.Status)
 			return nil
 		}
+		checkpoint, err := s.Metrics.Checkpoint(ctx, c.ID)
+		if err != nil {
+			return err
+		}
+		if checkpoint != nil && !observedAt.After(checkpoint.ObservedAt) {
+			s.log.DebugContext(ctx, "[FIX] stale channel metrics sample ignored", logx.KeyOp, op, "observed_at", observedAt)
+			return nil
+		}
 		now := s.Clock.Now()
 		prev, err := s.Metrics.LastBefore(ctx, c.ID, day)
 		if err != nil {
 			return err
 		}
-		snap := domain.ComputeMetrics(info.SubscribersCount, msgs, prev, now, s.Config.Metrics)
+		latest, err := s.Metrics.Recent(ctx, c.ID, 1)
+		if err != nil {
+			return err
+		}
+		var daily *domain.MetricsSnapshot
+		if len(latest) > 0 && latest[0].Date.Equal(day) {
+			daily = &latest[0]
+		}
+		growth := domain.ComputeViewsGrowth(checkpoint, daily, msgs, observedAt, complete, s.Config.Metrics.Window)
+		snap := domain.ComputeMetrics(info.SubscribersCount, msgs, prev, observedAt, s.Config.Metrics)
 		snap.Date = day
+		snap.ObservedAt, snap.NewViews, snap.ViewsPeriodStartedAt = &observedAt, growth.NewViews, growth.PeriodStart
 		if err := s.Metrics.Upsert(ctx, c.ID, snap, now); err != nil {
+			return err
+		}
+		if err := s.Metrics.RecordViews(ctx, c.ID, growth.Checkpoint); err != nil {
 			return err
 		}
 		change := c.MetricsRefreshed(info, s.Config.RknThreshold, now)
@@ -147,26 +199,26 @@ func (s *Service) RefreshMetrics(ctx context.Context, p MetricsPayload) error {
 			s.log.WarnContext(ctx, "channel anomaly detected", logx.KeyOp, op, "flags", snap.AnomalyFlags)
 		}
 		s.log.InfoContext(ctx, "channel metrics refreshed", logx.KeyOp, op, "subscribers_count", snap.SubscribersCount,
-			"avg_views", snap.AvgViews, "anomaly_flags", snap.AnomalyFlags, "messages", len(msgs))
+			"avg_views", snap.AvgViews, "new_views", snap.NewViews, "observed_at", observedAt,
+			"anomaly_flags", snap.AnomalyFlags, "messages", len(msgs))
 		return nil
 	})
 }
 
 // readMessages читает сообщения канала за окно метрик страницами по 100, новые первыми,
 // не больше MaxPages страниц (R-14).
-func (s *Service) readMessages(ctx context.Context, op string, chatID int64) ([]domain.MessageStat, error) {
+func (s *Service) readMessages(ctx context.Context, op string, chatID int64, now time.Time) ([]domain.MessageStat, bool, error) {
 	cfg := s.Config.Metrics
-	now := s.Clock.Now()
 	from, to := now.Add(-cfg.Window), now
 	var out []domain.MessageStat
 	for page := 1; page <= cfg.MaxPages; page++ {
 		list, err := s.Messages.ListMessages(ctx, chatID, from, to, cfg.PageSize())
 		if err != nil {
-			return nil, err
+			return nil, false, err
 		}
 		out = append(out, list...)
 		if len(list) < cfg.PageSize() {
-			return out, nil
+			return out, true, nil
 		}
 		oldest := list[len(list)-1].At
 		for _, m := range list {
@@ -175,10 +227,10 @@ func (s *Service) readMessages(ctx context.Context, op string, chatID int64) ([]
 			}
 		}
 		if !oldest.After(from) {
-			return out, nil
+			return out, true, nil
 		}
 		to = oldest.Add(-time.Millisecond)
 	}
 	s.log.WarnContext(ctx, "channel metrics window truncated", logx.KeyOp, op, "pages", cfg.MaxPages, "messages", len(out))
-	return out, nil
+	return out, false, nil
 }

@@ -13,8 +13,50 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const deleteMessageViewCounters = `-- name: DeleteMessageViewCounters :exec
+DELETE FROM channel_message_view_counter WHERE channel_id = $1
+`
+
+func (q *Queries) DeleteMessageViewCounters(ctx context.Context, channelID uuid.UUID) error {
+	_, err := q.db.Exec(ctx, deleteMessageViewCounters, channelID)
+	return err
+}
+
+const getMetricsCheckpoint = `-- name: GetMetricsCheckpoint :one
+SELECT observed_at, complete, day_invalid FROM channel_metrics_checkpoint WHERE channel_id = $1
+`
+
+type GetMetricsCheckpointRow struct {
+	ObservedAt time.Time
+	Complete   bool
+	DayInvalid bool
+}
+
+func (q *Queries) GetMetricsCheckpoint(ctx context.Context, channelID uuid.UUID) (GetMetricsCheckpointRow, error) {
+	row := q.db.QueryRow(ctx, getMetricsCheckpoint, channelID)
+	var i GetMetricsCheckpointRow
+	err := row.Scan(&i.ObservedAt, &i.Complete, &i.DayInvalid)
+	return i, err
+}
+
+const insertMessageViewCounters = `-- name: InsertMessageViewCounters :exec
+INSERT INTO channel_message_view_counter(channel_id,message_id,views)
+SELECT $1, unnest($2::text[]), unnest($3::bigint[])
+`
+
+type InsertMessageViewCountersParams struct {
+	ChannelID  uuid.UUID
+	MessageIds []string
+	ViewCounts []int64
+}
+
+func (q *Queries) InsertMessageViewCounters(ctx context.Context, arg InsertMessageViewCountersParams) error {
+	_, err := q.db.Exec(ctx, insertMessageViewCounters, arg.ChannelID, arg.MessageIds, arg.ViewCounts)
+	return err
+}
+
 const lastMetricsBefore = `-- name: LastMetricsBefore :one
-SELECT date, subscribers_count, avg_views, engagement_bp, posts_per_week, anomaly_flags
+SELECT date, subscribers_count, avg_views, engagement_bp, posts_per_week, anomaly_flags, new_views, observed_at, views_period_started_at
 FROM channel_metrics
 WHERE channel_id = $1 AND date < $2
 ORDER BY date DESC
@@ -27,12 +69,15 @@ type LastMetricsBeforeParams struct {
 }
 
 type LastMetricsBeforeRow struct {
-	Date             pgtype.Date
-	SubscribersCount int32
-	AvgViews         *int32
-	EngagementBp     *int32
-	PostsPerWeek     pgtype.Numeric
-	AnomalyFlags     []string
+	Date                 pgtype.Date
+	SubscribersCount     int32
+	AvgViews             *int32
+	EngagementBp         *int32
+	PostsPerWeek         pgtype.Numeric
+	AnomalyFlags         []string
+	NewViews             *int64
+	ObservedAt           *time.Time
+	ViewsPeriodStartedAt *time.Time
 }
 
 func (q *Queries) LastMetricsBefore(ctx context.Context, arg LastMetricsBeforeParams) (LastMetricsBeforeRow, error) {
@@ -45,12 +90,44 @@ func (q *Queries) LastMetricsBefore(ctx context.Context, arg LastMetricsBeforePa
 		&i.EngagementBp,
 		&i.PostsPerWeek,
 		&i.AnomalyFlags,
+		&i.NewViews,
+		&i.ObservedAt,
+		&i.ViewsPeriodStartedAt,
 	)
 	return i, err
 }
 
+const listMessageViewCounters = `-- name: ListMessageViewCounters :many
+SELECT message_id, views FROM channel_message_view_counter WHERE channel_id = $1
+`
+
+type ListMessageViewCountersRow struct {
+	MessageID string
+	Views     int64
+}
+
+func (q *Queries) ListMessageViewCounters(ctx context.Context, channelID uuid.UUID) ([]ListMessageViewCountersRow, error) {
+	rows, err := q.db.Query(ctx, listMessageViewCounters, channelID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListMessageViewCountersRow{}
+	for rows.Next() {
+		var i ListMessageViewCountersRow
+		if err := rows.Scan(&i.MessageID, &i.Views); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const recentMetrics = `-- name: RecentMetrics :many
-SELECT date, subscribers_count, avg_views, engagement_bp, posts_per_week, anomaly_flags
+SELECT date, subscribers_count, avg_views, engagement_bp, posts_per_week, anomaly_flags, new_views, observed_at, views_period_started_at
 FROM channel_metrics
 WHERE channel_id = $1
 ORDER BY date DESC
@@ -63,12 +140,15 @@ type RecentMetricsParams struct {
 }
 
 type RecentMetricsRow struct {
-	Date             pgtype.Date
-	SubscribersCount int32
-	AvgViews         *int32
-	EngagementBp     *int32
-	PostsPerWeek     pgtype.Numeric
-	AnomalyFlags     []string
+	Date                 pgtype.Date
+	SubscribersCount     int32
+	AvgViews             *int32
+	EngagementBp         *int32
+	PostsPerWeek         pgtype.Numeric
+	AnomalyFlags         []string
+	NewViews             *int64
+	ObservedAt           *time.Time
+	ViewsPeriodStartedAt *time.Time
 }
 
 func (q *Queries) RecentMetrics(ctx context.Context, arg RecentMetricsParams) ([]RecentMetricsRow, error) {
@@ -87,6 +167,9 @@ func (q *Queries) RecentMetrics(ctx context.Context, arg RecentMetricsParams) ([
 			&i.EngagementBp,
 			&i.PostsPerWeek,
 			&i.AnomalyFlags,
+			&i.NewViews,
+			&i.ObservedAt,
+			&i.ViewsPeriodStartedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -101,25 +184,30 @@ func (q *Queries) RecentMetrics(ctx context.Context, arg RecentMetricsParams) ([
 const upsertMetrics = `-- name: UpsertMetrics :exec
 
 INSERT INTO channel_metrics (id, channel_id, date, subscribers_count, avg_views, engagement_bp,
-    posts_per_week, anomaly_flags, created_at, updated_at)
+    posts_per_week, anomaly_flags, new_views, observed_at, views_period_started_at, created_at, updated_at)
 VALUES ($1, $2, $3, $4, $5, $6,
-    $7::float8, $8, $9::timestamptz, $9::timestamptz)
+    $7::float8, $8, $9::bigint,
+    $10::timestamptz, $11::timestamptz, $12::timestamptz, $12::timestamptz)
 ON CONFLICT (channel_id, date) DO UPDATE
 SET subscribers_count = EXCLUDED.subscribers_count, avg_views = EXCLUDED.avg_views,
     engagement_bp = EXCLUDED.engagement_bp, posts_per_week = EXCLUDED.posts_per_week,
-    anomaly_flags = EXCLUDED.anomaly_flags, updated_at = EXCLUDED.updated_at
+    anomaly_flags = EXCLUDED.anomaly_flags, new_views = EXCLUDED.new_views, observed_at = EXCLUDED.observed_at,
+    views_period_started_at = EXCLUDED.views_period_started_at, updated_at = EXCLUDED.updated_at
 `
 
 type UpsertMetricsParams struct {
-	ID               uuid.UUID
-	ChannelID        uuid.UUID
-	Date             pgtype.Date
-	SubscribersCount int32
-	AvgViews         *int32
-	EngagementBp     *int32
-	PostsPerWeek     *float64
-	AnomalyFlags     []string
-	Now              time.Time
+	ID                   uuid.UUID
+	ChannelID            uuid.UUID
+	Date                 pgtype.Date
+	SubscribersCount     int32
+	AvgViews             *int32
+	EngagementBp         *int32
+	PostsPerWeek         *float64
+	AnomalyFlags         []string
+	NewViews             *int64
+	ObservedAt           *time.Time
+	ViewsPeriodStartedAt *time.Time
+	Now                  time.Time
 }
 
 // Суточные снимки метрик каналов (04 §3, S-32, R-19).
@@ -134,7 +222,33 @@ func (q *Queries) UpsertMetrics(ctx context.Context, arg UpsertMetricsParams) er
 		arg.EngagementBp,
 		arg.PostsPerWeek,
 		arg.AnomalyFlags,
+		arg.NewViews,
+		arg.ObservedAt,
+		arg.ViewsPeriodStartedAt,
 		arg.Now,
+	)
+	return err
+}
+
+const upsertMetricsCheckpoint = `-- name: UpsertMetricsCheckpoint :exec
+INSERT INTO channel_metrics_checkpoint(channel_id,observed_at,complete,day_invalid)
+VALUES($1,$2,$3,$4)
+ON CONFLICT(channel_id) DO UPDATE SET observed_at=EXCLUDED.observed_at,complete=EXCLUDED.complete,day_invalid=EXCLUDED.day_invalid
+`
+
+type UpsertMetricsCheckpointParams struct {
+	ChannelID  uuid.UUID
+	ObservedAt time.Time
+	Complete   bool
+	DayInvalid bool
+}
+
+func (q *Queries) UpsertMetricsCheckpoint(ctx context.Context, arg UpsertMetricsCheckpointParams) error {
+	_, err := q.db.Exec(ctx, upsertMetricsCheckpoint,
+		arg.ChannelID,
+		arg.ObservedAt,
+		arg.Complete,
+		arg.DayInvalid,
 	)
 	return err
 }

@@ -126,6 +126,7 @@ type Channel struct {
 	BotPermissions []string
 	Subscribers    int
 	AvgViews       int
+	MetricsHistory []api.ChannelMetricsPoint // явные наблюдения или демонстрационные снимки seed
 	PostsPerWeek   float64
 	RknNumber      string
 	RknStatus      string

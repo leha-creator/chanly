@@ -271,17 +271,33 @@ type ChannelConnectionCandidate struct {
 	ChannelID    pgtype.UUID
 }
 
+type ChannelMessageViewCounter struct {
+	ChannelID pgtype.UUID
+	MessageID string
+	Views     int64
+}
+
 type ChannelMetric struct {
-	ID               pgtype.UUID
-	ChannelID        pgtype.UUID
-	Date             pgtype.Date
-	SubscribersCount int32
-	AvgViews         *int32
-	EngagementBp     *int32
-	PostsPerWeek     pgtype.Numeric
-	AnomalyFlags     []string
-	CreatedAt        pgtype.Timestamptz
-	UpdatedAt        pgtype.Timestamptz
+	ID                   pgtype.UUID
+	ChannelID            pgtype.UUID
+	Date                 pgtype.Date
+	SubscribersCount     int32
+	AvgViews             *int32
+	EngagementBp         *int32
+	PostsPerWeek         pgtype.Numeric
+	AnomalyFlags         []string
+	CreatedAt            pgtype.Timestamptz
+	UpdatedAt            pgtype.Timestamptz
+	NewViews             *int64
+	ObservedAt           pgtype.Timestamptz
+	ViewsPeriodStartedAt pgtype.Timestamptz
+}
+
+type ChannelMetricsCheckpoint struct {
+	ChannelID  pgtype.UUID
+	ObservedAt pgtype.Timestamptz
+	Complete   bool
+	DayInvalid bool
 }
 
 type ChannelPrice struct {

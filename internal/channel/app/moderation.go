@@ -103,7 +103,7 @@ func (s *Service) AdminGet(ctx context.Context, id uuid.UUID) (*AdminChannelView
 		return nil, err
 	}
 	v := &AdminChannelView{AdminChannel: *ch, RknRecheckDue: s.RknRecheckDue(ch.Channel)}
-	if v.History, err = s.Metrics.Recent(ctx, id, catalogHistoryDays); err != nil {
+	if v.History, err = s.recentMetrics(ctx, id); err != nil {
 		return nil, err
 	}
 	if v.Moderation, err = s.Admin.ModerationHistoryForAdmin(ctx, id); err != nil {

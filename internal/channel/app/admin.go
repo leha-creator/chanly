@@ -79,6 +79,9 @@ func (s *Service) blockTx(ctx context.Context, op string, id uuid.UUID, decide f
 			}
 			return err
 		}
+		if err := s.enqueueInitialMetrics(ctx, op, c, change); err != nil {
+			return err
+		}
 		if err := s.Audit.Record(ctx, audit.Entry{Action: action, ObjectType: "channel", ObjectID: c.ID.String(),
 			ActorType: audit.ActorAdmin, Reason: &reason, OrganizationID: c.OrganizationID,
 			Data: map[string]any{"from": change.From, "to": change.To}}); err != nil {

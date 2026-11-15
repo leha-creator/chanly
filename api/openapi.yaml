@@ -5031,7 +5031,24 @@ components:
       properties:
         date: { type: string, format: date }
         subscribers_count: { type: integer }
+        subscribers_change:
+          type: integer
+          format: int64
+          description: Чистое изменение числа подписчиков относительно снимка предыдущего календарного дня по Москве. Возможны отрицательные значения и ноль; отсутствует при первом замере или пропуске предыдущего дня. Это сальдо подписок и отписок, а не число новых подписок.
         avg_views: { type: integer }
+        new_views:
+          type: integer
+          format: int64
+          minimum: 0
+          description: Новые просмотры доступных постов между фактическими замерами; нет при первом замере, пропуске дней или неполных счётчиках. Повторные замеры за одну дату накапливаются. Не среднее просмотров и не все просмотры канала.
+        observed_at:
+          type: string
+          format: date-time
+          description: Начало последнего фактического запроса статистики; отсутствует у старых снимков.
+        views_period_started_at:
+          type: string
+          format: date-time
+          description: Начало периода, за который посчитан new_views; отсутствует, если период неизвестен.
 
     # ------------------------------------------------ cart
     CartItemCreate:

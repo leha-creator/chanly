@@ -216,7 +216,7 @@ func TestCatalogScenario(t *testing.T) {
 		t.Fatalf("price %+v", p)
 	}
 	card, err := e.svc.CatalogChannel(ctx, a.ID)
-	if err != nil || card.ID != a.ID || len(card.History) != 0 {
+	if err != nil || card.ID != a.ID || len(card.History) != 1 {
 		t.Fatalf("card %+v %v", card, err)
 	}
 
@@ -352,12 +352,13 @@ func TestMetrics(t *testing.T) {
 	pending, _ := e.linkedChannel(-80000000053, domain.Membership{IsAdmin: true, Permissions: []string{"write"}})
 	views := 900
 	e.max.messages[-80000000051] = []domain.MessageStat{{ID: "m1", At: start.Add(-48 * time.Hour), Views: &views}}
+	e.clk.Advance(time.Minute)
 
 	if err := e.svc.ScheduleMetrics(context.Background()); err != nil {
 		t.Fatal(err)
 	}
 	var runAts []time.Time
-	rows, err := e.d.Pool.Query(context.Background(), `SELECT payload::text, run_at FROM job WHERE kind = $1`, app.KindRefreshChannelMetrics)
+	rows, err := e.d.Pool.Query(context.Background(), `SELECT payload::text, run_at FROM job WHERE kind = $1 AND dedupe_key LIKE 'channel_metrics:%'`, app.KindRefreshChannelMetrics)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -385,7 +386,7 @@ func TestMetrics(t *testing.T) {
 	if err := e.svc.ScheduleMetrics(context.Background()); err != nil {
 		t.Fatal(err)
 	}
-	if n := e.count(`SELECT count(*) FROM job WHERE kind = $1`, app.KindRefreshChannelMetrics); n != 2 {
+	if n := e.count(`SELECT count(*) FROM job WHERE kind = $1 AND dedupe_key LIKE 'channel_metrics:%'`, app.KindRefreshChannelMetrics); n != 2 {
 		t.Fatalf("repeat schedule: %d jobs", n)
 	}
 
@@ -411,6 +412,7 @@ func TestMetrics(t *testing.T) {
 	grown := publicCh
 	grown.SubscribersCount = 10000
 	e.max.set(-80000000051, grown, allRights)
+	e.clk.Advance(24 * time.Hour)
 	if err := e.svc.RefreshMetrics(context.Background(), app.MetricsPayload{ChannelID: a.ID, Date: "2026-10-17"}); err != nil {
 		t.Fatal(err)
 	}
