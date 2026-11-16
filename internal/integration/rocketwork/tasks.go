@@ -11,8 +11,8 @@ import (
 )
 
 type TaskTerms struct {
-	Category                                                                        string
-	Variables                                                                       *ActVariables
+	Category                                                                        string        `json:",omitempty"`
+	Variables                                                                       *ActVariables `json:",omitempty"`
 	ExternalID, ExecutorINN, EmploymentKind                                         string
 	AmountKopecks                                                                   int64
 	Title, Description                                                              string

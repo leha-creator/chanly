@@ -22,6 +22,23 @@ func configuredActTerms() rocketwork.TaskTerms {
 	return t
 }
 
+func TestLegacyTermsHashInputDoesNotAcquireActFields(t *testing.T) {
+	// Legacy manifests hash SDK terms separately from the provider wire DTO.
+	data, err := json.Marshal(syntheticTerms("online"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var terms map[string]any
+	if err = json.Unmarshal(data, &terms); err != nil {
+		t.Fatal(err)
+	}
+	for _, key := range []string{"Category", "Variables"} {
+		if _, ok := terms[key]; ok {
+			t.Fatalf("new field %s changed legacy hash input", key)
+		}
+	}
+}
+
 func TestConfiguredActWireMatchesProviderExample(t *testing.T) {
 	terms := configuredActTerms()
 	validate := contractValidator(t)
