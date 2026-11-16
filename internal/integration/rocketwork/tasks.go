@@ -11,6 +11,8 @@ import (
 )
 
 type TaskTerms struct {
+	Category                                                                        string
+	Variables                                                                       *ActVariables
 	ExternalID, ExecutorINN, EmploymentKind                                         string
 	AmountKopecks                                                                   int64
 	Title, Description                                                              string
@@ -28,7 +30,17 @@ func (t TaskTerms) validate() error {
 	date := func(v string) bool { _, err := time.Parse("2006-01-02", v); return err == nil }
 	switch t.SignatureForm {
 	case "online":
-		if t.DocumentName == "" || !date(t.PeriodFrom) || !date(t.PeriodTo) || t.PeriodTo < t.PeriodFrom || t.DocumentNumber != "" || t.DocumentDate != "" {
+		if t.DocumentName == "" || !date(t.PeriodFrom) || !date(t.PeriodTo) || t.PeriodTo < t.PeriodFrom {
+			return fmt.Errorf("%w: online document terms", ErrFormat)
+		}
+		if t.Variables != nil {
+			if t.Category == "" || t.DocumentNumber == "" || !date(t.DocumentDate) || !t.ActRequired {
+				return fmt.Errorf("%w: act document", ErrFormat)
+			}
+			if err := t.Variables.validate(t.AmountKopecks); err != nil {
+				return err
+			}
+		} else if t.DocumentNumber != "" || t.DocumentDate != "" {
 			return fmt.Errorf("%w: online document terms", ErrFormat)
 		}
 	case "manual":
@@ -49,6 +61,8 @@ func kopecksJSON(value int64) json.Number {
 }
 
 type taskCreateDTO struct {
+	Category       string           `json:"category,omitempty"`
+	Metadata       *actMetadata     `json:"metadata,omitempty"`
 	Type           string           `json:"type"`
 	ExternalID     string           `json:"external_id"`
 	ExecutorINN    string           `json:"executor_inn"`
@@ -76,7 +90,11 @@ type taskServiceDTO struct {
 }
 
 func (t TaskTerms) wire() taskCreateDTO {
-	return taskCreateDTO{Type: "OneTime", ExternalID: t.ExternalID, ExecutorINN: t.ExecutorINN, EmploymentKind: t.EmploymentKind, AmountGross: kopecksJSON(t.AmountKopecks), Title: t.Title, Description: t.Description, DocumentName: t.DocumentName, DocumentNumber: t.DocumentNumber, DocumentDate: t.DocumentDate, PeriodFrom: t.PeriodFrom, PeriodTo: t.PeriodTo, ActRequired: t.ActRequired, TaxRetention: t.TaxRetention, Autosignable: t.Autosignable, Autocomplete: t.Autocomplete, Autopayable: t.Autopayable, Services: []taskServiceDTO{{Description: t.Description, Quantity: 1, UnitPrice: t.AmountKopecks, TotalPrice: t.AmountKopecks}}}
+	var metadata *actMetadata
+	if t.Variables != nil {
+		metadata = &actMetadata{TaskVariables: t.Variables}
+	}
+	return taskCreateDTO{Category: t.Category, Metadata: metadata, Type: "OneTime", ExternalID: t.ExternalID, ExecutorINN: t.ExecutorINN, EmploymentKind: t.EmploymentKind, AmountGross: kopecksJSON(t.AmountKopecks), Title: t.Title, Description: t.Description, DocumentName: t.DocumentName, DocumentNumber: t.DocumentNumber, DocumentDate: t.DocumentDate, PeriodFrom: t.PeriodFrom, PeriodTo: t.PeriodTo, ActRequired: t.ActRequired, TaxRetention: t.TaxRetention, Autosignable: t.Autosignable, Autocomplete: t.Autocomplete, Autopayable: t.Autopayable, Services: []taskServiceDTO{{Description: t.Description, Quantity: 1, UnitPrice: t.AmountKopecks, TotalPrice: t.AmountKopecks}}}
 }
 
 // TaskSnapshot separates agreement/payment/document states from the legacy

@@ -83,7 +83,8 @@ func TestCatalogEndToEnd(t *testing.T) {
 		InCart bool `json:"in_cart"`
 	}
 	adv.do(http.MethodGet, "/catalog/channels/"+id, nil).json(t, &card)
-	if len(card.Unavailability) != 1 || !card.Unavailability[0].StartsAt.Equal(starts) || card.InCart || len(card.MetricsHistory) != 0 {
+	// Connection now records an observed snapshot immediately, before the daily job.
+	if len(card.Unavailability) != 1 || !card.Unavailability[0].StartsAt.Equal(starts) || card.InCart || len(card.MetricsHistory) != 1 || card.MetricsHistory[0].SubscribersCount != 9999 {
 		t.Fatalf("card %+v", card)
 	}
 
@@ -103,7 +104,7 @@ func TestCatalogEndToEnd(t *testing.T) {
 	}
 	a.nextDay()
 	adv.do(http.MethodGet, "/catalog/channels/"+id, nil).json(t, &card)
-	if len(card.MetricsHistory) != 1 || card.MetricsHistory[0].SubscribersCount != 9999 {
+	if len(card.MetricsHistory) != 2 || card.MetricsHistory[0].SubscribersCount != 9999 {
 		t.Fatalf("snapshot not in card: %+v", card.MetricsHistory)
 	}
 

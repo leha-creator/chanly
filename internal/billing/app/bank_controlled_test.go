@@ -16,6 +16,31 @@ func controlledBank(e *env) {
 	e.svc.BankConfig.DevRealEnabled = true
 	e.svc.BankConfig.DevPaymentCode = "test-server"
 }
+
+func TestBankAutomationDoesNotCreditDevelopmentTransfers(t *testing.T) {
+	for _, byNumber := range []bool{true, false} {
+		t.Run(map[bool]string{true: "invoice_number", false: "payer_and_amount"}[byNumber], func(t *testing.T) {
+			e := newEnv(t)
+			setupBank(e)
+			inv := e.invoice(500000)
+			purpose := "Пополнение DEV-TBANK-OTHER-SERVER"
+			if byNumber {
+				purpose += " по счёту " + inv.Number
+			}
+			res := e.importStatement(statementFile(platformAccount, "development transfer", payment{1, 500000, "7707083893", purpose}))
+			if res.Unmatched != 1 || e.balance(e.org) != 0 {
+				t.Fatalf("development transfer credited: %+v", res)
+			}
+			if _, err := e.svc.MatchManually(context.Background(), e.unmatchedID(), e.org, inv.ID, e.admin, "review"); !errors.Is(err, domain.ErrBankCreditRestricted) {
+				t.Fatalf("manual match bypassed environment isolation: %v", err)
+			}
+			res = e.importStatement(statementFile(platformAccount, "production transfer", payment{2, 500000, "7707083893", "Оплата по счёту " + inv.Number}))
+			if res.Matched != 1 || e.balance(e.org) != 500000 {
+				t.Fatalf("production transfer not credited: %+v", res)
+			}
+		})
+	}
+}
 func TestDevBankCreditHasNoRunBudgetOrExpiry(t *testing.T) {
 	e := newEnv(t)
 	controlledBank(e)

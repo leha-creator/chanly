@@ -39,6 +39,26 @@ func (q *Queries) FirstOfferAcceptance(ctx context.Context, arg FirstOfferAccept
 	return i, err
 }
 
+const getBloggerOfferAcceptanceForAct = `-- name: GetBloggerOfferAcceptanceForAct :one
+SELECT a.accepted_at FROM legal_acceptance a
+JOIN legal_document d ON d.id = a.legal_document_id
+WHERE a.organization_id = $1 AND d.kind = 'blogger_offer'
+  AND a.accepted_at <= $2::timestamptz
+ORDER BY a.accepted_at DESC, d.version DESC LIMIT 1
+`
+
+type GetBloggerOfferAcceptanceForActParams struct {
+	OrganizationID uuid.UUID
+	BeforeAt       time.Time
+}
+
+func (q *Queries) GetBloggerOfferAcceptanceForAct(ctx context.Context, arg GetBloggerOfferAcceptanceForActParams) (time.Time, error) {
+	row := q.db.QueryRow(ctx, getBloggerOfferAcceptanceForAct, arg.OrganizationID, arg.BeforeAt)
+	var accepted_at time.Time
+	err := row.Scan(&accepted_at)
+	return accepted_at, err
+}
+
 const getOrganizationByID = `-- name: GetOrganizationByID :one
 SELECT id, legal_type, inn, name, contact_name, phone, kpp, address, tax_regime, vat_rate, tax_document_storage_key, tax_document_sha256, signer_position, signer_name, signer_basis_name, signer_basis_number, bank_account, bank_name, bank_corr_account, bank_bik, is_platform, status, created_at, updated_at FROM organization WHERE id = $1
 `
@@ -197,7 +217,7 @@ func (q *Queries) GetOrganizationForMarking(ctx context.Context, id uuid.UUID) (
 }
 
 const getOrganizationForPayout = `-- name: GetOrganizationForPayout :one
-SELECT o.id, o.legal_type, o.inn, o.name, o.contact_name, o.phone, coalesce(bp.full_name, '')::text AS full_name
+SELECT o.id, o.legal_type, o.inn, o.name, o.contact_name, o.phone, o.tax_regime, coalesce(bp.full_name, '')::text AS full_name
 FROM organization o
 LEFT JOIN blogger_profile bp ON bp.organization_id = o.id
 WHERE o.id = $1
@@ -210,6 +230,7 @@ type GetOrganizationForPayoutRow struct {
 	Name        string
 	ContactName string
 	Phone       string
+	TaxRegime   *string
 	FullName    string
 }
 
@@ -224,6 +245,7 @@ func (q *Queries) GetOrganizationForPayout(ctx context.Context, id uuid.UUID) (G
 		&i.Name,
 		&i.ContactName,
 		&i.Phone,
+		&i.TaxRegime,
 		&i.FullName,
 	)
 	return i, err

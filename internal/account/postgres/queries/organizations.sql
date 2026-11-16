@@ -104,7 +104,14 @@ SELECT * FROM organization WHERE inn = @inn;
 
 -- name: GetOrganizationForPayout :one
 -- Получатель выплаты (модуль payout, 06 §8): тип лица, ИНН, ФИО блогера, телефон; без блокировки.
-SELECT o.id, o.legal_type, o.inn, o.name, o.contact_name, o.phone, coalesce(bp.full_name, '')::text AS full_name
+SELECT o.id, o.legal_type, o.inn, o.name, o.contact_name, o.phone, o.tax_regime, coalesce(bp.full_name, '')::text AS full_name
 FROM organization o
 LEFT JOIN blogger_profile bp ON bp.organization_id = o.id
 WHERE o.id = @id;
+
+-- name: GetBloggerOfferAcceptanceForAct :one
+SELECT a.accepted_at FROM legal_acceptance a
+JOIN legal_document d ON d.id = a.legal_document_id
+WHERE a.organization_id = @organization_id AND d.kind = 'blogger_offer'
+  AND a.accepted_at <= @before_at::timestamptz
+ORDER BY a.accepted_at DESC, d.version DESC LIMIT 1;

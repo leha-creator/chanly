@@ -60,6 +60,23 @@ __DOMAIN__ {
             header Content-Type "application/json"
             respond `{"error":{"code":"forbidden","message":"admin api is not available from this address"}}` 403
         }
+        @legal path /offer /offer-author /rules /privacy_policy /consent-feedback /requisites
+        handle @legal {
+            root * /srv/maxim-dev/landing/current
+            rewrite * {path}.pdf
+            header Cache-Control "no-cache"
+            header X-Content-Type-Options "nosniff"
+            header Content-Disposition "inline"
+            file_server
+        }
+        @legal_pdf path /offer.pdf /offer-author.pdf /rules.pdf /privacy_policy.pdf /consent-feedback.pdf /requisites.pdf
+        handle @legal_pdf {
+            root * /srv/maxim-dev/landing/current
+            header Cache-Control "no-cache"
+            header X-Content-Type-Options "nosniff"
+            header Content-Disposition "inline"
+            file_server
+        }
         handle /api/landing/contact {
             request_body {
                 max_size 32KB

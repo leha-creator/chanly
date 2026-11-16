@@ -177,7 +177,15 @@ func runRocketWorkControl(ctx context.Context, p RunParams) int {
 		if err != nil {
 			return fail()
 		}
-		termsHash := checkdomain.Digest(checkdomain.Terms(legacy.Terms))
+		t := legacy.Terms
+		if t.Category != "" || t.Variables != nil {
+			return fail() // Diagnostic grants do not authorize the business act payload.
+		}
+		termsHash := checkdomain.Digest(checkdomain.Terms{ExternalID: t.ExternalID, ExecutorINN: t.ExecutorINN,
+			EmploymentKind: t.EmploymentKind, AmountKopecks: t.AmountKopecks, Title: t.Title, Description: t.Description,
+			SignatureForm: t.SignatureForm, DocumentName: t.DocumentName, DocumentNumber: t.DocumentNumber,
+			DocumentDate: t.DocumentDate, PeriodFrom: t.PeriodFrom, PeriodTo: t.PeriodTo, ActRequired: t.ActRequired,
+			TaxRetention: t.TaxRetention, Autosignable: t.Autosignable, Autocomplete: t.Autocomplete, Autopayable: t.Autopayable})
 		if store.ImportLegacy(ctx, legacy.RunID, canonical, legacy.CompanyINN, legacy.Terms.ExternalID, task.ID, hash, termsHash, task.Status) != nil {
 			return fail()
 		}
@@ -212,7 +220,7 @@ func checkTermsForManifest(m checkdomain.Manifest) error {
 	if m.Terms.AmountKopecks <= 0 || m.Terms.Autopayable || m.Terms.Autocomplete || m.Terms.Autosignable || m.Terms.ExternalID != external {
 		return checkdomain.ErrDenied
 	}
-	return rocketwork.TaskTerms(m.Terms).Validate()
+	return bridge.CheckTaskTerms(m.Terms).Validate()
 }
 
 type trackedRWAuthorization struct {

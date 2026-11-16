@@ -10,6 +10,7 @@ x-app: &app
   env_file:
     - path: ${APP_ENV_FILE:-./app.env}
       required: true
+      format: raw
   restart: unless-stopped
   read_only: true
   tmpfs: [/tmp]
@@ -55,6 +56,7 @@ services:
     env_file:
       - path: ./rocketwork-runner.env
         required: false
+        format: raw
     environment:
       ROCKETWORK_POLICY_DATABASE_URL: ""
       ROCKETWORK_CHECK_HTTP_ADDR: ":8082"
@@ -73,6 +75,7 @@ services:
     env_file:
       - path: ./rocketwork-runner.env
         required: false
+        format: raw
     environment:
       ROCKETWORK_POLICY_DATABASE_URL: ""
     restart: "no"
@@ -89,6 +92,7 @@ services:
     env_file:
       - path: ./rocketwork-policy.env
         required: false
+        format: raw
     environment:
       ROCKETWORK_CONTROL_DATABASE_URL: ""
       ROCKETWORK_TOKEN: ""
@@ -148,6 +152,7 @@ services:
     env_file:
       - path: ${APP_ENV_FILE:-./app.env}
         required: true
+        format: raw
     environment:
       PGHOST: postgres
       PGPORT: "5432"

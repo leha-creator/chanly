@@ -1,54 +1,143 @@
-# Сайт API бэкенда для общего edge-прокси сервера (/opt/edge, как у стенда заглушки).
-# release.sh подставляет __DOMAIN__ (домен окружения), __PREFIX__ (EDGE_ALIAS_PREFIX) и
-# __ADMIN_ALLOW__ (EDGE_ADMIN_ALLOW — адреса команды для API администратора),
-# кладёт файл в /opt/edge/sites/<prefix>.caddy и делает caddy validate + reload.
-#
-# Выпуск без простоя (07 §8): обе ячейки в списке, запросы идут в первую живую. Активная
-# проверка /readyz каждые 2 с убирает остановленную или останавливающуюся ячейку (после SIGTERM
-# api отвечает 503 ещё HTTP_SHUTDOWN_DRAIN); неудачное соединение повторяется на другой ячейке.
+# Public API, landing and documents share one domain; cabinet is installed separately.
 __DOMAIN__ {
 	encode zstd gzip
-
 	header {
 		Strict-Transport-Security "max-age=31536000; includeSubDomains"
 		X-Content-Type-Options "nosniff"
 		Referrer-Policy "strict-origin-when-cross-origin"
 		-Server
 	}
-
+	@private_webhook_logs path /api/v1/webhooks/max/* /api/v1/webhooks/rocketwork
+	log_skip @private_webhook_logs
 	log {
 		output stdout
 		format json
 	}
-
-	# Изображение медиатеки — до 51 МБ (07 §4); остальные пределы проверяет api.
 	request_body {
 		max_size 52MB
 	}
-
-	# API администратора — только с адресов команды (07 §4, этап «API администратора»): с
-	# остальных 403 до api. Роль проверяет api; это второй рубеж на случай утечки сессии.
-	@admin_denied {
-		path /api/v1/admin /api/v1/admin/*
-		not remote_ip __ADMIN_ALLOW__
+	route {
+		@admin_denied {
+			path /api/v1/admin /api/v1/admin/*
+			not remote_ip __ADMIN_ALLOW__
+		}
+		handle @admin_denied {
+			header Content-Type "application/json"
+			respond `{"error":{"code":"forbidden","message":"admin api is not available from this address"}}` 403
+		}
+		handle /api/landing/contact {
+			request_body {
+				max_size 32KB
+			}
+			reverse_proxy chanly-landing-contact-production:8091 {
+				header_up -Authorization
+				header_up X-Real-IP {remote_host}
+				transport http {
+					dial_timeout 3s
+					response_header_timeout 30s
+				}
+			}
+		}
+		@backend path /api /api/* /docs /docs/* /openapi.json /readyz /healthz /livez
+		handle @backend {
+			reverse_proxy __PREFIX__-api-a:8080 __PREFIX__-api-b:8080 {
+				lb_policy first
+				lb_try_duration 10s
+				lb_try_interval 250ms
+				fail_duration 10s
+				health_uri /readyz
+				health_interval 2s
+				health_timeout 1s
+				health_status 200
+			}
+		}
+		handle /landing-assets/* {
+			root * /srv/__PREFIX__/landing/shared
+			header Cache-Control "public, max-age=31536000, immutable"
+			file_server
+		}
+		@legal path /offer /offer-author /rules /privacy_policy /consent-feedback /requisites
+		handle @legal {
+			root * /srv/__PREFIX__/landing/current
+			rewrite * {path}.pdf
+			header Cache-Control "no-cache"
+			header Content-Disposition "inline"
+			file_server
+		}
+		@legal_pdf path /offer.pdf /offer-author.pdf /rules.pdf /privacy_policy.pdf /consent-feedback.pdf /requisites.pdf
+		handle @legal_pdf {
+			root * /srv/__PREFIX__/landing/current
+			header Cache-Control "no-cache"
+			header Content-Disposition "inline"
+			file_server
+		}
+		# Session-based root selection starts only after the cabinet is installed.
+		@shared_root {
+			method GET HEAD
+			path /
+			file {
+				root /srv/__PREFIX__/current
+				try_files /index.html
+			}
+		}
+		handle @shared_root {
+			header Cache-Control "private, no-store"
+			reverse_proxy __PREFIX__-api-a:8080 __PREFIX__-api-b:8080 {
+				method GET
+				rewrite /api/v1/me?
+				header_up -If-None-Match
+				header_up -If-Modified-Since
+				lb_policy first
+				lb_try_duration 5s
+				fail_duration 10s
+				@member status 200
+				handle_response @member {
+					root * /srv/__PREFIX__/current
+					rewrite * /index.html
+					file_server
+				}
+				@guest status 401
+				handle_response @guest {
+					root * /srv/__PREFIX__/landing/current
+					rewrite * /index.html
+					file_server
+				}
+				handle_response {
+					header Retry-After 5
+					respond "Session check failed. Please refresh." 503
+				}
+			}
+		}
+		@landing_root {
+			path /
+			file {
+				root /srv/__PREFIX__/landing/current
+				try_files /index.html
+			}
+		}
+		handle @landing_root {
+			root * /srv/__PREFIX__/landing/current
+			header Cache-Control "no-cache"
+			rewrite * /index.html
+			file_server
+		}
+		@app_installed {
+			file {
+				root /srv/__PREFIX__/current
+				try_files /index.html
+			}
+		}
+		handle @app_installed {
+			root * /srv/__PREFIX__/current
+			header Cache-Control "no-cache"
+			try_files {path} /index.html
+			file_server
+		}
+		handle {
+			header Retry-After 3600
+			respond "Service unavailable: application setup in progress" 503
+		}
 	}
-	handle @admin_denied {
-		header Content-Type "application/json"
-		respond `{"error":{"code":"forbidden","message":"admin api is not available from this address"}}` 403
-	}
-
-	reverse_proxy __PREFIX__-api-a:8080 __PREFIX__-api-b:8080 {
-		lb_policy first
-		lb_try_duration 10s
-		lb_try_interval 250ms
-		fail_duration 10s
-
-		health_uri /readyz
-		health_interval 2s
-		health_timeout 1s
-		health_status 200
-	}
-
 	handle_errors 502 503 504 {
 		header Content-Type "application/json"
 		respond `{"error":{"code":"unavailable","message":"service is temporarily unavailable"}}` 503

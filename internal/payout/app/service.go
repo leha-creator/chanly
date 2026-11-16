@@ -94,6 +94,7 @@ func organizationObject(orgID uuid.UUID) string  { return "organization:" + orgI
 
 // Config — параметры модуля (07 §8).
 type Config struct {
+	ActTemplates          *domain.ActTemplates
 	WithdrawalDestination *domain.WithdrawalDestination
 	AgreementTemplate     *domain.AgreementTerms
 	// ProviderScope enables verified OpenAPI identity/workflow handling. Nil
@@ -186,6 +187,7 @@ func (n NopNotifier) Notify(ctx context.Context, x domain.Notice) error {
 
 // Deps — зависимости сервиса; связывает bootstrap.
 type Deps struct {
+	ActSource        domain.ActSource
 	DiagnosticEvents interface {
 		RouteDiagnostic(context.Context, string) (bool, error)
 	}

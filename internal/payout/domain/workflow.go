@@ -58,6 +58,8 @@ func (b ExecutorBinding) Validate() error {
 // AgreementTerms is the immutable, approved business snapshot. No provider
 // response or passport/bank payload belongs here. Booleans are explicit.
 type AgreementTerms struct {
+	Category            string        `json:"category,omitempty"`
+	Variables           *ActVariables `json:"task_variables,omitempty"`
 	Amount              money.Kopecks `json:"amount_kopecks"`
 	Currency            string        `json:"currency"`
 	ExecutorID          int64         `json:"executor_id"`
@@ -92,7 +94,17 @@ func (a AgreementTerms) Validate() error {
 	date := func(s string) bool { _, err := time.Parse("2006-01-02", s); return err == nil }
 	switch a.SignatureForm {
 	case "online":
-		if a.DocumentName == "" || !date(a.PeriodFrom) || !date(a.PeriodTo) || a.PeriodTo < a.PeriodFrom || a.DocumentNumber != "" || a.DocumentDate != "" {
+		if a.DocumentName == "" || !date(a.PeriodFrom) || !date(a.PeriodTo) || a.PeriodTo < a.PeriodFrom {
+			return fmt.Errorf("%w: online agreement", ErrInvalidPayout)
+		}
+		if a.Variables != nil {
+			if a.Category == "" || a.DocumentNumber == "" || !date(a.DocumentDate) || !a.ActRequired {
+				return fmt.Errorf("%w: act document", ErrInvalidPayout)
+			}
+			if err := a.Variables.Validate(); err != nil {
+				return err
+			}
+		} else if a.DocumentNumber != "" || a.DocumentDate != "" {
 			return fmt.Errorf("%w: online agreement", ErrInvalidPayout)
 		}
 	case "manual":

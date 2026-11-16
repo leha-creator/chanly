@@ -52,7 +52,14 @@ func (p PayoutProvider) CreateTask(ctx context.Context, o domain.TaskOrder) (dom
 		return domain.ProviderTask{}, domain.ErrProviderDisabled
 	}
 	t := o.Terms
-	r, err := api.CreateTask(ctx, rocketwork.TaskTerms{ExternalID: o.ExternalID, ExecutorINN: o.ExecutorINN, EmploymentKind: t.EmploymentKind, AmountKopecks: int64(t.Amount), Title: t.Title, Description: t.Description, SignatureForm: t.SignatureForm, DocumentName: t.DocumentName, DocumentNumber: t.DocumentNumber, DocumentDate: t.DocumentDate, PeriodFrom: t.PeriodFrom, PeriodTo: t.PeriodTo, ActRequired: t.ActRequired, TaxRetention: t.TaxRetention, Autosignable: t.Autosignable, Autocomplete: t.Autocomplete, Autopayable: t.Autopayable})
+	var variables *rocketwork.ActVariables
+	if t.Variables != nil {
+		variables = &rocketwork.ActVariables{ExecutorID: t.Variables.ExecutorID, OfferAcceptedOn: t.Variables.OfferAcceptedOn}
+		for _, row := range t.Variables.Table {
+			variables.Table = append(variables.Table, rocketwork.ActRow{OrderNumber: row.OrderNumber, Publication: row.Publication, Format: row.Format, Period: row.Period, Cost: row.Cost})
+		}
+	}
+	r, err := api.CreateTask(ctx, rocketwork.TaskTerms{Category: t.Category, Variables: variables, ExternalID: o.ExternalID, ExecutorINN: o.ExecutorINN, EmploymentKind: t.EmploymentKind, AmountKopecks: int64(t.Amount), Title: t.Title, Description: t.Description, SignatureForm: t.SignatureForm, DocumentName: t.DocumentName, DocumentNumber: t.DocumentNumber, DocumentDate: t.DocumentDate, PeriodFrom: t.PeriodFrom, PeriodTo: t.PeriodTo, ActRequired: t.ActRequired, TaxRetention: t.TaxRetention, Autosignable: t.Autosignable, Autocomplete: t.Autocomplete, Autopayable: t.Autopayable})
 	return providerTask(r), providerErr(err)
 }
 func (p PayoutProvider) ReadTask(ctx context.Context, id int64) (domain.ProviderTask, error) {

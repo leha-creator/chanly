@@ -62,7 +62,7 @@ func TestDiagnosticDurableWorkflow(t *testing.T) {
 			}
 			if scenario == "legacy_import" {
 				a, _ := rocketwork.LocalEmulatorAuthorization(server.URL)
-				legacy, err := factory(a).CreateTask(ctx, rocketwork.TaskTerms(m.Terms))
+				legacy, err := factory(a).CreateTask(ctx, CheckTaskTerms(m.Terms))
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -122,7 +122,7 @@ func TestDiagnosticDurableWorkflow(t *testing.T) {
 				if err := unavailable.Advance(ctx, m.RunID, true); err == nil {
 					t.Fatal("unavailable journal accepted")
 				}
-				if _, err := factory(nil).CreateTask(ctx, rocketwork.TaskTerms(m.Terms)); err == nil {
+				if _, err := factory(nil).CreateTask(ctx, CheckTaskTerms(m.Terms)); err == nil {
 					t.Fatal("direct readonly client wrote")
 				}
 				if emulator.WriteCount("POST", "/api/tasks") != 0 {

@@ -5,9 +5,12 @@ import (
 	"errors"
 	"sync"
 	"testing"
+	"time"
 
 	accountdomain "github.com/leha-creator/chanly/internal/account/domain"
 	"github.com/leha-creator/chanly/internal/payout/domain"
+	payoutpg "github.com/leha-creator/chanly/internal/payout/postgres"
+	"github.com/leha-creator/chanly/internal/platform/logx"
 	"github.com/leha-creator/chanly/internal/platform/money"
 	"github.com/leha-creator/chanly/internal/platform/tx"
 )
@@ -78,6 +81,51 @@ func workflowEnv(t *testing.T) (*env, *taskProvider, domain.Payout) {
 	e.svc.Config.ProviderScope = &domain.ProviderScope{Environment: "local-emulator", Account: "synthetic"}
 	e.svc.Config.AgreementTemplate = &domain.AgreementTerms{Currency: "RUB", Title: "Synthetic placement", Description: "Synthetic service", SignatureForm: "manual", DocumentNumber: "synthetic-1", DocumentDate: "2026-11-09", ActRequired: true, TaxRetention: false, MaxCommission: 100}
 	return e, p, e.payout(id)
+}
+
+type payoutActSource func(context.Context, domain.Payout) (domain.ActData, error)
+
+func (f payoutActSource) ForAct(ctx context.Context, p domain.Payout) (domain.ActData, error) {
+	return f(ctx, p)
+}
+
+func TestWorkflowFreezesConfiguredActBeforeUnknownCreate(t *testing.T) {
+	e, provider, p := workflowEnv(t)
+	e.svc.Config.ActTemplates = &domain.ActTemplates{SelfEmployed: "Акт СМЗ", Entrepreneur: "Акт ИП", EntrepreneurNPD: "Акт ИП на НПД"}
+	e.svc.Config.AgreementTemplate.TaxRetention = true
+	reads := 0
+	e.svc.ActSource = payoutActSource(func(ctx context.Context, po domain.Payout) (domain.ActData, error) {
+		reads++
+		return domain.ActData{OrganizationID: po.BloggerOrganizationID, LegalType: domain.SelfEmployed, TaxRegime: "npd", OfferAcceptedAt: po.CreatedAt.Add(-72 * time.Hour), OrderNumber: 77, PublicationURL: "https://max.ru/published/77", TopHours: 1, DurationHours: 24, PublishedAt: po.CreatedAt.Add(-25 * time.Hour), RemovedAt: po.CreatedAt.Add(-time.Hour)}, nil
+	})
+	provider.loseCreate = true
+	provider.visible = false
+	if err := e.svc.Send(context.Background(), p.ID, 1); !isPostponed(err) {
+		t.Fatal(err)
+	}
+	store := payoutpg.New(e.d.Pool, logx.Discard())
+	before, err := store.Workflow(context.Background(), p.ID, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if before.Terms.Variables == nil || before.Terms.DocumentName != "Акт СМЗ" || !before.Terms.TaxRetention || before.Terms.Variables.Table[0].OrderNumber != "77" {
+		t.Fatalf("act was not persisted: %+v", before.Terms)
+	}
+	e.svc.Config.ActTemplates.SelfEmployed = "changed-template"
+	e.svc.ActSource = payoutActSource(func(context.Context, domain.Payout) (domain.ActData, error) {
+		t.Fatal("retry reread mutable act facts")
+		return domain.ActData{}, nil
+	})
+	if err = e.svc.Send(context.Background(), p.ID, 2); !isPostponed(err) {
+		t.Fatal(err)
+	}
+	after, err := store.Workflow(context.Background(), p.ID, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if before.TermsHash != after.TermsHash || after.Terms.DocumentName != "Акт СМЗ" || reads != 1 || provider.creates != 1 {
+		t.Fatal("unknown create changed act or caused duplicate payout")
+	}
 }
 
 func TestWorkflowUnknownCreateRetryRetainsIdentity(t *testing.T) {

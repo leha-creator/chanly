@@ -2,6 +2,23 @@ package domain
 
 import "testing"
 
+func TestAnyDevPaymentMarker(t *testing.T) {
+	for _, tc := range []struct {
+		purpose string
+		want    bool
+	}{
+		{"Оплата MX-000001. DEV-TBANK-DEV-SERVER.", true},
+		{"dev-tbank-another_server", true},
+		{"DEV-TBANK-", true},
+		{"XDEV-TBANK-SERVER", false},
+		{"Пополнение по счёту MX-000001", false},
+	} {
+		if got := HasAnyDevPaymentMarker(tc.purpose); got != tc.want {
+			t.Errorf("marker in %q = %v, want %v", tc.purpose, got, tc.want)
+		}
+	}
+}
+
 func TestDevPaymentMarker(t *testing.T) {
 	for _, tc := range []struct {
 		purpose string

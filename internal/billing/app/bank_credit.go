@@ -16,6 +16,8 @@ func (s *Service) authorizeBankCredit(ctx context.Context, bt domain.BankTransac
 		} else if !domain.HasDevPaymentMarker(bt.Purpose, s.BankConfig.DevPaymentCode) {
 			err = domain.DenyBankCredit("dev_marker_missing")
 		}
+	} else if s.BankConfig.Access == domain.BankAutomation && domain.HasAnyDevPaymentMarker(bt.Purpose) {
+		err = domain.DenyBankCredit("development_payment")
 	} else if s.BankConfig.Access != domain.BankAutomation {
 		statement, e := s.Statements.Get(ctx, bt.StatementID)
 		if e != nil {

@@ -24,34 +24,38 @@ const (
 
 // RocketWorkConfig — Рокет Ворк и выплаты блогерам (05 §4, 06 §2.3, этап «Выплаты блогерам»).
 type RocketWorkConfig struct {
-	CheckGatewayURL      string `env:"ROCKETWORK_CHECK_GATEWAY_URL"`
-	CheckGatewayToken    string `env:"ROCKETWORK_CHECK_GATEWAY_TOKEN"`
-	ControlDatabaseURL   string `env:"ROCKETWORK_CONTROL_DATABASE_URL"`
-	PolicyDatabaseURL    string `env:"ROCKETWORK_POLICY_DATABASE_URL"`
-	ArmingID             string `env:"ROCKETWORK_CHECK_ARMING_ID"`
-	AccessMode           string `env:"ROCKETWORK_ACCESS_MODE"`
-	Purpose              string `env:"ROCKETWORK_PURPOSE"`
-	ProductionApproved   bool   `env:"ROCKETWORK_PRODUCTION_APPROVED"`
-	DevLiveApproved      bool   `env:"ROCKETWORK_DEV_LIVE_APPROVED"`
-	WithdrawalCompanyINN string `env:"ROCKETWORK_WITHDRAWAL_COMPANY_INN"`
-	WithdrawalBIC        string `env:"ROCKETWORK_WITHDRAWAL_BIC"`
-	WithdrawalAccount    string `env:"ROCKETWORK_WITHDRAWAL_ACCOUNT"`
-	WithdrawalExecutorID int64  `env:"ROCKETWORK_WITHDRAWAL_EXECUTOR_ID"`
-	TaskTitle            string `env:"ROCKETWORK_TASK_TITLE"`
-	TaskDescription      string `env:"ROCKETWORK_TASK_DESCRIPTION"`
-	WorkflowEnabled      bool   `env:"ROCKETWORK_WORKFLOW_ENABLED"`
-	Target               string `env:"ROCKETWORK_TARGET"`
-	AccountKey           string `env:"ROCKETWORK_ACCOUNT_KEY"`
-	ContractMode         string `env:"ROCKETWORK_CONTRACT_MODE"`
-	DocumentName         string `env:"ROCKETWORK_DOCUMENT_NAME"`
-	DocumentNumber       string `env:"ROCKETWORK_DOCUMENT_NUMBER"`
-	DocumentDate         string `env:"ROCKETWORK_DOCUMENT_DATE"`
-	PeriodFrom           string `env:"ROCKETWORK_PERIOD_FROM"`
-	PeriodTo             string `env:"ROCKETWORK_PERIOD_TO"`
-	ActRequired          *bool  `env:"ROCKETWORK_ACT_REQUIRED"`
-	TaxRetention         *bool  `env:"ROCKETWORK_TAX_RETENTION"`
-	MaxCommission        *int64 `env:"ROCKETWORK_MAX_COMMISSION_KOPECKS"`
-	CommissionUnlimited  bool   `env:"ROCKETWORK_COMMISSION_UNLIMITED"`
+	ActTemplatesEnabled        bool   `env:"ROCKETWORK_ACT_TEMPLATES_ENABLED"`
+	ActTemplateSelfEmployed    string `env:"ROCKETWORK_ACT_TEMPLATE_SELFEMPLOYED"`
+	ActTemplateEntrepreneur    string `env:"ROCKETWORK_ACT_TEMPLATE_ENTREPRENEUR"`
+	ActTemplateEntrepreneurNPD string `env:"ROCKETWORK_ACT_TEMPLATE_ENTREPRENEUR_NPD"`
+	CheckGatewayURL            string `env:"ROCKETWORK_CHECK_GATEWAY_URL"`
+	CheckGatewayToken          string `env:"ROCKETWORK_CHECK_GATEWAY_TOKEN"`
+	ControlDatabaseURL         string `env:"ROCKETWORK_CONTROL_DATABASE_URL"`
+	PolicyDatabaseURL          string `env:"ROCKETWORK_POLICY_DATABASE_URL"`
+	ArmingID                   string `env:"ROCKETWORK_CHECK_ARMING_ID"`
+	AccessMode                 string `env:"ROCKETWORK_ACCESS_MODE"`
+	Purpose                    string `env:"ROCKETWORK_PURPOSE"`
+	ProductionApproved         bool   `env:"ROCKETWORK_PRODUCTION_APPROVED"`
+	DevLiveApproved            bool   `env:"ROCKETWORK_DEV_LIVE_APPROVED"`
+	WithdrawalCompanyINN       string `env:"ROCKETWORK_WITHDRAWAL_COMPANY_INN"`
+	WithdrawalBIC              string `env:"ROCKETWORK_WITHDRAWAL_BIC"`
+	WithdrawalAccount          string `env:"ROCKETWORK_WITHDRAWAL_ACCOUNT"`
+	WithdrawalExecutorID       int64  `env:"ROCKETWORK_WITHDRAWAL_EXECUTOR_ID"`
+	TaskTitle                  string `env:"ROCKETWORK_TASK_TITLE"`
+	TaskDescription            string `env:"ROCKETWORK_TASK_DESCRIPTION"`
+	WorkflowEnabled            bool   `env:"ROCKETWORK_WORKFLOW_ENABLED"`
+	Target                     string `env:"ROCKETWORK_TARGET"`
+	AccountKey                 string `env:"ROCKETWORK_ACCOUNT_KEY"`
+	ContractMode               string `env:"ROCKETWORK_CONTRACT_MODE"`
+	DocumentName               string `env:"ROCKETWORK_DOCUMENT_NAME"`
+	DocumentNumber             string `env:"ROCKETWORK_DOCUMENT_NUMBER"`
+	DocumentDate               string `env:"ROCKETWORK_DOCUMENT_DATE"`
+	PeriodFrom                 string `env:"ROCKETWORK_PERIOD_FROM"`
+	PeriodTo                   string `env:"ROCKETWORK_PERIOD_TO"`
+	ActRequired                *bool  `env:"ROCKETWORK_ACT_REQUIRED"`
+	TaxRetention               *bool  `env:"ROCKETWORK_TAX_RETENTION"`
+	MaxCommission              *int64 `env:"ROCKETWORK_MAX_COMMISSION_KOPECKS"`
+	CommissionUnlimited        bool   `env:"ROCKETWORK_COMMISSION_UNLIMITED"`
 	// Mode — fake | disabled | live; пусто — fake вне production и disabled в production.
 	Mode string `env:"ROCKETWORK_MODE"`
 	// BaseURL — адрес API; пусто — https://api.rocketwork.ru из OpenAPI.
@@ -134,6 +138,9 @@ func (c Config) PayoutAppConfig() payoutapp.Config {
 		PollFast:        r.PollFast, PollSlow: r.PollSlow, ContractorPollMaxAge: r.ContractorPollMaxAge,
 		DepositTolerance: money.Kopecks(r.DepositTolerance), NPDAnnualLimit: money.Kopecks(r.NPDAnnualLimit),
 		SecondApproval: money.Kopecks(c.Billing.ManualSecondApproval),
+	}
+	if r.ActTemplatesEnabled {
+		result.ActTemplates = &payoutdomain.ActTemplates{SelfEmployed: r.ActTemplateSelfEmployed, Entrepreneur: r.ActTemplateEntrepreneur, EntrepreneurNPD: r.ActTemplateEntrepreneurNPD}
 	}
 	origin := r.BaseURL
 	if origin == "" {
@@ -227,7 +234,15 @@ func (c Config) validateRocketWork(add func(field, reason string)) {
 		if r.CommissionUnlimited && r.MaxCommission != nil {
 			add("ROCKETWORK_MAX_COMMISSION_KOPECKS", "cannot combine a commission ceiling with unlimited commission")
 		}
-		if template := c.PayoutAppConfig().AgreementTemplate; template != nil {
+		if r.ActTemplatesEnabled {
+			templates := c.PayoutAppConfig().ActTemplates
+			if templates == nil || templates.Validate() != nil {
+				add("ROCKETWORK_ACT_TEMPLATES_ENABLED", "three distinct template names required")
+			}
+			if r.ContractMode != "online" || r.ActRequired == nil || !*r.ActRequired || strings.TrimSpace(r.TaskTitle) == "" || strings.TrimSpace(r.TaskDescription) == "" {
+				add("ROCKETWORK_ACT_TEMPLATES_ENABLED", "online signature, act and service description required")
+			}
+		} else if template := c.PayoutAppConfig().AgreementTemplate; template != nil {
 			template.Amount, template.ExecutorID, template.EmploymentKind = 1, 1, "selfemployed"
 			if template.Validate() != nil {
 				add("ROCKETWORK_CONTRACT_MODE", "complete, valid agreement template required")

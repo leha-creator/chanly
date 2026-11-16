@@ -24,6 +24,19 @@ var devPaymentCodePattern = regexp.MustCompile(`^[A-Za-z0-9_-]{3,48}$`)
 func ValidDevPaymentCode(code string) bool { return devPaymentCodePattern.MatchString(code) }
 func DevPaymentMarker(code string) string  { return "DEV-TBANK-" + strings.ToUpper(code) }
 
+// HasAnyDevPaymentMarker reserves development transfers for the development
+// ledger, even if its invoice numbers or payer match a production invoice.
+func HasAnyDevPaymentMarker(purpose string) bool {
+	for _, token := range strings.FieldsFunc(strings.ToUpper(purpose), func(r rune) bool {
+		return !(r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || r == '_' || r == '-')
+	}) {
+		if strings.HasPrefix(token, "DEV-TBANK-") {
+			return true
+		}
+	}
+	return false
+}
+
 // HasDevPaymentMarker requires a whole token; a shared prefix is not sufficient.
 func HasDevPaymentMarker(purpose, code string) bool {
 	if !ValidDevPaymentCode(code) {

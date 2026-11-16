@@ -19,12 +19,19 @@ type CheckProvider struct {
 	Origin, Target string
 }
 
-func checkTerms(t domain.Terms) rocketwork.TaskTerms { return rocketwork.TaskTerms(t) }
+func CheckTaskTerms(t domain.Terms) rocketwork.TaskTerms {
+	return rocketwork.TaskTerms{ExternalID: t.ExternalID, ExecutorINN: t.ExecutorINN, EmploymentKind: t.EmploymentKind,
+		AmountKopecks: t.AmountKopecks, Title: t.Title, Description: t.Description,
+		SignatureForm: t.SignatureForm, DocumentName: t.DocumentName, DocumentNumber: t.DocumentNumber,
+		DocumentDate: t.DocumentDate, PeriodFrom: t.PeriodFrom, PeriodTo: t.PeriodTo,
+		ActRequired: t.ActRequired, TaxRetention: t.TaxRetention, Autosignable: t.Autosignable,
+		Autocomplete: t.Autocomplete, Autopayable: t.Autopayable}
+}
 func (p CheckProvider) ValidateManifest(m domain.Manifest) error {
 	if m.Target != p.Target || m.Origin != p.Origin || m.Executor.ID <= 0 {
 		return domain.ErrDenied
 	}
-	return checkTerms(m.Terms).Validate()
+	return CheckTaskTerms(m.Terms).Validate()
 }
 func manifest(r domain.Run) (domain.Manifest, error) {
 	var m domain.Manifest
@@ -131,7 +138,7 @@ func (p CheckProvider) Write(ctx context.Context, r domain.Run, action domain.Ac
 		expected.Operation = "CreateTask"
 		expected.Method = http.MethodPost
 		expected.Path = "/api/tasks"
-		expected.Body, err = checkTerms(m.Terms).CreateWire()
+		expected.Body, err = CheckTaskTerms(m.Terms).CreateWire()
 		if err != nil {
 			return err
 		}
@@ -164,7 +171,7 @@ func (p CheckProvider) Write(ctx context.Context, r domain.Run, action domain.Ac
 	c := p.Factory(&checkAuthorization{expected: expected, grant: grant, validateBefore: validate})
 	switch action {
 	case domain.Create:
-		_, err = c.CreateTask(ctx, checkTerms(m.Terms))
+		_, err = c.CreateTask(ctx, CheckTaskTerms(m.Terms))
 	case domain.Complete:
 		_, err = c.CompleteTask(ctx, *r.TaskID)
 	case domain.SignAct:

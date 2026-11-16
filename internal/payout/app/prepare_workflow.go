@@ -23,6 +23,19 @@ func (s *Service) preparePayoutWorkflow(ctx context.Context, p domain.Payout) (d
 	terms.Amount = p.Amount
 	terms.ExecutorID = b.ExecutorID
 	terms.EmploymentKind = b.EmploymentKind
+	if s.Config.ActTemplates != nil {
+		if s.ActSource == nil {
+			return domain.Workflow{}, fmt.Errorf("%w: act source missing", domain.ErrInvalidPayout)
+		}
+		data, err := s.ActSource.ForAct(ctx, p)
+		if err != nil {
+			return domain.Workflow{}, err
+		}
+		terms, err = terms.WithAct(p, data, *s.Config.ActTemplates, s.Clock.Now())
+		if err != nil {
+			return domain.Workflow{}, err
+		}
+	}
 	if _, _, err := terms.Snapshot(); err != nil {
 		return domain.Workflow{}, err
 	}

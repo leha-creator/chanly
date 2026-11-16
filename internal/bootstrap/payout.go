@@ -45,7 +45,8 @@ func newPayoutService(cfg Config, in *infra, txRunner tx.Runner, queue job.Sched
 		api = rocketwork.NewDisabled(log, in.clock.Now)
 	}
 	deps := payoutapp.Deps{
-		Store: store, Provider: bridge.PayoutProvider{API: api, Log: log},
+		ActSource: bridge.PayoutActSource{Organizations: accounts.Organizations(), Placements: placementStore.Placements()},
+		Store:     store, Provider: bridge.PayoutProvider{API: api, Log: log},
 		Ledger:        bridge.PayoutLedger{Svc: ledger},
 		Placements:    bridge.PayoutPlacements{Svc: placements, Placements: placementStore.Placements()},
 		Organizations: bridge.PayoutOrganizations{Orgs: accounts.Organizations()},
