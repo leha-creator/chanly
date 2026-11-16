@@ -83,7 +83,7 @@ func TestProductionEdgePreservesLandingPDFsAndContact(t *testing.T) {
 		put("landing/current/"+id+".pdf", "%PDF-test-"+id)
 	}
 	put("landing/shared/landing-assets/consent-version.pdf", "%PDF-test-version")
-	base, err := ctr.Endpoint(t.Context(), "http")
+	base, err := ctr.PortEndpoint(t.Context(), "8080/tcp", "http")
 	if err != nil {
 		t.Fatal(err)
 	}
