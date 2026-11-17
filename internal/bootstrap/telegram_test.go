@@ -121,6 +121,9 @@ func TestTelegramPersonalBindingLifecycle(t *testing.T) {
 	}
 	c.csrf = true
 	telegramStart(t, a, v.BotUrl, 8101, 1)
+	if len(delivery.Messages()) != 1 || !strings.Contains(fmt.Sprint(delivery.Messages()), "Уведомления Chanly подключены") {
+		t.Fatal("missing successful connection reply")
+	}
 	if !telegramConnected(t, c) || telegramConnected(t, other) {
 		t.Fatal("wrong binding owner")
 	}
@@ -146,7 +149,7 @@ func TestTelegramPersonalBindingLifecycle(t *testing.T) {
 		t.Fatal(err)
 	}
 	a.settle()
-	if len(delivery.Messages()) != 1 {
+	if len(delivery.Messages()) != 2 {
 		t.Fatalf("Telegram deliveries %d", len(delivery.Messages()))
 	}
 	// Queue another event and disconnect before its delivery attempt.
@@ -157,7 +160,7 @@ func TestTelegramPersonalBindingLifecycle(t *testing.T) {
 		t.Fatal(r.status)
 	}
 	a.settle()
-	if len(delivery.Messages()) != 1 {
+	if len(delivery.Messages()) != 2 {
 		t.Fatal("queued notification delivered after disconnect")
 	}
 	var suppressed int
@@ -165,6 +168,9 @@ func TestTelegramPersonalBindingLifecycle(t *testing.T) {
 		t.Fatalf("suppressed=%d error=%v", suppressed, err)
 	}
 	telegramStart(t, a, v.BotUrl, 8102, 2)
+	if !strings.Contains(fmt.Sprint(delivery.Messages()[2]), "недействительна") {
+		t.Fatal("replay reported success")
+	}
 	if telegramConnected(t, c) {
 		t.Fatal("replay reconnected")
 	}
@@ -179,5 +185,8 @@ func TestTelegramPersonalBindingLifecycle(t *testing.T) {
 	telegramStart(t, a, latest.BotUrl, 8101, 4)
 	if telegramConnected(t, c) {
 		t.Fatal("expired link accepted")
+	}
+	if !strings.Contains(fmt.Sprint(delivery.Messages()[4]), "недействительна") {
+		t.Fatal("expired link reported success")
 	}
 }

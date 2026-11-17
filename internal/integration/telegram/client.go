@@ -28,14 +28,19 @@ type Client struct {
 }
 
 func (c *Client) call(ctx context.Context, method string, body any) error {
+	return c.callResult(ctx, method, body, nil)
+}
+
+func (c *Client) callResult(ctx context.Context, method string, body, target any) error {
 	r, err := c.Outbound.Do(ctx, outbound.Call{
 		Operation: method, Method: http.MethodPost,
 		URL:  "https://api.telegram.org/bot" + c.Token + "/" + method,
 		Body: body, Sensitive: true, NoRetry: true, ExpectedRejections: []int{400, 403},
 	})
 	var result struct {
-		OK         bool `json:"ok"`
-		Code       int  `json:"error_code"`
+		OK         bool            `json:"ok"`
+		Code       int             `json:"error_code"`
+		Result     json.RawMessage `json:"result"`
 		Parameters struct {
 			RetryAfter int `json:"retry_after"`
 		} `json:"parameters"`
@@ -52,6 +57,9 @@ func (c *Client) call(ctx context.Context, method string, body any) error {
 			return err
 		}
 		if result.OK {
+			if target != nil && json.Unmarshal(result.Result, target) != nil {
+				return errors.New("telegram: invalid result")
+			}
 			return nil
 		}
 		if result.Code >= 400 && result.Code < 500 {
@@ -86,6 +94,16 @@ func (c *Client) SetWebhook(ctx context.Context, url, secret string) error {
 	return c.call(ctx, "setWebhook", map[string]any{"url": url, "secret_token": secret, "allowed_updates": []string{"message"}, "drop_pending_updates": false})
 }
 
+func (c *Client) DeleteWebhook(ctx context.Context) error {
+	return c.call(ctx, "deleteWebhook", map[string]bool{"drop_pending_updates": false})
+}
+
+func (c *Client) GetUpdates(ctx context.Context, offset int64) ([]json.RawMessage, error) {
+	var updates []json.RawMessage
+	err := c.callResult(ctx, "getUpdates", map[string]any{"offset": offset, "timeout": 10, "limit": 100, "allowed_updates": []string{"message"}}, &updates)
+	return updates, err
+}
+
 // Start contains no original text, username, or bearer token.
 type Start struct {
 	UserID    int64  `json:"user_id"`
@@ -116,8 +134,11 @@ func ParseStart(raw []byte, botName string, hash func(string) string) (int64, St
 		return *u.ID, Start{}, false, nil
 	}
 	fields := strings.Fields(m.Text)
-	if len(fields) != 2 || (fields[0] != "/start" && !strings.EqualFold(fields[0], "/start@"+strings.TrimPrefix(botName, "@"))) {
+	if len(fields) == 0 || len(fields) > 2 || (fields[0] != "/start" && !strings.EqualFold(fields[0], "/start@"+strings.TrimPrefix(botName, "@"))) {
 		return *u.ID, Start{}, false, nil
+	}
+	if len(fields) == 1 {
+		return *u.ID, Start{UserID: m.From.ID}, true, nil
 	}
 	token := strings.TrimPrefix(fields[1], "notify_")
 	if token == fields[1] || len(token) != 43 || strings.ContainsAny(token, "+/=") {

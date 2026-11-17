@@ -35,7 +35,7 @@ func runWorker(ctx context.Context, cfg Config, log *slog.Logger) error {
 		return err
 	}
 	ensureMAXSubscription(ctx, cfg, in)
-	if client := telegramClient(cfg, in); client != nil {
+	if client := telegramClient(cfg, in); client != nil && cfg.Telegram.DeliveryMode != "polling" {
 		if err := client.SetWebhook(ctx, cfg.Telegram.WebhookURL, cfg.Telegram.WebhookSecret); err != nil {
 			return fmt.Errorf("configure telegram webhook: %w", err)
 		}
@@ -58,6 +58,9 @@ func runWorker(ctx context.Context, cfg Config, log *slog.Logger) error {
 
 	g, gctx := errgroup.WithContext(ctx)
 	g.Go(func() error { return w.Run(gctx) })
+	if cfg.Telegram.Enabled && cfg.Telegram.DeliveryMode == "polling" {
+		g.Go(func() error { return m.runTelegramPolling(gctx) })
+	}
 	// /readyz worker — для HEALTHCHECK compose при выпуске без простоя (07 §8).
 	ready := in.life.ready(readiness(pool))
 	g.Go(func() error {

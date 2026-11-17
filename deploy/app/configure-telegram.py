@@ -61,6 +61,7 @@ def render(source, token, bot_name, domain):
         secret = secrets.token_hex(32)
     settings = {
         "TELEGRAM_ENABLED": "true", "TELEGRAM_BOT_NAME": "@" + name,
+        "TELEGRAM_DELIVERY_MODE": "polling",
         "TELEGRAM_BOT_TOKEN": token, "TELEGRAM_WEBHOOK_SECRET": secret,
         "TELEGRAM_WEBHOOK_URL": "https://" + domain + "/api/v1/webhooks/telegram",
     }
@@ -114,6 +115,11 @@ def verify(environment):
             identity.get("username") != settings["TELEGRAM_BOT_NAME"].removeprefix("@")):
         raise ConfigError("Telegram bot identity or enabled state mismatch")
     webhook = api(settings["TELEGRAM_BOT_TOKEN"], "getWebhookInfo")
+    if settings.get("TELEGRAM_DELIVERY_MODE") == "polling":
+        if webhook.get("url"):
+            raise ConfigError("Telegram polling is blocked by an active webhook")
+        print(environment + ": @" + identity["username"] + " polling configured; webhook disabled")
+        return
     if webhook.get("url") != expected:
         raise ConfigError("Telegram webhook does not match the selected environment")
     request = urllib.request.Request(expected, data=b'{"update_id":0}', headers={

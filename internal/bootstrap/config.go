@@ -625,6 +625,7 @@ func (c Config) LogValue() slog.Value {
 		slog.String("auth_session_ttl", c.Auth.SessionTTL.String()),
 		slog.String("auth_admin_session_ttl", c.Auth.AdminSessionTTL.String()),
 		slog.Bool("telegram_enabled", c.Telegram.Enabled),
+		slog.String("telegram_delivery_mode", c.Telegram.DeliveryMode),
 		slog.Bool("telegram_proxy_configured", c.Telegram.ProxyURL != ""),
 		slog.String("telegram_bot_name", c.Telegram.BotName),
 		slog.String("telegram_bot_token", secret(c.Telegram.BotToken)),

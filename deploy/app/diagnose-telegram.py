@@ -17,7 +17,9 @@ def main():
     webhook = configuration.api(settings["TELEGRAM_BOT_TOKEN"], "getWebhookInfo")
     error = webhook.get("last_error_message", "")
     status = re.search(r"\b[45][0-9]{2}\b", error)
-    print(json.dumps({"webhook_matches": webhook.get("url") == "https://" + domain + "/api/v1/webhooks/telegram",
+    print(json.dumps({"delivery_mode": settings.get("TELEGRAM_DELIVERY_MODE", "webhook"),
+                      "webhook_disabled": not webhook.get("url"),
+                      "webhook_matches": webhook.get("url") == "https://" + domain + "/api/v1/webhooks/telegram",
                       "pending_updates": webhook.get("pending_update_count"),
                       "last_error_date": webhook.get("last_error_date"),
                       "last_error_http_status": status.group() if status else None,
@@ -35,6 +37,9 @@ SELECT json_build_object('connections', coalesce(json_agg(t),'[]')) FROM
  (SELECT status, created_at, expires_at, now() >= expires_at AS expired_by_time
   FROM notification_telegram_bot_connection ORDER BY created_at DESC LIMIT 10) t;
 SELECT json_build_object('recipients',count(*)) FROM user_notification_telegram_bot;
+SELECT json_build_object('telegram_requests', coalesce(json_agg(t),'[]')) FROM
+ (SELECT operation, response_status, error IS NOT NULL AS has_error, created_at
+  FROM outbound_request WHERE system='telegram' ORDER BY created_at DESC LIMIT 10) t;
 SELECT json_build_object('inbound', coalesce(json_agg(t),'[]')) FROM
  (SELECT e.status, e.created_at, e.processed_at, e.error IS NOT NULL AS has_error,
   c.status AS connection_status, c.expires_at, e.created_at < c.expires_at AS arrived_before_expiry,

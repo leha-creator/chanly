@@ -72,19 +72,21 @@ func (s *Service) TelegramBotConnection(ctx context.Context, p Principal, id uui
 	return c, nil
 }
 
-// ConfirmTelegramBotConnection accepts only hashes derived by the authenticated Telegram webhook.
-func (s *Service) ConfirmTelegramBotConnection(ctx context.Context, telegramUserID int64, hash string) error {
+// ConfirmTelegramBotConnection accepts hashes from the trusted Telegram receiver.
+// The result is true only for an active binding to this Telegram user, including retries.
+func (s *Service) ConfirmTelegramBotConnection(ctx context.Context, telegramUserID int64, hash string) (bool, error) {
 	if telegramUserID <= 0 || hash == "" {
-		return nil
+		return false, nil
 	}
 	candidate, err := s.TelegramBot.ConnectionByHash(ctx, hash)
 	if errors.Is(err, domain.ErrNotFound) {
-		return nil
+		return false, nil
 	}
 	if err != nil {
-		return err
+		return false, err
 	}
-	return s.Tx.InTx(ctx, func(ctx context.Context) error {
+	connected := false
+	err = s.Tx.InTx(ctx, func(ctx context.Context) error {
 		user, err := s.Users.GetForUpdate(ctx, candidate.UserID)
 		if err != nil {
 			return err
@@ -96,15 +98,25 @@ func (s *Service) ConfirmTelegramBotConnection(ctx context.Context, telegramUser
 		if err != nil {
 			return err
 		}
+		if c.Status == "connected" {
+			recipient, err := s.TelegramBot.Recipient(ctx, candidate.UserID)
+			if errors.Is(err, domain.ErrNotFound) {
+				return nil
+			}
+			connected = recipient == telegramUserID
+			return err
+		}
 		if c.Status != "pending" || !s.Clock.Now().Before(c.ExpiresAt) {
 			return nil
 		}
 		if err := s.TelegramBot.Connect(ctx, c, telegramUserID, s.Clock.Now()); err != nil {
 			return err
 		}
-		s.log.DebugContext(ctx, "telegram notification recipient connected", "op", "Account.TelegramBot.Confirm")
+		connected = true
+		s.log.InfoContext(ctx, "[FIX] telegram notification recipient connected", "op", "Account.TelegramBot.Confirm")
 		return nil
 	})
+	return connected && err == nil, err
 }
 func (s *Service) DisconnectTelegramBot(ctx context.Context, p Principal) error {
 	return s.Tx.InTx(ctx, func(ctx context.Context) error {

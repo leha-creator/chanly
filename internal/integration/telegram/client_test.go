@@ -32,7 +32,7 @@ func TestPrivateStartProof(t *testing.T) {
 		{"bot", "private", "/start notify_" + token, 41, 41, true, false},
 		{"foreign chat", "private", "/start notify_" + token, 41, 42, false, false},
 		{"wrong bot", "private", "/start@OtherBot notify_" + token, 41, 41, false, false},
-		{"no token", "private", "/start", 41, 41, false, false},
+		{"no token", "private", "/start", 41, 41, false, true},
 		{"invalid token", "private", "/start notify_" + strings.Repeat("!", 43), 41, 41, false, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -46,13 +46,45 @@ func TestPrivateStartProof(t *testing.T) {
 			if err != nil || ok != tc.want || id != 7 {
 				t.Fatalf("id=%d ok=%v err=%v", id, ok, err)
 			}
-			if ok && (start.UserID != 41 || start.TokenHash != "hash") {
+			wantHash := "hash"
+			if tc.text == "/start" {
+				wantHash = ""
+			}
+			if ok && (start.UserID != 41 || start.TokenHash != wantHash) {
 				t.Fatal(start)
 			}
 		})
 	}
 	if _, _, _, err := ParseStart([]byte(`{}`), "", nil); err == nil {
 		t.Fatal("missing update id accepted")
+	}
+}
+
+func TestPollingProtocolPreservesPendingUpdates(t *testing.T) {
+	calls := 0
+	c := &Client{Token: "123:test", Outbound: callerFunc(func(_ context.Context, call outbound.Call) (outbound.Response, error) {
+		calls++
+		if !call.Sensitive || !call.NoRetry {
+			t.Fatal("unsafe polling call")
+		}
+		body, _ := json.Marshal(call.Body)
+		if calls == 1 {
+			if !strings.HasSuffix(call.URL, "/deleteWebhook") || string(body) != `{"drop_pending_updates":false}` {
+				t.Fatal("pending updates would be lost")
+			}
+			return outbound.Response{Status: 200, Body: []byte(`{"ok":true,"result":true}`)}, nil
+		}
+		if !strings.HasSuffix(call.URL, "/getUpdates") || !strings.Contains(string(body), `"offset":123`) || !strings.Contains(string(body), `"timeout":10`) {
+			t.Fatal("incorrect polling parameters")
+		}
+		return outbound.Response{Status: 200, Body: []byte(`{"ok":true,"result":[{"update_id":123}]}`)}, nil
+	})}
+	if err := c.DeleteWebhook(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	updates, err := c.GetUpdates(t.Context(), 123)
+	if err != nil || len(updates) != 1 {
+		t.Fatalf("updates=%v err=%v", updates, err)
 	}
 }
 

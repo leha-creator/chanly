@@ -8,6 +8,7 @@ import (
 
 type TelegramConfig struct {
 	Enabled       bool   `env:"TELEGRAM_ENABLED" envDefault:"false"`
+	DeliveryMode  string `env:"TELEGRAM_DELIVERY_MODE" envDefault:"webhook"`
 	BotName       string `env:"TELEGRAM_BOT_NAME"`
 	BotToken      string `env:"TELEGRAM_BOT_TOKEN"`
 	WebhookSecret string `env:"TELEGRAM_WEBHOOK_SECRET"`
@@ -24,6 +25,9 @@ func (c Config) validateTelegram(add func(string, string)) {
 	}
 	if !c.Telegram.Enabled {
 		return
+	}
+	if mode := c.Telegram.DeliveryMode; mode != "" && mode != "webhook" && mode != "polling" {
+		add("TELEGRAM_DELIVERY_MODE", "must be webhook or polling")
 	}
 	if !regexp.MustCompile(`^[A-Za-z0-9_]{5,32}$`).MatchString(strings.TrimPrefix(c.Telegram.BotName, "@")) {
 		add("TELEGRAM_BOT_NAME", "invalid bot username")

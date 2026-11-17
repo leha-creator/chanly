@@ -75,10 +75,25 @@ func newTelegramWebhook(cfg Config, in *infra, runner tx.Runner, queue job.Enque
 
 func (m *modules) registerTelegram() {
 	m.platform.dispatcher.Handle("telegram", "bot_started", func(ctx context.Context, e inbound.Event) error {
+		if m.notification.Telegram == nil {
+			return inbound.ErrIgnore
+		}
 		var start telegram.Start
 		if err := json.Unmarshal(e.Payload, &start); err != nil {
 			return job.Permanent(err)
 		}
-		return m.account.ConfirmTelegramBotConnection(ctx, start.UserID, start.TokenHash)
+		message := "Для подключения уведомлений откройте настройки уведомлений в кабинете Chanly и перейдите по новой ссылке Telegram."
+		if start.TokenHash != "" {
+			connected, err := m.account.ConfirmTelegramBotConnection(ctx, start.UserID, start.TokenHash)
+			if err != nil {
+				return err
+			}
+			if connected {
+				message = "Уведомления Chanly подключены. Вернитесь в кабинет, чтобы выбрать нужные события."
+			} else {
+				message = "Ссылка подключения истекла или уже недействительна. Создайте новую ссылку в настройках уведомлений кабинета Chanly."
+			}
+		}
+		return m.notification.Telegram.SendUserMessage(ctx, start.UserID, message)
 	})
 }
