@@ -23,11 +23,42 @@ on:
         description: "Установить из подписки Xray-прокси только для Telegram"
         type: boolean
         default: false
+      diagnose_telegram_dev:
+        description: "Проверить доставку Telegram и состояния подключений без секретов"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
 
 jobs:
+  diagnose-telegram-dev:
+    if: github.event_name == 'workflow_dispatch' && inputs.diagnose_telegram_dev && github.ref == 'refs/heads/dev'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment: dev
+    steps:
+      - uses: actions/checkout@v5
+      - name: Inspect dev Telegram delivery
+        env:
+          HOST: ${{ vars.DEPLOY_HOST }}
+          USER_NAME: ${{ vars.DEPLOY_USER }}
+          SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          set +x
+          [[ "$HOST" = 194.58.120.196 && "$USER_NAME" = deploy ]]
+          [[ -n "$SSH_KEY" && -n "$KNOWN_HOSTS" ]]
+          umask 077
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/telegram-key
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/telegram-hosts
+          trap 'rm -f ~/.ssh/telegram-key ~/.ssh/telegram-hosts' EXIT
+          printf 'Host target\n  HostName %s\n  User deploy\n  IdentityFile ~/.ssh/telegram-key\n  UserKnownHostsFile ~/.ssh/telegram-hosts\n  IdentitiesOnly yes\n  StrictHostKeyChecking yes\n  BatchMode yes\n' "$HOST" > ~/.ssh/config
+          scp deploy/app/diagnose-telegram.py target:/opt/maxim-dev/
+          ssh target 'python3 /opt/maxim-dev/diagnose-telegram.py'
+
   install-telegram-proxy:
     if: github.event_name == 'workflow_dispatch' && inputs.install_telegram_proxy && github.ref == 'refs/heads/dev'
     runs-on: ubuntu-latest
@@ -139,7 +170,7 @@ jobs:
           REMOTE
 
   lint:
-    if: ${{ !inputs.repair_dev_permissions && !inputs.configure_telegram_dev && !inputs.install_telegram_proxy }}
+    if: ${{ !inputs.repair_dev_permissions && !inputs.configure_telegram_dev && !inputs.install_telegram_proxy && !inputs.diagnose_telegram_dev }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -214,7 +245,7 @@ jobs:
         run: docker run --rm -i hadolint/hadolint:v2.12.0 < deploy/postgres/Dockerfile
 
   config-check:
-    if: ${{ !inputs.repair_dev_permissions && !inputs.configure_telegram_dev && !inputs.install_telegram_proxy }}
+    if: ${{ !inputs.repair_dev_permissions && !inputs.configure_telegram_dev && !inputs.install_telegram_proxy && !inputs.diagnose_telegram_dev }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -254,7 +285,7 @@ jobs:
           done
 
   rehearsal:
-    if: ${{ !inputs.repair_dev_permissions && !inputs.configure_telegram_dev && !inputs.install_telegram_proxy }}
+    if: ${{ !inputs.repair_dev_permissions && !inputs.configure_telegram_dev && !inputs.install_telegram_proxy && !inputs.diagnose_telegram_dev }}
     needs: lint
     runs-on: ubuntu-latest
     timeout-minutes: 30
