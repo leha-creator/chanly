@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """Install only the fixed, private Telegram egress service. Payload arrives on stdin."""
+import errno
 import json
 import os
 from pathlib import Path
 import subprocess
 import sys
+import tempfile
 import time
 import urllib.error
 import urllib.request
@@ -20,10 +22,16 @@ def run(*args, check=True):
 
 
 def write_private(path, value):
-    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
-    with os.fdopen(fd, "w") as file:
-        os.fchmod(file.fileno(), 0o600)
-        file.write(value)
+    # A full disk must not truncate the last working configuration or credentials.
+    fd, temporary = tempfile.mkstemp(prefix="." + path.name + ".", dir=path.parent)
+    try:
+        with os.fdopen(fd, "w") as file:
+            file.write(value)
+            file.flush()
+            os.fsync(file.fileno())
+        os.replace(temporary, path)
+    finally:
+        Path(temporary).unlink(missing_ok=True)
 
 
 def probe():
@@ -42,16 +50,47 @@ def probe():
         pass
 
 
-def install(payload):
-    if os.getuid() == 0 or ROOT.resolve(strict=True) != ROOT:
-        raise ValueError("Expected canonical directory owned by deploy")
-    config = payload["config"]
+def validate_config(config):
     rules = config["routing"]["rules"]
     if (config["outbounds"][0] != {"tag": "blocked", "protocol": "blackhole"} or
             len(rules) != 1 or rules[0]["domain"] != ["full:api.telegram.org"] or
             rules[0]["port"] != "443" or len(config["inbounds"]) != 1 or
             config["inbounds"][0]["port"] != PORT):
         raise ValueError("Telegram-only routing is required")
+
+
+def current_is_healthy(payload):
+    try:
+        if (ROOT / "subscription.url").read_text().strip() != payload["subscription_url"].strip():
+            return False
+        validate_config(json.loads((ROOT / "config/config.json").read_text()))
+        expected = "PROXY_UID=" + str(os.getuid()) + "\nPROXY_GID=" + str(os.getgid()) + "\n"
+        if (ROOT / "runtime.env").read_text() != expected:
+            return False
+        probe()
+        return True
+    except (OSError, ValueError, KeyError, TypeError, IndexError):
+        return False
+
+
+def failure_summary(error):
+    # Exception messages/URLs and subprocess stderr can contain subscription secrets.
+    reason = error.reason if isinstance(error, urllib.error.URLError) else error
+    code = getattr(reason, "errno", None)
+    suffix = ""
+    if isinstance(code, int):
+        suffix = " errno=" + str(code) + "(" + errno.errorcode.get(code, "UNKNOWN") + ")"
+    return "Telegram egress installation failed: " + type(error).__name__ + suffix
+
+
+def install(payload):
+    if os.getuid() == 0 or ROOT.resolve(strict=True) != ROOT:
+        raise ValueError("Expected canonical directory owned by deploy")
+    config = payload["config"]
+    validate_config(config)
+    if current_is_healthy(payload):
+        print("Existing Telegram egress verified: same subscription, Telegram API reachable, other destinations rejected.")
+        return
     directory = ROOT / "config"
     directory.mkdir(mode=0o700, exist_ok=True)
     candidate = directory / "candidate.json"
@@ -69,9 +108,9 @@ def install(payload):
     current = directory / "config.json"
     old = current.read_text() if current.exists() else None
     changed = old != candidate.read_text()
-    os.replace(candidate, current)
     write_private(ROOT / "subscription.url", payload["subscription_url"])
     write_private(ROOT / "runtime.env", "PROXY_UID=" + str(os.getuid()) + "\nPROXY_GID=" + str(os.getgid()) + "\n")
+    os.replace(candidate, current)
     command = ["docker", "compose", "--env-file", str(ROOT / "runtime.env"), "-f", str(ROOT / "compose.yml")]
     try:
         run(*command, "up", "-d", *(["--force-recreate"] if changed else []))
@@ -109,4 +148,4 @@ if __name__ == "__main__":
             payload = json.load(sys.stdin)
         install(payload)
     except Exception as error:
-        raise SystemExit("Telegram egress installation failed: " + type(error).__name__) from None
+        raise SystemExit(failure_summary(error)) from None
