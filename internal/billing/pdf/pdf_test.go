@@ -68,6 +68,7 @@ func invoiceDoc() domain.InvoiceDoc {
 	return domain.InvoiceDoc{
 		Number: "MX-000101", IssuedAt: issued, ExpiresAt: issued.AddDate(0, 0, 5), Amount: 1234567,
 		Supplier: supplier, Payer: domain.Payer{Name: `ООО "РОМАШКА"`, INN: "7707083893"}, VATNote: "Без НДС",
+		Description: "НЕВЕРНОЕ НАЗНАЧЕНИЕ",
 	}
 }
 
@@ -79,6 +80,11 @@ func TestInvoice(t *testing.T) {
 	}
 	if !bytes.HasPrefix(data, []byte("%PDF")) {
 		t.Fatal("not a pdf")
+	}
+	for _, unwanted := range []string{supplier.Address, "агентское вознаграждение определяется отдельно", "Chanly - биржа рекламы в MAX", "Назначение платежа для платёжного поручения", "НЕВЕРНОЕ НАЗНАЧЕНИЕ"} {
+		if contains(data, unwanted) {
+			t.Errorf("invoice contains excluded content %q", unwanted)
+		}
 	}
 	for _, s := range []string{"MX-000101", "12 345,67", "Двенадцать тысяч триста сорок пять рублей 67 копеек", "Без НДС", "25.10.2026"} {
 		if !contains(data, s) {

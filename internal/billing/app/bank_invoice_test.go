@@ -35,12 +35,11 @@ func TestBankInvoiceAgentContent(t *testing.T) {
 				t.Fatal(err)
 			}
 			inv := e.invoice(100000)
-			wantDescription := "Средства принципала на исполнение поручения по оферте Chanly. Счёт № " + inv.Number + " от 18.11.2026"
-			wantPurpose := wantDescription + ". Без НДС"
+			wantPurpose := "Средства принципала на исполнение поручения по оферте Chanly. Счёт № " + inv.Number + " от 18.11.2026. Без НДС"
 			if controlled {
 				wantPurpose += ". " + e.svc.BankConfig.PaymentMarker()
 			}
-			if f.doc.Description != wantDescription || f.doc.PaymentPurpose != wantPurpose || inv.PaymentDetails.Purpose != wantPurpose {
+			if f.doc.Description != wantPurpose || f.doc.PaymentPurpose != wantPurpose || inv.PaymentDetails.Purpose != wantPurpose {
 				t.Fatalf("inconsistent agent invoice: %+v, %+v", f.doc, inv.PaymentDetails)
 			}
 			if utf8.RuneCountInString(wantPurpose) > 210 {

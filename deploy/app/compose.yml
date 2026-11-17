@@ -11,6 +11,9 @@ x-app: &app
     - path: ${APP_ENV_FILE:-./app.env}
       required: true
       format: raw
+  # New invoices use the approved Chanly PDF, including servers with legacy app.env.
+  environment:
+    BILLING_INVOICE_PROVIDER: local
   restart: unless-stopped
   read_only: true
   tmpfs: [/tmp]
@@ -201,6 +204,7 @@ services:
     restart: "no"
     environment:
       DATABASE_URL: ${MIGRATE_DATABASE_URL:?MIGRATE_DATABASE_URL is required (stack.env)}
+      BILLING_INVOICE_PROVIDER: local
     networks: [backend]
 
   api-a:

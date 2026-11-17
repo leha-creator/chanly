@@ -167,6 +167,9 @@ type InvoiceDoc struct {
 	Description    string
 	Comment        string
 	PaymentPurpose string
+	OrganizationID uuid.UUID
+	PayerKPP       string
+	PayerAddress   string
 	Number         string
 	IssuedAt       time.Time
 	ExpiresAt      time.Time

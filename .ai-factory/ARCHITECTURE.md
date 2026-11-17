@@ -211,7 +211,7 @@ maxim/
 │   ├── billing/                     # счета на оплату, выписки, сопоставление поступлений, закрывающие документы (04 §7)
 │   │   ├── domain/                  #   счёт и переходы, номер MX-, поиск номера в назначении, сопоставление (05 §5), период по Москве, порты
 │   │   ├── app/                     #   CreateInvoice (лимиты по audit_log), истечение и отмена, ImportStatement, MatchManually, Ignore, GenerateClosingActs
-│   │   ├── pdf/                     #   адаптер порта Renderer: счёт, отчёт агента, акт (go-pdf/fpdf, шрифты Go), сумма прописью
+│   │   ├── pdf/                     #   счёт, отчёт агента, акт (go-pdf/fpdf, шрифты Go), сумма прописью; платёжный QR — skip2/go-qrcode
 │   │   ├── postgres/                #   invoice, bank_statement, bank_transaction, closing_act; метрики maxim_invoices, maxim_bank_transactions
 │   │   ├── httpapi/                 #   счета, их PDF, закрывающие документы и их PDF (тег balance)
 │   │   └── jobs/                    #   expire_invoices, generate_closing_acts

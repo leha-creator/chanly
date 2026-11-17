@@ -40,7 +40,8 @@ func TestTBankControlledSmallInvoiceHTTP(t *testing.T) {
 		} `json:"payment_details"`
 	}
 	issued.json(t, &paymentView)
-	if paymentView.PaymentDetails == nil || paymentView.PaymentDetails.Recipient != svc.Config.Supplier.Name || paymentView.PaymentDetails.Account != svc.Config.Supplier.BankAccount || paymentView.PaymentDetails.Purpose != "Пополнение баланса по счёту № "+inv.Number+". "+svc.BankConfig.PaymentMarker() {
+	wantPurpose := "Средства принципала на исполнение поручения по оферте Chanly. Счёт № " + inv.Number + " от " + date.In(time.FixedZone("MSK", 3*3600)).Format("02.01.2006") + ". Без НДС. " + svc.BankConfig.PaymentMarker()
+	if paymentView.PaymentDetails == nil || paymentView.PaymentDetails.Recipient != svc.Config.Supplier.Name || paymentView.PaymentDetails.Account != svc.Config.Supplier.BankAccount || paymentView.PaymentDetails.Purpose != wantPurpose {
 		t.Fatalf("missing or incorrect invoice payment details: %+v", paymentView)
 	}
 	for _, amount := range []int64{99, int64(billingdomain.MaxInvoiceAmount) + 1} {

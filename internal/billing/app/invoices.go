@@ -59,6 +59,7 @@ func (s *Service) CreateInvoice(ctx context.Context, orgID, userID uuid.UUID, am
 	}
 	inv.PDFStorageKey = "invoices/" + inv.ID.String() + ".pdf"
 	doc := s.invoiceDoc(inv)
+	doc.PayerKPP, doc.PayerAddress = req.KPP, req.Address
 	supplier := s.Config.Supplier
 	inv.PaymentDetails = &domain.InvoicePaymentDetails{
 		Recipient: supplier.Name, INN: supplier.INN, Account: supplier.BankAccount,
@@ -97,17 +98,14 @@ func (s *Service) CreateInvoice(ctx context.Context, orgID, userID uuid.UUID, am
 func (s *Service) invoiceDoc(inv domain.Invoice) domain.InvoiceDoc {
 	doc := domain.InvoiceDoc{
 		Number: inv.Number, IssuedAt: inv.CreatedAt, ExpiresAt: inv.ExpiresAt, Amount: inv.Amount,
-		Supplier: s.Config.Supplier, Payer: inv.Payer, VATNote: s.Config.VATNote,
-		PaymentPurpose: "Пополнение баланса по счёту № " + inv.Number,
+		Supplier: s.Config.Supplier, Payer: inv.Payer, VATNote: s.Config.VATNote, OrganizationID: inv.OrganizationID,
 	}
-	if s.Config.InvoiceProvider == "tbank" {
-		date := inv.CreatedAt.In(time.FixedZone("MSK", 3*3600)).Format("02.01.2006")
-		doc.Description = fmt.Sprintf("Средства принципала на исполнение поручения по оферте Chanly. Счёт № %s от %s", inv.Number, date)
-		doc.PaymentPurpose = doc.Description + ". " + doc.VATNote
-	}
+	date := inv.CreatedAt.In(time.FixedZone("MSK", 3*3600)).Format("02.01.2006")
+	doc.PaymentPurpose = fmt.Sprintf("Средства принципала на исполнение поручения по оферте Chanly. Счёт № %s от %s. %s", inv.Number, date, doc.VATNote)
 	if s.BankConfig.DevPaymentsEnabled() {
 		doc.PaymentPurpose += ". " + s.BankConfig.PaymentMarker()
 	}
+	doc.Description = doc.PaymentPurpose
 	if s.Config.InvoiceProvider == "tbank" {
 		doc.Comment = "Основание: оферта рекламодателя https://chanly.ru/offer\n" +
 			"Назначение платежа: " + doc.PaymentPurpose + "\n" +

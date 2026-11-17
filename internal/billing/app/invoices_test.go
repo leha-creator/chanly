@@ -27,7 +27,7 @@ func TestCreateInvoice(t *testing.T) {
 	if !bytes.HasPrefix(e.storedPDF(inv.PDFStorageKey), []byte("%PDF")) {
 		t.Fatal("pdf is not stored")
 	}
-	if inv.PaymentDetails == nil || inv.PaymentDetails.Account != e.svc.Config.Supplier.BankAccount || inv.PaymentDetails.Purpose != "Пополнение баланса по счёту № "+inv.Number {
+	if inv.PaymentDetails == nil || inv.PaymentDetails.Account != e.svc.Config.Supplier.BankAccount || inv.PaymentDetails.Purpose != "Средства принципала на исполнение поручения по оферте Chanly. Счёт № "+inv.Number+" от 20.10.2026. Без НДС" {
 		t.Fatalf("invoice payment details missing: %+v", inv.PaymentDetails)
 	}
 	if e.count(`SELECT count(*) FROM audit_log WHERE action = 'invoice.issued' AND object_id = $1`, inv.ID.String()) != 1 {

@@ -277,8 +277,9 @@ TBANK_PRODUCTION_APPROVED=false
 
 Production automation требует отдельного `TBANK_PRODUCTION_APPROVED=true`, dev-флаг не включает его. Диагностический CLI по-прежнему требует `--target production` и выделенной tbank_check БД; обычный worker использует dev-БД. Секреты не хранить в git. Приложение не ограничивает и не отменяет фактический перевод в банке.
 
-Выставление счёта через T-API и возврат к прежнему PDF:
-[BILLING_INVOICE_PROVIDER](TBANK-INVOICES.md). По умолчанию остаётся `local`.
+Новые счета формируются нашим PDF-генератором: серверный compose явно задаёт
+`BILLING_INVOICE_PROVIDER=local`. Выписка и архив старых банковских PDF сохраняются:
+[переход на собственный шаблон](TBANK-INVOICES.md).
 
 ## Изолированные проверки RocketWork на основном аккаунте
 

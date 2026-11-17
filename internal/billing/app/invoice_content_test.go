@@ -23,17 +23,15 @@ func TestInvoiceContent(t *testing.T) {
 				}
 				inv := domain.Invoice{Number: "MX-999999999999999", CreatedAt: time.Date(2026, 11, 17, 21, 30, 0, 0, time.UTC)}
 				doc := s.invoiceDoc(inv)
-				want := "Пополнение баланса по счёту № " + inv.Number
-				if provider == "tbank" {
-					want = "Средства принципала на исполнение поручения по оферте Chanly. Счёт № " + inv.Number + " от 18.11.2026. Без НДС"
-					if doc.Description+". Без НДС" != want || !strings.HasPrefix(doc.Comment, "Основание: оферта рекламодателя https://chanly.ru/offer\n") {
-						t.Fatalf("wrong bank content: %+v", doc)
-					}
-				} else if doc.Description != "" || doc.Comment != "" {
-					t.Fatalf("local content changed: %+v", doc)
+				want := "Средства принципала на исполнение поручения по оферте Chanly. Счёт № " + inv.Number + " от 18.11.2026. Без НДС"
+				if provider == "tbank" && !strings.HasPrefix(doc.Comment, "Основание: оферта рекламодателя https://chanly.ru/offer\n") {
+					t.Fatalf("wrong bank comment: %+v", doc)
 				}
 				if controlled {
 					want += ". " + s.BankConfig.PaymentMarker()
+				}
+				if doc.Description != want {
+					t.Fatalf("table description differs from payment purpose: %+v", doc)
 				}
 				if doc.PaymentPurpose != want || utf8.RuneCountInString(want) > 210 {
 					t.Fatalf("wrong or oversized payment purpose (%d): %q", utf8.RuneCountInString(want), doc.PaymentPurpose)
