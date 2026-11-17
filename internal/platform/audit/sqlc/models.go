@@ -576,9 +576,19 @@ type Notification struct {
 	ReadAt         *time.Time
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
+	TelegramUserID *int64
 }
 
 type NotificationMaxBotConnection struct {
+	ID        uuid.UUID
+	UserID    uuid.UUID
+	TokenHash string
+	Status    string
+	CreatedAt time.Time
+	ExpiresAt time.Time
+}
+
+type NotificationTelegramBotConnection struct {
 	ID        uuid.UUID
 	UserID    uuid.UUID
 	TokenHash string
@@ -1209,6 +1219,12 @@ type UserNotificationMaxBot struct {
 	UserID      uuid.UUID
 	MaxUserID   int64
 	ConnectedAt time.Time
+}
+
+type UserNotificationTelegramBot struct {
+	UserID         uuid.UUID
+	TelegramUserID int64
+	ConnectedAt    time.Time
 }
 
 type UserSetting struct {

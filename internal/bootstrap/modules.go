@@ -216,16 +216,17 @@ func newModules(cfg Config, in *infra) *modules {
 	accountStore := accountpg.New(in.pool, log.With(logx.KeyModule, "account"))
 
 	deps := accountapp.Deps{
-		Settings: accountStore.AccountSettings(),
-		MAXBot:   accountStore.MAXBot(),
-		Users:    accountStore.Users(), AuthCodes: accountStore.AuthCodes(), Sessions: accountStore.Sessions(),
+		Settings:    accountStore.AccountSettings(),
+		MAXBot:      accountStore.MAXBot(),
+		TelegramBot: accountStore.TelegramBot(),
+		Users:       accountStore.Users(), AuthCodes: accountStore.AuthCodes(), Sessions: accountStore.Sessions(),
 		Organizations: accountStore.Organizations(), Admin: accountStore.Organizations(), PersonalData: accountStore.PersonalData(), Platform: accountStore.Organizations(), Legal: accountStore.LegalDocuments(),
 		Sender: in.mail, Uploads: auditLog, Tx: txRunner, Jobs: queue, Audit: auditLog, Clock: in.clock, Log: log,
 		Config: accountapp.Config{
 			LoginCodeTTL: cfg.Auth.LoginCodeTTL, LoginCodeAttempts: cfg.Auth.LoginCodeAttempts,
 			CodesPerEmailHour: cfg.Auth.CodesPerEmailHour, CodesPerIPHour: cfg.Auth.CodesPerIPHour,
 			SessionTTL: cfg.Auth.SessionTTL, AdminSessionTTL: cfg.Auth.AdminSessionTTL,
-			Pepper: []byte(cfg.AuthCodePepper), MAXBotName: cfg.MAX.BotName,
+			Pepper: []byte(cfg.AuthCodePepper), MAXBotName: cfg.MAX.BotName, TelegramBotName: cfg.Telegram.BotName, TelegramBotEnabled: cfg.Telegram.Enabled,
 		},
 	}
 	if in.storage != nil {
@@ -303,6 +304,7 @@ func (m *modules) registerJobs(w *job.Worker) {
 	accountjobs.Register(w, m.account)
 	channeljobs.Register(w, m.platform.dispatcher, m.channel)
 	m.registerMAXBotStarted()
+	m.registerTelegram()
 	postjobs.Register(w, m.post)
 	placementjobs.Register(w, m.placement, placementjobs.Options{
 		PublishRetryWindow: m.cfg.Placement.Control.PublishRetryWindow,
@@ -358,6 +360,7 @@ func apiHandler(ctx context.Context, cfg Config, in *infra, m *modules, reg *met
 			markingHandlers: m.markingHTTP},
 		// Webhook MAX — сырое тело и заголовок секрета, вне strict server (R-4).
 		Routes: map[string]http.Handler{
+			telegramWebhookPattern:   newTelegramWebhook(cfg, in, m.txRunner, m.queue),
 			maxWebhookPattern:        newMAXWebhook(cfg, in, m.txRunner, m.queue, httpx.ClientInfo(trusted)),
 			rocketworkWebhookPattern: newRocketWorkWebhook(in, m.payout, m.txRunner, m.queue, httpx.ClientInfo(trusted)),
 		},

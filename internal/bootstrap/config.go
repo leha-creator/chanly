@@ -81,6 +81,7 @@ type Config struct {
 	ORD        ORDConfig
 	RocketWork RocketWorkConfig
 	MAX        MAXConfig
+	Telegram   TelegramConfig
 	Alert      AlertConfig
 	Scheduler  SchedulerConfig
 	Retention  RetentionConfig
@@ -444,6 +445,7 @@ func (c Config) Validate(mode string) error {
 		c.validateBilling(add)
 		c.validateTBank(add)
 		c.validateNotification(add)
+		c.validateTelegram(add)
 	}
 	if mode == ModeWorker {
 		c.validateWorker(add)
@@ -622,6 +624,12 @@ func (c Config) LogValue() slog.Value {
 		slog.Int("auth_codes_per_ip_hour", c.Auth.CodesPerIPHour),
 		slog.String("auth_session_ttl", c.Auth.SessionTTL.String()),
 		slog.String("auth_admin_session_ttl", c.Auth.AdminSessionTTL.String()),
+		slog.Bool("telegram_enabled", c.Telegram.Enabled),
+		slog.String("telegram_delivery_mode", c.Telegram.DeliveryMode),
+		slog.Bool("telegram_proxy_configured", c.Telegram.ProxyURL != ""),
+		slog.String("telegram_bot_name", c.Telegram.BotName),
+		slog.String("telegram_bot_token", secret(c.Telegram.BotToken)),
+		slog.String("telegram_webhook_secret", secret(c.Telegram.WebhookSecret)),
 		slog.String("max_api_url", c.MAX.APIURL),
 		slog.String("max_bot_token", secret(c.MAX.BotToken)),
 		slog.String("max_ca_cert_file", c.MAX.CACertFile),

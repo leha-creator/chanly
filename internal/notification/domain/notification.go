@@ -13,9 +13,10 @@ import (
 type Channel string
 
 const (
-	ChannelMaxBot  Channel = "max_bot"
-	ChannelEmail   Channel = "email"
-	ChannelCabinet Channel = "cabinet"
+	ChannelMaxBot      Channel = "max_bot"
+	ChannelTelegramBot Channel = "telegram_bot"
+	ChannelEmail       Channel = "email"
+	ChannelCabinet     Channel = "cabinet"
 )
 
 // Status — состояние уведомления (04 §8).
@@ -75,13 +76,14 @@ type Notification struct {
 	ObjectID       *string
 	DedupeKey      *string
 	// MaxUserID — адресат бота MAX (R-3); только у max_bot.
-	MaxUserID *int64
-	Attempts  int
-	LastError *string
-	SentAt    *time.Time
-	ReadAt    *time.Time
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	MaxUserID      *int64
+	TelegramUserID *int64
+	Attempts       int
+	LastError      *string
+	SentAt         *time.Time
+	ReadAt         *time.Time
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
 }
 
 // OrderID — заказ из данных уведомления (R-13); nil, если нет.

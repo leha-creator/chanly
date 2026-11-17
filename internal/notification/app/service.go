@@ -61,6 +61,7 @@ type Deps struct {
 	Renderer         domain.Renderer
 	// Messenger и Mailer нужны только worker; в api — nil.
 	Messenger domain.Messenger
+	Telegram  domain.Messenger
 	Mailer    domain.Mailer
 	Clock     clock.Clock
 	Log       *slog.Logger
@@ -182,6 +183,18 @@ func (s *Service) audience(ctx context.Context, n domain.Notice) (domain.Audienc
 	}
 	if a.UserIDs, err = s.Recipients.Members(ctx, n.OrganizationID); err != nil {
 		return a, err
+	}
+	if recipients, ok := s.Recipients.(domain.TelegramRecipients); ok {
+		a.TelegramUsers = make(map[uuid.UUID]int64)
+		for _, user := range a.UserIDs {
+			target, err := recipients.NotificationTelegramRecipient(ctx, user)
+			if err != nil {
+				return a, err
+			}
+			if target > 0 {
+				a.TelegramUsers[user] = target
+			}
+		}
 	}
 	if recipients, ok := s.Recipients.(domain.MAXRecipients); ok {
 		a.MAXUsers = make(map[uuid.UUID]int64)

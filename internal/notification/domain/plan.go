@@ -16,14 +16,15 @@ type Audience struct {
 	// MaxUserID — channel.added_by_max_user_id канала из данных; nil — бота нет.
 	MaxUserID *int64
 	// MAXUsers contains explicitly verified personal recipients, keyed by cabinet user.
-	MAXUsers map[uuid.UUID]int64
+	MAXUsers      map[uuid.UUID]int64
+	TelegramUsers map[uuid.UUID]int64
 }
 
 // ChannelsFor — каналы доставки стороны (R-2, 07 §6, A-19). Кабинет — всегда.
 func ChannelsFor(r Role) []Channel {
 	switch r {
 	case RoleBlogger, RoleAdvertiser:
-		return []Channel{ChannelCabinet, ChannelMaxBot, ChannelEmail}
+		return []Channel{ChannelCabinet, ChannelMaxBot, ChannelTelegramBot, ChannelEmail}
 	default:
 		// Администратору почту и чат дежурных шлёт platform/alert (R-9).
 		return []Channel{ChannelCabinet}
@@ -73,6 +74,16 @@ func Plan(n Notice, a Audience, newID func() uuid.UUID, now time.Time) ([]Notifi
 	var out []Notification
 	for _, ch := range ChannelsFor(n.Role) {
 		switch ch {
+		case ChannelTelegramBot:
+			for _, user := range a.UserIDs {
+				target := a.TelegramUsers[user]
+				if target <= 0 {
+					continue
+				}
+				r := row(user, ch)
+				r.TelegramUserID = &target
+				out = append(out, r)
+			}
 		case ChannelMaxBot:
 			for _, user := range a.UserIDs {
 				maxUser := a.MAXUsers[user]

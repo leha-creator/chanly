@@ -31,7 +31,7 @@ func (r *AccountSettings) LockEmails(ctx context.Context, emails []string) error
 
 func (r *AccountSettings) Access(ctx context.Context, id uuid.UUID) (domain.SettingsAccess, error) {
 	row, err := r.s.q(ctx).SettingsAccess(ctx, id)
-	return domain.SettingsAccess{AdminRole: row.AdminRole, Advertiser: row.Advertiser, Blogger: row.Blogger, MaxBot: row.MaxBot}, err
+	return domain.SettingsAccess{AdminRole: row.AdminRole, Advertiser: row.Advertiser, Blogger: row.Blogger, MaxBot: row.MaxBot, TelegramBot: row.TelegramBot}, err
 }
 func (r *AccountSettings) ListSessions(ctx context.Context, user uuid.UUID, now time.Time) ([]domain.Session, error) {
 	rows, err := r.s.q(ctx).ListOwnSessions(ctx, sqlc.ListOwnSessionsParams{UserID: user, Now: now})

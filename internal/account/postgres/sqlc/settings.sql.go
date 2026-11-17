@@ -264,15 +264,17 @@ const settingsAccess = `-- name: SettingsAccess :one
 SELECT u.admin_role,
 EXISTS(SELECT 1 FROM organization_member m JOIN advertiser_profile p ON p.organization_id=m.organization_id WHERE m.user_id=u.id) AS advertiser,
 EXISTS(SELECT 1 FROM organization_member m JOIN blogger_profile p ON p.organization_id=m.organization_id WHERE m.user_id=u.id) AS blogger,
-EXISTS(SELECT 1 FROM user_notification_max_bot b WHERE b.user_id=u.id) AS max_bot
+EXISTS(SELECT 1 FROM user_notification_max_bot b WHERE b.user_id=u.id) AS max_bot,
+EXISTS(SELECT 1 FROM user_notification_telegram_bot b WHERE b.user_id=u.id) AS telegram_bot
 FROM "user" u WHERE u.id= $1 AND u.status='active'
 `
 
 type SettingsAccessRow struct {
-	AdminRole  *string
-	Advertiser bool
-	Blogger    bool
-	MaxBot     bool
+	AdminRole   *string
+	Advertiser  bool
+	Blogger     bool
+	MaxBot      bool
+	TelegramBot bool
 }
 
 func (q *Queries) SettingsAccess(ctx context.Context, userID uuid.UUID) (SettingsAccessRow, error) {
@@ -283,6 +285,7 @@ func (q *Queries) SettingsAccess(ctx context.Context, userID uuid.UUID) (Setting
 		&i.Advertiser,
 		&i.Blogger,
 		&i.MaxBot,
+		&i.TelegramBot,
 	)
 	return i, err
 }

@@ -188,7 +188,7 @@ jobs:
           # shellcheck disable=SC2029
           ssh target "test -f ${APP_DIR}/app.env && test -f ${APP_DIR}/stack.env" \
             || { echo "::error::${APP_DIR}/app.env and stack.env must be prepared on the server (deploy/app/README.md)"; exit 1; }
-          scp deploy/app/compose.yml deploy/app/maxim-app.caddy deploy/app/release.sh deploy/scripts/lib.sh "target:${APP_DIR}/"
+          scp deploy/app/compose.yml deploy/app/maxim-app.caddy deploy/app/release.sh deploy/scripts/lib.sh deploy/app/configure-telegram.py "target:${APP_DIR}/"
           if [ "${ENVIRONMENT}" = "production" ]; then
             scp deploy/app/compose.storage.yml deploy/app/storage-init.sh deploy/app/storage-release.sh "target:${APP_DIR}/"
           fi
@@ -199,6 +199,38 @@ jobs:
           # shellcheck disable=SC2029
           ssh target "chmod 755 ${APP_DIR}/release.sh"
           echo "::endgroup::"
+
+      - name: Ensure private Telegram egress
+        if: ${{ !inputs.rollback }}
+        env:
+          TELEGRAM_VLESS_SUBSCRIPTION_URL: ${{ secrets.TELEGRAM_VLESS_SUBSCRIPTION_URL }}
+        run: |
+          set -euo pipefail
+          set +x
+          if [ -n "$TELEGRAM_VLESS_SUBSCRIPTION_URL" ]; then
+            ssh target 'install -d -m 700 /opt/maxim-dev/telegram-egress'
+            scp deploy/telegram/compose.yml deploy/telegram/proxy_config.py deploy/telegram/install.py target:/opt/maxim-dev/telegram-egress/
+            python3 deploy/telegram/proxy_config.py \
+              | ssh target 'flock -w 900 /opt/edge/.release.lock python3 /opt/maxim-dev/telegram-egress/install.py'
+            # shellcheck disable=SC2029
+            scp deploy/app/compose.telegram.yml "target:${APP_DIR}/"
+          fi
+
+      - name: Configure Telegram from environment secrets
+        if: ${{ !inputs.rollback }}
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_NAME: ${{ vars.TELEGRAM_BOT_NAME }}
+        run: |
+          set -euo pipefail
+          set +x
+          if [ -n "$TELEGRAM_TOKEN" ]; then
+            [ -n "$TELEGRAM_NAME" ]
+            # The token travels only over stdin and SSH, never as a command argument.
+            # shellcheck disable=SC2029
+            python3 -c 'import json,os,sys; json.dump({"token":os.environ["TELEGRAM_TOKEN"],"bot_name":os.environ["TELEGRAM_NAME"]},sys.stdout)' \
+              | ssh target "flock -w 900 /opt/edge/.release.lock python3 ${APP_DIR}/configure-telegram.py ${ENVIRONMENT}"
+          fi
 
       - name: Release
         id: release
@@ -239,6 +271,16 @@ jobs:
           done
           echo "::error::https://${DOMAIN}/readyz did not return 200"
           exit 1
+
+      - name: Verify configured Telegram webhook
+        if: ${{ !inputs.rollback }}
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        run: |
+          if [ -n "$TELEGRAM_TOKEN" ]; then
+            # shellcheck disable=SC2029
+            ssh target "python3 ${APP_DIR}/configure-telegram.py ${ENVIRONMENT} --verify"
+          fi
 
       - name: Clean up registry credentials
         if: always()

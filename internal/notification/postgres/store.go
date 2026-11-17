@@ -56,7 +56,7 @@ func (s *Store) Insert(ctx context.Context, ns []domain.Notification) ([]domain.
 		rows, err := s.q(ctx).InsertNotification(ctx, sqlc.InsertNotificationParams{
 			ID: n.ID, UserID: n.UserID, OrganizationID: n.OrganizationID, Channel: string(n.Channel), Template: n.Template,
 			Payload: payload, Status: string(n.Status), ObjectType: n.ObjectType, ObjectID: n.ObjectID, DedupeKey: n.DedupeKey,
-			MaxUserID: n.MaxUserID, Attempts: int32(n.Attempts), LastError: n.LastError, SentAt: n.SentAt, ReadAt: n.ReadAt,
+			MaxUserID: n.MaxUserID, TelegramUserID: n.TelegramUserID, Attempts: int32(n.Attempts), LastError: n.LastError, SentAt: n.SentAt, ReadAt: n.ReadAt,
 			CreatedAt: n.CreatedAt, UpdatedAt: n.UpdatedAt,
 		})
 		if err != nil {
@@ -166,7 +166,7 @@ func toDomain(r sqlc.Notification) (domain.Notification, error) {
 	return domain.Notification{
 		ID: r.ID, UserID: r.UserID, OrganizationID: r.OrganizationID, Channel: domain.Channel(r.Channel), Template: r.Template,
 		Payload: payload, Status: domain.Status(r.Status), ObjectType: r.ObjectType, ObjectID: r.ObjectID, DedupeKey: r.DedupeKey,
-		MaxUserID: r.MaxUserID, Attempts: int(r.Attempts), LastError: r.LastError, SentAt: utcPtr(r.SentAt), ReadAt: utcPtr(r.ReadAt),
+		MaxUserID: r.MaxUserID, TelegramUserID: r.TelegramUserID, Attempts: int(r.Attempts), LastError: r.LastError, SentAt: utcPtr(r.SentAt), ReadAt: utcPtr(r.ReadAt),
 		CreatedAt: r.CreatedAt.UTC(), UpdatedAt: r.UpdatedAt.UTC(),
 	}, nil
 }

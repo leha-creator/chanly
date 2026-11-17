@@ -36,6 +36,9 @@ func newNotificationService(cfg Config, in *infra, txRunner tx.Runner, queue job
 		Renderer:   renderer, Clock: in.clock, Log: in.log,
 		Config: notificationapp.Config{SendAttempts: cfg.Notification.SendAttempts},
 	}
+	if cfg.Telegram.Enabled {
+		deps.Telegram = telegramClient(cfg, in)
+	}
 	if in.max != nil {
 		deps.Messenger = bridge.NotificationMessenger{MAX: in.max, Log: log}
 	}

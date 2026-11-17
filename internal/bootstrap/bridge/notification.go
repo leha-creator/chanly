@@ -45,6 +45,10 @@ func (b NotificationRecipients) NotificationMAXRecipient(ctx context.Context, us
 	return b.Users.NotificationMAXRecipient(ctx, userID)
 }
 
+func (b NotificationRecipients) NotificationTelegramRecipient(ctx context.Context, userID uuid.UUID) (int64, error) {
+	return b.Users.NotificationTelegramRecipient(ctx, userID)
+}
+
 // NotificationChannels — notification/domain.Channels поверх channel/postgres (R-3, R-6).
 type NotificationChannels struct{ Channels *channelpg.Channels }
 

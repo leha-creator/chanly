@@ -2,9 +2,9 @@
 
 -- name: InsertNotification :execrows
 INSERT INTO notification (id, user_id, organization_id, channel, template, payload, status, object_type, object_id,
-    dedupe_key, max_user_id, attempts, last_error, sent_at, read_at, created_at, updated_at)
+    dedupe_key, max_user_id, telegram_user_id, attempts, last_error, sent_at, read_at, created_at, updated_at)
 VALUES (@id, @user_id, @organization_id, @channel, @template, @payload, @status, @object_type, @object_id,
-    @dedupe_key, @max_user_id, @attempts, @last_error, @sent_at, @read_at, @created_at, @updated_at)
+    @dedupe_key, @max_user_id, @telegram_user_id, @attempts, @last_error, @sent_at, @read_at, @created_at, @updated_at)
 ON CONFLICT (user_id, channel, dedupe_key) WHERE dedupe_key IS NOT NULL DO NOTHING;
 
 -- name: GetNotificationForUpdate :one

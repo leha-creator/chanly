@@ -16,6 +16,11 @@ Dev UI диагностики RocketWork (2026-11-11): `rocketwork-check serve` 
 
 ## Overview
 
+Telegram может использовать отдельный HTTP CONNECT-прокси Xray из `deploy/telegram`.
+Только транспорт клиента Telegram читает `TELEGRAM_PROXY_URL`; остальные интеграции
+сохраняют свои транспорты. Прокси разрешает только `api.telegram.org:443`, слушает
+на loopback хоста и изолированной Docker-сети, без TUN и изменения маршрутов хоста.
+
 SSE кабинетов: `internal/platform/realtime` читает транзакционный журнал из
 миграции 00107 одним reader на API-реплику и рассылает через bounded hub.
 SQL-триггеры покрывают HTTP/worker/бот/CLI; PostgreSQL snapshot xmin закрывает
@@ -140,6 +145,7 @@ maxim/
 │   │   └── storage/                 #   порт ObjectStorage на minio-go: закрытая и публичная корзины, подписанные ссылки; storagefake/
 │   │
 │   ├── integration/                 # ── АДАПТЕРЫ ВНЕШНИХ СИСТЕМ ──
+│   │   ├── telegram/                #   личные уведомления через Bot API: sensitive outbound, лимиты, /start
 │   │   ├── max/                     #   клиент MAX Bot API через outbound и ratelimit (25 rps, 1/с на чат), разбор Webhook
 │   │   │   └── maxfake/             #   поддельная реализация для тестов и разработки
 │   │   ├── ord/                     #   Яндекс ОРД, API v8: контрагент, договор, площадки, креатив, статистика, акт и разбивка, статус; корзина ord:global

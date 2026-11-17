@@ -7,7 +7,7 @@ __DOMAIN__ {
 		Referrer-Policy "strict-origin-when-cross-origin"
 		-Server
 	}
-	@private_webhook_logs path /api/v1/webhooks/max/* /api/v1/webhooks/rocketwork
+	@private_webhook_logs path /api/v1/webhooks/max/* /api/v1/webhooks/rocketwork /api/v1/webhooks/telegram
 	log_skip @private_webhook_logs
 	log {
 		output stdout

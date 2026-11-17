@@ -85,6 +85,17 @@ func checkoutDraft(e *env) string {
 }
 
 var cases = map[string]opCase{
+	"getTelegramBot":              {user: adv},
+	"disconnectTelegramBot":       {user: adv, noBody: true},
+	"createTelegramBotConnection": {user: adv, noBody: true},
+	"getTelegramBotConnection": {user: adv, prepare: func(e *env) (map[string]string, any) {
+		var c struct {
+			ID string `json:"id"`
+		}
+		e.do(e.client(adv), "POST", "/me/telegram-bot/connections", nil, "").json(e.t, &c)
+		return map[string]string{"id": c.ID}, noBodyMarker
+	}},
+	"telegramWebhook":            {body: map[string]any{"update_id": 1}},
 	"listAdminChannelCategories": {user: adm},
 	"getMaxBot":                  {user: adv},
 	"disconnectMaxBot":           {user: adv, noBody: true},

@@ -388,31 +388,39 @@ type MaxBotConnection struct {
 	ExpiresAt, CreatedAt time.Time
 }
 
+type TelegramBotConnection struct {
+	ID, UserID           uuid.UUID
+	TokenHash, Status    string
+	ExpiresAt, CreatedAt time.Time
+}
+
 type Data struct {
-	MaxBotBindings     map[uuid.UUID]int64
-	MaxBotConnections  []*MaxBotConnection
-	Settings           map[uuid.UUID]Settings
-	EmailChanges       map[uuid.UUID]*MockEmailChange
-	Users              map[uuid.UUID]*User
-	Orgs               map[uuid.UUID]*Organization
-	LegalDocs          []*LegalDocument
-	Acceptances        map[uuid.UUID]map[uuid.UUID]time.Time // org → документ → когда принят
-	Notifications      []*Notification
-	Categories         []*Category
-	Formats            []*Format
-	Channels           []*Channel
-	LinkCodes          []*LinkCode
-	ChannelConnections []*ChannelConnection
-	CartItems          []*CartItem
-	Media              []*MediaFile
-	Campaigns          []*Campaign
-	Orders             []*Order
-	Placements         []*Placement
-	Invoices           []*Invoice
-	Ledger             []*LedgerEntry
-	ClosingActs        []*ClosingAct
-	Payouts            []*Payout
-	Rocketwork         map[uuid.UUID]*RocketworkContractor
+	MaxBotBindings         map[uuid.UUID]int64
+	TelegramBotBindings    map[uuid.UUID]int64
+	TelegramBotConnections []*TelegramBotConnection
+	MaxBotConnections      []*MaxBotConnection
+	Settings               map[uuid.UUID]Settings
+	EmailChanges           map[uuid.UUID]*MockEmailChange
+	Users                  map[uuid.UUID]*User
+	Orgs                   map[uuid.UUID]*Organization
+	LegalDocs              []*LegalDocument
+	Acceptances            map[uuid.UUID]map[uuid.UUID]time.Time // org → документ → когда принят
+	Notifications          []*Notification
+	Categories             []*Category
+	Formats                []*Format
+	Channels               []*Channel
+	LinkCodes              []*LinkCode
+	ChannelConnections     []*ChannelConnection
+	CartItems              []*CartItem
+	Media                  []*MediaFile
+	Campaigns              []*Campaign
+	Orders                 []*Order
+	Placements             []*Placement
+	Invoices               []*Invoice
+	Ledger                 []*LedgerEntry
+	ClosingActs            []*ClosingAct
+	Payouts                []*Payout
+	Rocketwork             map[uuid.UUID]*RocketworkContractor
 	// Администратор (этап «API администратора»).
 	DisputeMessages []*DisputeMessage
 	Approvals       []*Approval
@@ -430,8 +438,9 @@ type Data struct {
 // NewData создаёт пустое состояние.
 func NewData() *Data {
 	return &Data{
-		MaxBotBindings: map[uuid.UUID]int64{},
-		Settings:       map[uuid.UUID]Settings{}, EmailChanges: map[uuid.UUID]*MockEmailChange{},
+		MaxBotBindings:      map[uuid.UUID]int64{},
+		TelegramBotBindings: map[uuid.UUID]int64{},
+		Settings:            map[uuid.UUID]Settings{}, EmailChanges: map[uuid.UUID]*MockEmailChange{},
 		Users:         map[uuid.UUID]*User{},
 		Orgs:          map[uuid.UUID]*Organization{},
 		Acceptances:   map[uuid.UUID]map[uuid.UUID]time.Time{},

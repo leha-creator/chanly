@@ -124,6 +124,19 @@ func (r *Renderer) MAX(n domain.Notification) (string, error) {
 	return truncate(msg, limit) + tail, nil
 }
 
+// Telegram uses plain text: user data cannot inject formatting or hidden links.
+func (r *Renderer) Telegram(n domain.Notification) (string, error) {
+	title, text, err := r.titleText(n, blockText, normalize(n.Payload))
+	if err != nil {
+		return "", err
+	}
+	tail := ""
+	if link := r.absLink(n); link != "" {
+		tail = "\n\nОткрыть в кабинете: " + link
+	}
+	return truncate(title+"\n\n"+text, 4000-utf8.RuneCountInString(tail)) + tail, nil
+}
+
 // Email — тема, текст и HTML письма по общему макету.
 func (r *Renderer) Email(n domain.Notification) (string, string, string, error) {
 	block := blockText

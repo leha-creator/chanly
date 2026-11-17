@@ -15,11 +15,110 @@ on:
         description: "Восстановить deploy:deploy и 600 только для dev app.env"
         type: boolean
         default: false
+      configure_telegram_dev:
+        description: "Применить секрет Telegram в dev и переустановить Webhook"
+        type: boolean
+        default: false
+      install_telegram_proxy:
+        description: "Установить из подписки Xray-прокси только для Telegram"
+        type: boolean
+        default: false
+      diagnose_telegram_dev:
+        description: "Проверить доставку Telegram и состояния подключений без секретов"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
 
 jobs:
+  diagnose-telegram-dev:
+    if: github.event_name == 'workflow_dispatch' && inputs.diagnose_telegram_dev && github.ref == 'refs/heads/dev'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment: dev
+    steps:
+      - uses: actions/checkout@v5
+      - name: Inspect dev Telegram delivery
+        env:
+          HOST: ${{ vars.DEPLOY_HOST }}
+          USER_NAME: ${{ vars.DEPLOY_USER }}
+          SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          set +x
+          [[ "$HOST" = 194.58.120.196 && "$USER_NAME" = deploy ]]
+          [[ -n "$SSH_KEY" && -n "$KNOWN_HOSTS" ]]
+          umask 077
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/telegram-key
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/telegram-hosts
+          trap 'rm -f ~/.ssh/telegram-key ~/.ssh/telegram-hosts' EXIT
+          printf 'Host target\n  HostName %s\n  User deploy\n  IdentityFile ~/.ssh/telegram-key\n  UserKnownHostsFile ~/.ssh/telegram-hosts\n  IdentitiesOnly yes\n  StrictHostKeyChecking yes\n  BatchMode yes\n' "$HOST" > ~/.ssh/config
+          scp deploy/app/diagnose-telegram.py target:/opt/maxim-dev/
+          ssh target 'python3 /opt/maxim-dev/diagnose-telegram.py'
+
+  install-telegram-proxy:
+    if: github.event_name == 'workflow_dispatch' && inputs.install_telegram_proxy && github.ref == 'refs/heads/dev'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: dev
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install private Telegram egress
+        env:
+          HOST: ${{ vars.DEPLOY_HOST }}
+          USER_NAME: ${{ vars.DEPLOY_USER }}
+          SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+          TELEGRAM_VLESS_SUBSCRIPTION_URL: ${{ secrets.TELEGRAM_VLESS_SUBSCRIPTION_URL }}
+        run: |
+          set -euo pipefail
+          set +x
+          [[ "$HOST" = 194.58.120.196 && "$USER_NAME" = deploy ]]
+          [[ -n "$SSH_KEY" && -n "$KNOWN_HOSTS" && -n "$TELEGRAM_VLESS_SUBSCRIPTION_URL" ]]
+          umask 077
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/telegram-key
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/telegram-hosts
+          trap 'rm -f ~/.ssh/telegram-key ~/.ssh/telegram-hosts' EXIT
+          printf 'Host target\n  HostName %s\n  User deploy\n  IdentityFile ~/.ssh/telegram-key\n  UserKnownHostsFile ~/.ssh/telegram-hosts\n  IdentitiesOnly yes\n  StrictHostKeyChecking yes\n  BatchMode yes\n' "$HOST" > ~/.ssh/config
+          ssh target 'install -d -m 700 /opt/maxim-dev/telegram-egress'
+          scp deploy/telegram/compose.yml deploy/telegram/proxy_config.py deploy/telegram/install.py target:/opt/maxim-dev/telegram-egress/
+          python3 deploy/telegram/proxy_config.py \
+            | ssh target 'flock -w 900 /opt/edge/.release.lock python3 /opt/maxim-dev/telegram-egress/install.py'
+
+  configure-telegram-dev:
+    if: github.event_name == 'workflow_dispatch' && inputs.configure_telegram_dev && github.ref == 'refs/heads/dev'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: dev
+    steps:
+      - uses: actions/checkout@v5
+      - name: Apply Telegram configuration to dev
+        env:
+          HOST: ${{ vars.DEPLOY_HOST }}
+          USER_NAME: ${{ vars.DEPLOY_USER }}
+          SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_NAME: ${{ vars.TELEGRAM_BOT_NAME }}
+        run: |
+          set -euo pipefail
+          set +x
+          [[ "$HOST" = 194.58.120.196 && "$USER_NAME" = deploy ]]
+          [[ -n "$SSH_KEY" && -n "$KNOWN_HOSTS" && -n "$TELEGRAM_TOKEN" && -n "$TELEGRAM_NAME" ]]
+          umask 077
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/telegram-key
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/telegram-hosts
+          trap 'rm -f ~/.ssh/telegram-key ~/.ssh/telegram-hosts' EXIT
+          printf 'Host target\n  HostName %s\n  User deploy\n  IdentityFile ~/.ssh/telegram-key\n  UserKnownHostsFile ~/.ssh/telegram-hosts\n  IdentitiesOnly yes\n  StrictHostKeyChecking yes\n  BatchMode yes\n' "$HOST" > ~/.ssh/config
+          scp deploy/app/configure-telegram.py deploy/app/configure-telegram-dev.sh target:/opt/maxim-dev/
+          python3 -c 'import json,os,sys; json.dump({"token":os.environ["TELEGRAM_TOKEN"],"bot_name":os.environ["TELEGRAM_NAME"]},sys.stdout)' \
+            | ssh target 'flock -w 900 /opt/edge/.release.lock bash /opt/maxim-dev/configure-telegram-dev.sh'
+
   repair-dev-permissions:
     if: github.event_name == 'workflow_dispatch' && inputs.repair_dev_permissions && github.ref == 'refs/heads/dev'
     runs-on: ubuntu-latest
@@ -71,7 +170,7 @@ jobs:
           REMOTE
 
   lint:
-    if: ${{ !inputs.repair_dev_permissions }}
+    if: ${{ !inputs.repair_dev_permissions && !inputs.configure_telegram_dev && !inputs.install_telegram_proxy && !inputs.diagnose_telegram_dev }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -91,6 +190,8 @@ jobs:
         run: |
           bash deploy/tests/release-guards.sh
           bash deploy/tests/migration-guards.sh
+          python3 deploy/tests/telegram-config.py
+          python3 deploy/tests/telegram-proxy.py
       - name: Migrations are compatible with the previous release
         if: github.event_name == 'pull_request'
         run: deploy/scripts/check-migrations.sh "origin/${GITHUB_BASE_REF}"
@@ -144,7 +245,7 @@ jobs:
         run: docker run --rm -i hadolint/hadolint:v2.12.0 < deploy/postgres/Dockerfile
 
   config-check:
-    if: ${{ !inputs.repair_dev_permissions }}
+    if: ${{ !inputs.repair_dev_permissions && !inputs.configure_telegram_dev && !inputs.install_telegram_proxy && !inputs.diagnose_telegram_dev }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -184,6 +285,7 @@ jobs:
           done
 
   rehearsal:
+    if: ${{ !inputs.repair_dev_permissions && !inputs.configure_telegram_dev && !inputs.install_telegram_proxy && !inputs.diagnose_telegram_dev }}
     needs: lint
     runs-on: ubuntu-latest
     timeout-minutes: 30

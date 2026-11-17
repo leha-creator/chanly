@@ -31,6 +31,11 @@ x-backend-env: &backend-env
   # MAX без токена бота — поддельный адаптер; оповещения дежурным уходят в Mailpit.
   ALERT_EMAILS: oncall@maxim.local
   # Webhook MAX: события можно отправить вручную (README, «Подключение канала в разработке»).
+  TELEGRAM_ENABLED: ${TELEGRAM_ENABLED:-false}
+  TELEGRAM_BOT_NAME: ${TELEGRAM_BOT_NAME:-}
+  TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+  TELEGRAM_WEBHOOK_SECRET: ${TELEGRAM_WEBHOOK_SECRET:-}
+  TELEGRAM_WEBHOOK_URL: ${TELEGRAM_WEBHOOK_URL:-}
   MAX_BOT_NAME: "@maxim_dev_bot"
   MAX_WEBHOOK_PATH_SECRET: dev-only-webhook-path-secret-0123456789
   MAX_WEBHOOK_SECRET: dev-only-webhook-header-secret-012345678
