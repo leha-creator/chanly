@@ -134,6 +134,9 @@ dc() {
   if [[ -f $APP_DIR/compose.override.yml ]]; then
     args+=(-f "$APP_DIR/compose.override.yml")
   fi
+  if [[ -f $APP_DIR/compose.telegram.yml ]]; then
+    args+=(-f "$APP_DIR/compose.telegram.yml")
+  fi
   local f
   for f in "${EXTRA_FILES[@]}"; do
     args+=(-f "$f")

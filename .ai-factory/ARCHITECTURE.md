@@ -16,6 +16,11 @@ Dev UI диагностики RocketWork (2026-11-11): `rocketwork-check serve` 
 
 ## Overview
 
+Telegram может использовать отдельный HTTP CONNECT-прокси Xray из `deploy/telegram`.
+Только транспорт клиента Telegram читает `TELEGRAM_PROXY_URL`; остальные интеграции
+сохраняют свои транспорты. Прокси разрешает только `api.telegram.org:443`, слушает
+на loopback хоста и изолированной Docker-сети, без TUN и изменения маршрутов хоста.
+
 SSE кабинетов: `internal/platform/realtime` читает транзакционный журнал из
 миграции 00107 одним reader на API-реплику и рассылает через bounded hub.
 SQL-триггеры покрывают HTTP/worker/бот/CLI; PostgreSQL snapshot xmin закрывает

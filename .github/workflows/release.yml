@@ -200,6 +200,22 @@ jobs:
           ssh target "chmod 755 ${APP_DIR}/release.sh"
           echo "::endgroup::"
 
+      - name: Ensure private Telegram egress
+        if: ${{ !inputs.rollback }}
+        env:
+          TELEGRAM_VLESS_SUBSCRIPTION_URL: ${{ secrets.TELEGRAM_VLESS_SUBSCRIPTION_URL }}
+        run: |
+          set -euo pipefail
+          set +x
+          if [ -n "$TELEGRAM_VLESS_SUBSCRIPTION_URL" ]; then
+            ssh target 'install -d -m 700 /opt/maxim-dev/telegram-egress'
+            scp deploy/telegram/compose.yml deploy/telegram/proxy_config.py deploy/telegram/install.py target:/opt/maxim-dev/telegram-egress/
+            python3 deploy/telegram/proxy_config.py \
+              | ssh target 'flock -w 900 /opt/edge/.release.lock python3 /opt/maxim-dev/telegram-egress/install.py'
+            # shellcheck disable=SC2029
+            scp deploy/app/compose.telegram.yml "target:${APP_DIR}/"
+          fi
+
       - name: Configure Telegram from environment secrets
         if: ${{ !inputs.rollback }}
         env:

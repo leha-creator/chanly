@@ -12,9 +12,16 @@ type TelegramConfig struct {
 	BotToken      string `env:"TELEGRAM_BOT_TOKEN"`
 	WebhookSecret string `env:"TELEGRAM_WEBHOOK_SECRET"`
 	WebhookURL    string `env:"TELEGRAM_WEBHOOK_URL"`
+	ProxyURL      string `env:"TELEGRAM_PROXY_URL"`
 }
 
 func (c Config) validateTelegram(add func(string, string)) {
+	if c.Telegram.ProxyURL != "" {
+		proxy, err := url.Parse(c.Telegram.ProxyURL)
+		if err != nil || proxy.Scheme != "http" || proxy.Host == "" || proxy.User != nil || proxy.RawQuery != "" || proxy.Fragment != "" || (proxy.Path != "" && proxy.Path != "/") {
+			add("TELEGRAM_PROXY_URL", "must be an HTTP proxy URL without credentials, query or path")
+		}
+	}
 	if !c.Telegram.Enabled {
 		return
 	}

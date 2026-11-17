@@ -1,0 +1,23 @@
+name: chanly-telegram-egress
+services:
+  proxy:
+    image: ghcr.io/xtls/xray-core@sha256:9812e382e229e9ed63fd179bf1a4e3fe244c12ff3ae4fd8128745d79c87575ab
+    command: [run, -config, /etc/xray/config.json]
+    user: "${PROXY_UID:?}:${PROXY_GID:?}"
+    restart: unless-stopped
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    mem_limit: 128m
+    cpus: 0.5
+    volumes:
+      - ./config:/etc/xray:ro
+    ports:
+      - 127.0.0.1:18081:18081
+    networks:
+      telegram_egress:
+        aliases: [telegram-egress]
+networks:
+  telegram_egress:
+    external: true
+    name: chanly-telegram-egress

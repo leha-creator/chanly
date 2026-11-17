@@ -331,3 +331,17 @@ CI берёт токен из секрета GitHub Environment `TELEGRAM_BOT_TO
 в production — `@LordChanlyBot`. Для уже выпущенного dev можно применить настройки
 через Actions → ops → `configure_telegram_dev=true`, без сборки новой версии.
 Production-секрет применяется только при production-деплое из разрешённой ветки.
+
+Если прямой Telegram недоступен, секрет окружения `TELEGRAM_VLESS_SUBSCRIPTION_URL`
+включает подготовку Xray перед выпуском. Поддерживаются VLESS и Trojan с TCP/RAW
+и TLS/REALITY. `TELEGRAM_PROXY_URL=http://telegram-egress:18081` действует только
+для клиента Telegram; служебный Python-скрипт использует loopback-порт того же
+прокси. Остальные интеграции и системные маршруты не меняются.
+
+Прокси хранится в `/opt/maxim-dev/telegram-egress`, автоматически запускается
+Docker после перезагрузки и обновляет подписку каждые 6 часов через отдельную
+запись crontab пользователя deploy. Ссылка и конфигурация имеют права 600.
+Вход с хоста открыт только на `127.0.0.1:18081`; из контейнеров — через сеть
+`chanly-telegram-egress`. Разрешён только `api.telegram.org:443`, другие назначения
+отклоняются. Actions → ops → `install_telegram_proxy=true` устанавливает или
+обновляет прокси отдельно от сборки приложения.

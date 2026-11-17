@@ -15,8 +15,6 @@ TARGETS = {
     "dev": (Path("/opt/maxim-dev"), "dev.chanly.ru"),
     "production": (Path("/opt/maxim-production"), "chanly.ru"),
 }
-KEYS = {"TELEGRAM_ENABLED", "TELEGRAM_BOT_NAME", "TELEGRAM_BOT_TOKEN",
-        "TELEGRAM_WEBHOOK_SECRET", "TELEGRAM_WEBHOOK_URL"}
 
 
 class ConfigError(ValueError):
@@ -33,7 +31,9 @@ def api(token, method):
         request = urllib.request.Request(
             "https://api.telegram.org/bot" + token + "/" + method,
             data=b"{}", headers={"Content-Type": "application/json"})
-        with urllib.request.urlopen(request, timeout=20) as response:
+        proxy = "http://127.0.0.1:18081" if Path("/opt/maxim-dev/telegram-egress/config/config.json").is_file() else None
+        opener = urllib.request.build_opener(urllib.request.ProxyHandler({"https": proxy}) if proxy else urllib.request.ProxyHandler())
+        with opener.open(request, timeout=20) as response:
             result = json.load(response)
         if not result.get("ok"):
             raise ConfigError("telegram_api_refused")
@@ -64,8 +64,10 @@ def render(source, token, bot_name, domain):
         "TELEGRAM_BOT_TOKEN": token, "TELEGRAM_WEBHOOK_SECRET": secret,
         "TELEGRAM_WEBHOOK_URL": "https://" + domain + "/api/v1/webhooks/telegram",
     }
+    if Path("/opt/maxim-dev/telegram-egress/config/config.json").is_file():
+        settings["TELEGRAM_PROXY_URL"] = "http://telegram-egress:18081"
     kept = [line for line in source.splitlines()
-            if line.split("=", 1)[0] not in KEYS]
+            if line.split("=", 1)[0] not in set(settings)]
     return "\n".join(kept).rstrip("\n") + "\n\n" + "\n".join(
         key + "=" + value for key, value in settings.items()) + "\n"
 

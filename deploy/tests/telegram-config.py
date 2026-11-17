@@ -14,7 +14,8 @@ spec.loader.exec_module(config)
 
 class TelegramConfigTests(unittest.TestCase):
     def test_connection_failure_never_echoes_the_token_url(self):
-        with patch.object(config.urllib.request, "urlopen", side_effect=config.urllib.error.URLError("sensitive-url")):
+        with patch.object(config.urllib.request, "build_opener") as builder:
+            builder.return_value.open.side_effect = config.urllib.error.URLError("sensitive-url")
             with self.assertRaises(config.ConfigError) as caught:
                 config.api("123:test", "getMe")
         self.assertEqual(str(caught.exception), "telegram_api_connect_str")

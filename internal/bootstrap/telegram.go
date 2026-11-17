@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"net/url"
 	"strconv"
 
 	accountdomain "github.com/leha-creator/chanly/internal/account/domain"
@@ -24,8 +25,18 @@ func telegramClient(cfg Config, in *infra) *telegram.Client {
 		return nil
 	}
 	return &telegram.Client{Token: cfg.Telegram.BotToken,
-		Outbound: outbound.New(in.pool, in.clock, in.log, outbound.Options{System: "telegram", Metrics: in.outMetrics, Alerter: in.alerter}),
+		Outbound: outbound.New(in.pool, in.clock, in.log, outbound.Options{System: "telegram", HTTP: telegramHTTPClient(cfg.Telegram.ProxyURL), Metrics: in.outMetrics, Alerter: in.alerter}),
 		Limiter:  ratelimit.New(in.pool, in.clock, in.log, ratelimit.Options{Metrics: in.limitMetrics})}
+}
+
+// A dedicated transport confines proxy use to this integration.
+func telegramHTTPClient(proxyURL string) *http.Client {
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	if proxyURL != "" {
+		proxy, _ := url.Parse(proxyURL) // Checked by Config.Validate.
+		transport.Proxy = http.ProxyURL(proxy)
+	}
+	return outbound.NewHTTPClient(transport)
 }
 
 func newTelegramWebhook(cfg Config, in *infra, runner tx.Runner, queue job.Enqueuer) http.Handler {

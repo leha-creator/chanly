@@ -1,0 +1,21 @@
+# Loaded only after the private Telegram egress service has been installed.
+services:
+  api-a:
+    networks:
+      telegram_egress: {}
+  api-b:
+    networks:
+      telegram_egress: {}
+  worker-a:
+    networks:
+      telegram_egress: {}
+  worker-b:
+    networks:
+      telegram_egress: {}
+  migrate:
+    networks:
+      telegram_egress: {}
+networks:
+  telegram_egress:
+    external: true
+    name: chanly-telegram-egress
