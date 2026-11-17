@@ -50,12 +50,20 @@ func (c *InvoiceClient) Send(ctx context.Context, doc domain.InvoiceDoc) (domain
 	if doc.Payer.Name != "" {
 		payer["name"] = doc.Payer.Name
 	}
+	description := doc.Description
+	if description == "" {
+		description = "Пополнение баланса по счёту № " + doc.Number
+	}
 	body := map[string]any{
 		"invoiceNumber": number, "invoiceDate": doc.IssuedAt.In(time.FixedZone("MSK", 3*3600)).Format(time.DateOnly),
 		"dueDate":       doc.ExpiresAt.In(time.FixedZone("MSK", 3*3600)).Format(time.DateOnly),
 		"accountNumber": c.Account, "customPaymentPurpose": doc.PaymentPurpose,
-		"payer": payer,
-		"items": []map[string]any{{"name": "Пополнение баланса по счёту № " + doc.Number, "vat": "None", "price": price, "amount": 1, "unit": "шт."}},
+		"payer":          payer,
+		"withBnplBanner": false,
+		"items":          []map[string]any{{"name": description, "vat": "None", "price": price, "amount": 1, "unit": "шт."}},
+	}
+	if doc.Comment != "" {
+		body["comment"] = doc.Comment
 	}
 	// No contacts/phone: creating a document must not message the customer.
 	resp, err := c.Out.Do(ctx, outbound.Call{Sensitive: true, NoRetry: true, Create: true,

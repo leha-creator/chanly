@@ -2,17 +2,64 @@ package app_test
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"io"
+	"strings"
 	"testing"
+	"time"
+	"unicode/utf8"
 
 	"github.com/google/uuid"
 
+	"github.com/leha-creator/chanly/internal/billing/app"
 	"github.com/leha-creator/chanly/internal/billing/domain"
 	"github.com/leha-creator/chanly/internal/billing/postgres"
 	"github.com/leha-creator/chanly/internal/platform/apperr"
 	"github.com/leha-creator/chanly/internal/platform/logx"
 )
+
+func TestBankInvoiceAgentContent(t *testing.T) {
+	for _, controlled := range []bool{false, true} {
+		t.Run(map[bool]string{false: "ordinary", true: "controlled"}[controlled], func(t *testing.T) {
+			e := newEnv(t)
+			// The bank and the printed date must use the same Moscow day.
+			e.clk.Set(time.Date(2026, 11, 17, 21, 30, 0, 0, time.UTC))
+			f := &fakeInvoiceIssuer{}
+			enableInvoiceIssuer(e, f)
+			if controlled {
+				e.svc.BankConfig = app.BankConfig{Access: domain.BankControlled, DevRealEnabled: true, DevPaymentCode: strings.Repeat("A", 48)}
+			}
+			// Exercise the longest number accepted by T-API as well as the longest dev code.
+			if _, err := e.d.Owner.Exec(context.Background(), "SELECT setval('invoice_number_seq', 999999999999998)"); err != nil {
+				t.Fatal(err)
+			}
+			inv := e.invoice(100000)
+			wantDescription := "Средства принципала на исполнение поручения по оферте Chanly. Счёт № " + inv.Number + " от 18.11.2026"
+			wantPurpose := wantDescription + ". Без НДС"
+			if controlled {
+				wantPurpose += ". " + e.svc.BankConfig.PaymentMarker()
+			}
+			if f.doc.Description != wantDescription || f.doc.PaymentPurpose != wantPurpose || inv.PaymentDetails.Purpose != wantPurpose {
+				t.Fatalf("inconsistent agent invoice: %+v, %+v", f.doc, inv.PaymentDetails)
+			}
+			if utf8.RuneCountInString(wantPurpose) > 210 {
+				t.Fatalf("payment purpose too long: %d", utf8.RuneCountInString(wantPurpose))
+			}
+			if !strings.HasPrefix(f.doc.Comment, "Основание: оферта рекламодателя https://chanly.ru/offer\n") || !strings.Contains(f.doc.Comment, "Назначение платежа: "+wantPurpose) || strings.Contains(f.doc.Comment, "100%") {
+				t.Fatalf("wrong invoice comment: %q", f.doc.Comment)
+			}
+			var snapshot []byte
+			if err := e.d.Pool.QueryRow(context.Background(), "SELECT request_snapshot FROM bank_invoice_document WHERE invoice_id=$1", inv.ID).Scan(&snapshot); err != nil {
+				t.Fatal(err)
+			}
+			var stored domain.InvoiceDoc
+			if err := json.Unmarshal(snapshot, &stored); err != nil || stored.Description != f.doc.Description || stored.Comment != f.doc.Comment || stored.PaymentPurpose != wantPurpose {
+				t.Fatalf("invoice content snapshot lost: %+v, %v", stored, err)
+			}
+		})
+	}
+}
 
 type fakeInvoiceIssuer struct {
 	sends, downloads     int

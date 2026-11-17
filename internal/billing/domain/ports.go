@@ -163,6 +163,9 @@ type Supplier struct {
 
 // InvoiceDoc — данные PDF счёта.
 type InvoiceDoc struct {
+	// Description and Comment preserve the content sent to the bank with this invoice.
+	Description    string
+	Comment        string
 	PaymentPurpose string
 	Number         string
 	IssuedAt       time.Time

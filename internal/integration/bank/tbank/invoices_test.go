@@ -53,9 +53,16 @@ func TestInvoiceSendContract(t *testing.T) {
 		if body["contacts"] != nil || body["contactPhone"] != nil {
 			t.Fatal("must not send customer messages")
 		}
+		items := body["items"].([]any)
+		item := items[0].(map[string]any)
+		if item["name"] != "Средства принципала по оферте Chanly" || item["vat"] != "None" || body["comment"] != "Основание: https://chanly.ru/offer" || body["withBnplBanner"] != false {
+			t.Fatalf("wrong invoice content: %s", raw)
+		}
 		return outbound.Response{Status: 200, Body: []byte(`{"invoiceId":"` + id.String() + `","pdfUrl":"https://business.tbank.ru/document?signed=secret"}`)}, nil
 	})}
 	doc := domain.InvoiceDoc{Number: "MX-000123", Amount: 1001, IssuedAt: time.Now(), ExpiresAt: time.Now().Add(24 * time.Hour), Supplier: domain.Supplier{BankAccount: c.Account}, PaymentPurpose: "MX-000123. DEV-TBANK-TEST"}
+	doc.Description = "Средства принципала по оферте Chanly"
+	doc.Comment = "Основание: https://chanly.ru/offer"
 	got, err := c.Send(context.Background(), doc)
 	if err != nil || got.ID != id || calls != 1 {
 		t.Fatalf("result %+v, %v, calls %d", got, err, calls)

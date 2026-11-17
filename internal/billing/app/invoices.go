@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"net/netip"
 	"time"
@@ -57,22 +58,15 @@ func (s *Service) CreateInvoice(ctx context.Context, orgID, userID uuid.UUID, am
 		CreatedBy: userID, CreatedAt: now, UpdatedAt: now,
 	}
 	inv.PDFStorageKey = "invoices/" + inv.ID.String() + ".pdf"
-	paymentPurpose := "Пополнение баланса по счёту № " + inv.Number
-	if controlled {
-		paymentPurpose += ". " + s.BankConfig.PaymentMarker()
-	}
+	doc := s.invoiceDoc(inv)
 	supplier := s.Config.Supplier
 	inv.PaymentDetails = &domain.InvoicePaymentDetails{
 		Recipient: supplier.Name, INN: supplier.INN, Account: supplier.BankAccount,
 		Bank: supplier.BankName, BIK: supplier.BankBIK, CorrAccount: supplier.BankCorrAccount,
-		Purpose: paymentPurpose,
-	}
-	doc := domain.InvoiceDoc{
-		PaymentPurpose: paymentPurpose,
-		Number:         inv.Number, IssuedAt: now, ExpiresAt: inv.ExpiresAt, Amount: amount, Supplier: s.Config.Supplier,
-		Payer: inv.Payer, VATNote: s.Config.VATNote,
+		Purpose: doc.PaymentPurpose,
 	}
 	if s.Config.InvoiceProvider == "tbank" {
+		s.log.DebugContext(ctx, "bank invoice content prepared", logx.KeyOp, op, KeyInvoiceID, inv.ID, "template", "chanly_agent_v1")
 		return s.createBankInvoice(ctx, inv, doc)
 	}
 	pdf, err := s.Renderer.Invoice(doc)
@@ -97,6 +91,29 @@ func (s *Service) CreateInvoice(ctx context.Context, orgID, userID uuid.UUID, am
 	s.log.InfoContext(ctx, "invoice issued", logx.KeyOp, op, KeyInvoiceID, inv.ID, "number", inv.Number,
 		logx.KeyOrganizationID, orgID, KeyAmount, int64(amount))
 	return inv, nil
+}
+
+// invoiceDoc is the single snapshot used for the bank request and payment details.
+func (s *Service) invoiceDoc(inv domain.Invoice) domain.InvoiceDoc {
+	doc := domain.InvoiceDoc{
+		Number: inv.Number, IssuedAt: inv.CreatedAt, ExpiresAt: inv.ExpiresAt, Amount: inv.Amount,
+		Supplier: s.Config.Supplier, Payer: inv.Payer, VATNote: s.Config.VATNote,
+		PaymentPurpose: "Пополнение баланса по счёту № " + inv.Number,
+	}
+	if s.Config.InvoiceProvider == "tbank" {
+		date := inv.CreatedAt.In(time.FixedZone("MSK", 3*3600)).Format("02.01.2006")
+		doc.Description = fmt.Sprintf("Средства принципала на исполнение поручения по оферте Chanly. Счёт № %s от %s", inv.Number, date)
+		doc.PaymentPurpose = doc.Description + ". " + doc.VATNote
+	}
+	if s.BankConfig.DevPaymentsEnabled() {
+		doc.PaymentPurpose += ". " + s.BankConfig.PaymentMarker()
+	}
+	if s.Config.InvoiceProvider == "tbank" {
+		doc.Comment = "Основание: оферта рекламодателя https://chanly.ru/offer\n" +
+			"Назначение платежа: " + doc.PaymentPurpose + "\n" +
+			"Указывайте назначение платежа полностью. Зачисление на баланс — после поступления и сопоставления платежа по банковской выписке."
+	}
+	return doc
 }
 
 // invoiceRateLimit — не больше InvoicesPerUserHour счетов пользователя и InvoicesPerIPHour
