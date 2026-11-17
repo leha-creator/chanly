@@ -13,6 +13,12 @@ spec.loader.exec_module(config)
 
 
 class TelegramConfigTests(unittest.TestCase):
+    def test_connection_failure_never_echoes_the_token_url(self):
+        with patch.object(config.urllib.request, "urlopen", side_effect=config.urllib.error.URLError("sensitive-url")):
+            with self.assertRaises(config.ConfigError) as caught:
+                config.api("123:test", "getMe")
+        self.assertEqual(str(caught.exception), "telegram_api_connect_str")
+
     def test_preserves_other_settings_and_removes_duplicate_telegram_keys(self):
         source = "DATABASE_URL=unchanged\n# Comment\nTELEGRAM_ENABLED=false\nTELEGRAM_ENABLED=true\n"
         updated = config.render(source, "123:test", "@ExampleBot", "dev.chanly.ru")
