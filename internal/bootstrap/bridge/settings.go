@@ -16,7 +16,7 @@ func (b NotificationSettingsAudience) SettingsAccess(ctx context.Context, user u
 	if err != nil {
 		return domain.SettingsAccess{}, err
 	}
-	out := domain.SettingsAccess{MaxBot: a.MaxBot}
+	out := domain.SettingsAccess{MaxBot: a.MaxBot, TelegramBot: a.TelegramBot}
 	if a.Advertiser {
 		out.Roles = append(out.Roles, domain.RoleAdvertiser)
 	}

@@ -12,7 +12,7 @@ import (
 )
 
 const getOwnCabinetNotification = `-- name: GetOwnCabinetNotification :one
-SELECT id, user_id, organization_id, channel, template, payload, status, object_type, object_id, dedupe_key, max_user_id, attempts, last_error, sent_at, read_at, created_at, updated_at FROM notification WHERE id = $1 AND user_id = $2 AND channel='cabinet'
+SELECT id, user_id, organization_id, channel, template, payload, status, object_type, object_id, dedupe_key, max_user_id, attempts, last_error, sent_at, read_at, created_at, updated_at, telegram_user_id FROM notification WHERE id = $1 AND user_id = $2 AND channel='cabinet'
 `
 
 type GetOwnCabinetNotificationParams struct {
@@ -41,6 +41,7 @@ func (q *Queries) GetOwnCabinetNotification(ctx context.Context, arg GetOwnCabin
 		&i.ReadAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.TelegramUserID,
 	)
 	return i, err
 }

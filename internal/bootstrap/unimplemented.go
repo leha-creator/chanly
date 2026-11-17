@@ -534,6 +534,22 @@ func (unimplemented) UpdateAccountSettings(context.Context, apigen.UpdateAccount
 	return nil, apperr.NotImplemented("updateAccountSettings")
 }
 
+func (unimplemented) DisconnectTelegramBot(context.Context, apigen.DisconnectTelegramBotRequestObject) (apigen.DisconnectTelegramBotResponseObject, error) {
+	return nil, apperr.NotImplemented("disconnectTelegramBot")
+}
+
+func (unimplemented) GetTelegramBot(context.Context, apigen.GetTelegramBotRequestObject) (apigen.GetTelegramBotResponseObject, error) {
+	return nil, apperr.NotImplemented("getTelegramBot")
+}
+
+func (unimplemented) CreateTelegramBotConnection(context.Context, apigen.CreateTelegramBotConnectionRequestObject) (apigen.CreateTelegramBotConnectionResponseObject, error) {
+	return nil, apperr.NotImplemented("createTelegramBotConnection")
+}
+
+func (unimplemented) GetTelegramBotConnection(context.Context, apigen.GetTelegramBotConnectionRequestObject) (apigen.GetTelegramBotConnectionResponseObject, error) {
+	return nil, apperr.NotImplemented("getTelegramBotConnection")
+}
+
 func (unimplemented) ListMedia(context.Context, apigen.ListMediaRequestObject) (apigen.ListMediaResponseObject, error) {
 	return nil, apperr.NotImplemented("listMedia")
 }
@@ -632,4 +648,8 @@ func (unimplemented) MaxWebhook(context.Context, apigen.MaxWebhookRequestObject)
 
 func (unimplemented) RocketworkWebhook(context.Context, apigen.RocketworkWebhookRequestObject) (apigen.RocketworkWebhookResponseObject, error) {
 	return nil, apperr.NotImplemented("rocketworkWebhook")
+}
+
+func (unimplemented) TelegramWebhook(context.Context, apigen.TelegramWebhookRequestObject) (apigen.TelegramWebhookResponseObject, error) {
+	return nil, apperr.NotImplemented("telegramWebhook")
 }

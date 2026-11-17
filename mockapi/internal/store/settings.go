@@ -54,7 +54,7 @@ func (tx *Tx) AccountSettings(user uuid.UUID) Settings {
 	return DefaultSettings()
 }
 func (tx *Tx) AccountSettingsAccess(u *User) SettingsAccess {
-	out := SettingsAccess{MaxBot: tx.D.MaxBotBindings[u.ID] > 0}
+	out := SettingsAccess{MaxBot: tx.D.MaxBotBindings[u.ID] > 0, TelegramBot: tx.D.TelegramBotBindings[u.ID] > 0}
 	if u.AdminRole != "" {
 		out.Roles = append(out.Roles, RoleAdmin)
 	}

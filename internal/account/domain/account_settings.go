@@ -11,8 +11,8 @@ import (
 )
 
 type SettingsAccess struct {
-	AdminRole                   *string
-	Advertiser, Blogger, MaxBot bool
+	AdminRole                                *string
+	Advertiser, Blogger, MaxBot, TelegramBot bool
 }
 type EmailChange struct {
 	ID, UserID                                   uuid.UUID

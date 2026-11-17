@@ -139,6 +139,14 @@ func (s *Service) AnonymizeSubject(ctx context.Context, email string, operatorID
 				return err
 			}
 		}
+		if s.TelegramBot != nil {
+			if err := s.TelegramBot.ExpireConnections(ctx, u.ID); err != nil {
+				return err
+			}
+			if err := s.TelegramBot.Disconnect(ctx, u.ID); err != nil {
+				return err
+			}
+		}
 		if res.SessionsCleared, err = pd.ClearSessions(ctx, u.ID, now); err != nil {
 			return err
 		}

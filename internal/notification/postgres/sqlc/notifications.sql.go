@@ -79,7 +79,7 @@ func (q *Queries) DeleteOldNotifications(ctx context.Context, arg DeleteOldNotif
 }
 
 const getNotificationForUpdate = `-- name: GetNotificationForUpdate :one
-SELECT id, user_id, organization_id, channel, template, payload, status, object_type, object_id, dedupe_key, max_user_id, attempts, last_error, sent_at, read_at, created_at, updated_at FROM notification WHERE id = $1 FOR UPDATE
+SELECT id, user_id, organization_id, channel, template, payload, status, object_type, object_id, dedupe_key, max_user_id, attempts, last_error, sent_at, read_at, created_at, updated_at, telegram_user_id FROM notification WHERE id = $1 FOR UPDATE
 `
 
 func (q *Queries) GetNotificationForUpdate(ctx context.Context, id uuid.UUID) (Notification, error) {
@@ -103,6 +103,7 @@ func (q *Queries) GetNotificationForUpdate(ctx context.Context, id uuid.UUID) (N
 		&i.ReadAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.TelegramUserID,
 	)
 	return i, err
 }
@@ -110,9 +111,9 @@ func (q *Queries) GetNotificationForUpdate(ctx context.Context, id uuid.UUID) (N
 const insertNotification = `-- name: InsertNotification :execrows
 
 INSERT INTO notification (id, user_id, organization_id, channel, template, payload, status, object_type, object_id,
-    dedupe_key, max_user_id, attempts, last_error, sent_at, read_at, created_at, updated_at)
+    dedupe_key, max_user_id, telegram_user_id, attempts, last_error, sent_at, read_at, created_at, updated_at)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9,
-    $10, $11, $12, $13, $14, $15, $16, $17)
+    $10, $11, $12, $13, $14, $15, $16, $17, $18)
 ON CONFLICT (user_id, channel, dedupe_key) WHERE dedupe_key IS NOT NULL DO NOTHING
 `
 
@@ -128,6 +129,7 @@ type InsertNotificationParams struct {
 	ObjectID       *string
 	DedupeKey      *string
 	MaxUserID      *int64
+	TelegramUserID *int64
 	Attempts       int32
 	LastError      *string
 	SentAt         *time.Time
@@ -150,6 +152,7 @@ func (q *Queries) InsertNotification(ctx context.Context, arg InsertNotification
 		arg.ObjectID,
 		arg.DedupeKey,
 		arg.MaxUserID,
+		arg.TelegramUserID,
 		arg.Attempts,
 		arg.LastError,
 		arg.SentAt,
@@ -164,7 +167,7 @@ func (q *Queries) InsertNotification(ctx context.Context, arg InsertNotification
 }
 
 const listCabinetNotifications = `-- name: ListCabinetNotifications :many
-SELECT id, user_id, organization_id, channel, template, payload, status, object_type, object_id, dedupe_key, max_user_id, attempts, last_error, sent_at, read_at, created_at, updated_at FROM notification
+SELECT id, user_id, organization_id, channel, template, payload, status, object_type, object_id, dedupe_key, max_user_id, attempts, last_error, sent_at, read_at, created_at, updated_at, telegram_user_id FROM notification
 WHERE user_id = $1 AND channel = 'cabinet'
   AND (NOT $2::bool OR read_at IS NULL)
   AND (NOT $3::bool OR (created_at, id) < ($4::timestamptz, $5::uuid))
@@ -215,6 +218,7 @@ func (q *Queries) ListCabinetNotifications(ctx context.Context, arg ListCabinetN
 			&i.ReadAt,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.TelegramUserID,
 		); err != nil {
 			return nil, err
 		}

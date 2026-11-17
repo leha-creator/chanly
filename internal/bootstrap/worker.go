@@ -35,6 +35,11 @@ func runWorker(ctx context.Context, cfg Config, log *slog.Logger) error {
 		return err
 	}
 	ensureMAXSubscription(ctx, cfg, in)
+	if client := telegramClient(cfg, in); client != nil {
+		if err := client.SetWebhook(ctx, cfg.Telegram.WebhookURL, cfg.Telegram.WebhookSecret); err != nil {
+			return fmt.Errorf("configure telegram webhook: %w", err)
+		}
+	}
 	in.alerter.CheckChannels(ctx)
 	m := newModules(cfg, in)
 	if err := m.startMarking(ctx); err != nil {

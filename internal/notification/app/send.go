@@ -48,7 +48,7 @@ func (s *Service) Send(ctx context.Context, id uuid.UUID) error {
 		s.log.DebugContext(ctx, "notification already handled", logx.KeyOp, op, "status", n.Status, KeyChannel, n.Channel)
 		return nil
 	}
-	bound, err := s.maxBindingCurrent(ctx, n)
+	bound, err := s.botBindingCurrent(ctx, n)
 	if err != nil {
 		return err
 	}
@@ -56,7 +56,7 @@ func (s *Service) Send(ctx context.Context, id uuid.UUID) error {
 		return s.finish(ctx, id, func(n *domain.Notification) {
 			n.Status = domain.StatusSuppressed
 			n.UpdatedAt = s.Clock.Now()
-			reason := "max_bot_disconnected"
+			reason := string(n.Channel) + "_disconnected"
 			n.LastError = &reason
 		})
 	}
@@ -100,6 +100,18 @@ func (s *Service) Send(ctx context.Context, id uuid.UUID) error {
 			"attempt", n.Attempts+1, "reason", reason, logx.KeyError, err.Error())
 		return err
 	}
+}
+
+func (s *Service) botBindingCurrent(ctx context.Context, n domain.Notification) (bool, error) {
+	if n.Channel != domain.ChannelTelegramBot {
+		return s.maxBindingCurrent(ctx, n)
+	}
+	recipients, ok := s.Recipients.(domain.TelegramRecipients)
+	if !ok || n.TelegramUserID == nil {
+		return false, nil
+	}
+	current, err := recipients.NotificationTelegramRecipient(ctx, n.UserID)
+	return current > 0 && current == *n.TelegramUserID, err
 }
 
 // maxBindingCurrent prevents a queued message reaching a disconnected or replaced account.
@@ -154,6 +166,18 @@ func (s *Service) finish(ctx context.Context, id uuid.UUID, change func(n *domai
 // deliver собирает текст и отправляет; reason — код для last_error.
 func (s *Service) deliver(ctx context.Context, n domain.Notification) (string, error) {
 	switch n.Channel {
+	case domain.ChannelTelegramBot:
+		if s.Telegram == nil {
+			return reasonNoAdapter, fmt.Errorf("%w: no telegram messenger", errUndeliverable)
+		}
+		text, err := s.Renderer.Telegram(n)
+		if err != nil {
+			return reasonRenderFailed, fmt.Errorf("%w: %v", errUndeliverable, err)
+		}
+		if err := s.Telegram.SendUserMessage(ctx, *n.TelegramUserID, text); err != nil {
+			return failReason(err), err
+		}
+		return "", nil
 	case domain.ChannelMaxBot:
 		if s.Messenger == nil {
 			return reasonNoAdapter, fmt.Errorf("%w: no max messenger", errUndeliverable)

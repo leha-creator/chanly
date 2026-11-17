@@ -12,3 +12,11 @@ c466e346671008d7a9b9f3ef757c5f644f05f60d81c995784547954fb8c8007a  migrations/001
 # Down converts suppressed to failed before restoring the original CHECK.
 # Covered by account settings delivery and migration round-trip tests.
 2a52bf0e921d1b7221276bad7a734c674ef77d43746509398429ec6ba7cf34d5  migrations/00108_account_settings.sql
+
+# 00111 transactionally widens notification.channel, inbound_event.source and
+# outbound system CHECKs with Telegram. Every previous value remains valid;
+# the existing MAX recipient constraint is unchanged. The nullable recipient
+# column and new binding tables preserve all previous rows. Old workers ignore
+# unknown inbound events; Telegram remains disabled until after the rollout.
+# Covered by PostgreSQL binding lifecycle and queued-disconnect delivery tests.
+e1fb2edde419e7932c0a4d8e4bc0c2283254145f84a9f22efe3f116b070afe7f  migrations/00111_telegram_notifications.sql

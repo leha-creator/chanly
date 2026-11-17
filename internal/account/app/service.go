@@ -23,13 +23,15 @@ import (
 
 // Config — параметры модуля; значения по умолчанию — 07 §4.
 type Config struct {
-	MAXBotName        string
-	LoginCodeTTL      time.Duration
-	LoginCodeAttempts int
-	CodesPerEmailHour int
-	CodesPerIPHour    int
-	SessionTTL        time.Duration
-	AdminSessionTTL   time.Duration
+	MAXBotName         string
+	TelegramBotName    string
+	TelegramBotEnabled bool
+	LoginCodeTTL       time.Duration
+	LoginCodeAttempts  int
+	CodesPerEmailHour  int
+	CodesPerIPHour     int
+	SessionTTL         time.Duration
+	AdminSessionTTL    time.Duration
 	// Pepper — секрет HMAC кода входа (R-3).
 	Pepper []byte
 	// DocumentURLTTL — срок подписанной ссылки на файл оферты.
@@ -52,6 +54,7 @@ type UploadCounter interface {
 // Deps — зависимости сервиса; связывает bootstrap.
 type Deps struct {
 	MAXBot        domain.MAXBotRepository
+	TelegramBot   domain.TelegramBotRepository
 	Settings      domain.AccountSettingsRepository
 	Users         domain.Users
 	AuthCodes     domain.AuthCodes

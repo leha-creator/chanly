@@ -51,6 +51,11 @@ type MAXRecipients interface {
 	NotificationMAXRecipient(context.Context, uuid.UUID) (int64, error)
 }
 
+// TelegramRecipients provides verified private Telegram recipients.
+type TelegramRecipients interface {
+	NotificationTelegramRecipient(context.Context, uuid.UUID) (int64, error)
+}
+
 // ChannelInfo — сведения о канале для текста и адресата бота (R-3, R-6).
 type ChannelInfo struct {
 	Title string
@@ -70,6 +75,7 @@ type Renderer interface {
 	Cabinet(n Notification) (title, text string, err error)
 	// MAX — личное сообщение бота (Markdown MAX).
 	MAX(n Notification) (string, error)
+	Telegram(n Notification) (string, error)
 	// Email — тема, текст и HTML письма.
 	Email(n Notification) (subject, text, html string, err error)
 }

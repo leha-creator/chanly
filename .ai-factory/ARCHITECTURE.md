@@ -140,6 +140,7 @@ maxim/
 │   │   └── storage/                 #   порт ObjectStorage на minio-go: закрытая и публичная корзины, подписанные ссылки; storagefake/
 │   │
 │   ├── integration/                 # ── АДАПТЕРЫ ВНЕШНИХ СИСТЕМ ──
+│   │   ├── telegram/                #   личные уведомления через Bot API: sensitive outbound, лимиты, /start
 │   │   ├── max/                     #   клиент MAX Bot API через outbound и ratelimit (25 rps, 1/с на чат), разбор Webhook
 │   │   │   └── maxfake/             #   поддельная реализация для тестов и разработки
 │   │   ├── ord/                     #   Яндекс ОРД, API v8: контрагент, договор, площадки, креатив, статистика, акт и разбивка, статус; корзина ord:global

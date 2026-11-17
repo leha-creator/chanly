@@ -43,8 +43,9 @@ type SettingsPatch struct {
 	Delivery                []Preference
 }
 type SettingsAccess struct {
-	Roles  []Role
-	MaxBot bool
+	Roles       []Role
+	MaxBot      bool
+	TelegramBot bool
 }
 type SettingsRepository interface {
 	Settings(context.Context, uuid.UUID) (Settings, error)
@@ -111,7 +112,7 @@ func (s Settings) Catalog(a SettingsAccess) []DeliveryOption {
 				continue
 			}
 			group := GroupFor(role, t.Code)
-			for _, ch := range []string{"email", "max_bot", "browser", "sound"} {
+			for _, ch := range []string{"email", "max_bot", "telegram_bot", "browser", "sound"} {
 				available := true
 				reason := ""
 				if ch == "email" && role == RoleAdmin {
@@ -121,6 +122,10 @@ func (s Settings) Catalog(a SettingsAccess) []DeliveryOption {
 				if ch == "max_bot" && (role == RoleAdmin || !a.MaxBot) {
 					available = false
 					reason = "max_bot_unavailable"
+				}
+				if ch == "telegram_bot" && (role == RoleAdmin || !a.TelegramBot) {
+					available = false
+					reason = "telegram_bot_unavailable"
 				}
 				mandatory := available && Mandatory(t.Code, ch)
 				if mandatory {

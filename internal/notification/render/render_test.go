@@ -48,6 +48,10 @@ func TestEveryTemplateRenders(t *testing.T) {
 			if err != nil || msg == "" {
 				t.Fatalf("%s/%s max: %v", tpl.Code, name, err)
 			}
+			telegramText, err := r.Telegram(n)
+			if err != nil || telegramText == "" || utf8.RuneCountInString(telegramText) > MaxTextLength {
+				t.Fatalf("%s/%s telegram: %v", tpl.Code, name, err)
+			}
 			subject, plain, html, err := r.Email(n)
 			if err != nil || subject != title || !strings.Contains(plain, text) || !strings.Contains(html, "<html") {
 				t.Fatalf("%s/%s email: %v %q", tpl.Code, name, err, subject)

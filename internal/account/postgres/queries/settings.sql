@@ -2,7 +2,8 @@
 SELECT u.admin_role,
 EXISTS(SELECT 1 FROM organization_member m JOIN advertiser_profile p ON p.organization_id=m.organization_id WHERE m.user_id=u.id) AS advertiser,
 EXISTS(SELECT 1 FROM organization_member m JOIN blogger_profile p ON p.organization_id=m.organization_id WHERE m.user_id=u.id) AS blogger,
-EXISTS(SELECT 1 FROM user_notification_max_bot b WHERE b.user_id=u.id) AS max_bot
+EXISTS(SELECT 1 FROM user_notification_max_bot b WHERE b.user_id=u.id) AS max_bot,
+EXISTS(SELECT 1 FROM user_notification_telegram_bot b WHERE b.user_id=u.id) AS telegram_bot
 FROM "user" u WHERE u.id= @user_id AND u.status='active';
 
 -- name: ListOwnSessions :many
