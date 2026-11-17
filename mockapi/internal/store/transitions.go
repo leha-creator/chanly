@@ -127,10 +127,10 @@ func (tx *Tx) notifyTransition(p *Placement, code string) {
 	// Ссылки — как у бэкенда (notification/domain.Link): рекламодателю — заказ, блогеру — размещение.
 	orderID := o.ID
 	adv := func(tpl, head, text string) {
-		tx.Notify(o.OrgID, tpl, head, text, "placement", p.ID, &orderID, "/adv/orders/"+o.ID.String())
+		tx.Notify(o.OrgID, tpl, head, text, "placement", p.ID, &orderID, "/adv/order/"+o.ID.String())
 	}
 	blg := func(tpl, head, text string) {
-		tx.Notify(p.BloggerOrgID, tpl, head, text, "placement", p.ID, &orderID, "/blg/placements?placement="+p.ID.String())
+		tx.Notify(p.BloggerOrgID, tpl, head, text, "placement", p.ID, &orderID, "/blg/placement/"+p.ID.String())
 	}
 	ch := "«" + title + "»"
 	switch code {

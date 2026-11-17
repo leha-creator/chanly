@@ -64,7 +64,7 @@ func TestNotificationsHTTP(t *testing.T) {
 		t.Fatalf("first page: %+v", first)
 	}
 	n := first.Items[0]
-	if n.Template != "placement.accepted" || n.OrderID != order.String() || n.Link != "/adv/orders/"+order.String() ||
+	if n.Template != "placement.accepted" || n.OrderID != order.String() || n.Link != "/adv/order/"+order.String() ||
 		n.IsRead || n.Title == "" || n.ObjectType != "placement" {
 		t.Fatalf("item: %+v", n)
 	}

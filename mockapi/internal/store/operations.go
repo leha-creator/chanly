@@ -239,7 +239,7 @@ func (tx *Tx) RejectPost(o *Order, reason string) error {
 	orderID := o.ID
 	tx.Notify(o.OrgID, "order.post_rejected", fmt.Sprintf("Пост заказа № %d отклонён", o.Number),
 		fmt.Sprintf("Модератор отклонил пост заказа № %d: %s\nИсправьте пост и отправьте новую версию на модерацию.", o.Number, reason),
-		"order", o.ID, &orderID, "/adv/orders/"+o.ID.String())
+		"order", o.ID, &orderID, "/adv/order/"+o.ID.String())
 	tx.recalcOrder(o)
 	return nil
 }

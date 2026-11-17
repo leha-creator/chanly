@@ -114,36 +114,36 @@ func Plan(n Notice, a Audience, newID func() uuid.UUID, now time.Time) ([]Notifi
 }
 
 // Link — относительный путь в кабинете для перехода из уведомления (R-6).
-// ПРЕДПОЛОЖЕНИЕ: адреса экранов кабинета — как в 08 §2 (`adv/order`, `blg/placement`, …) с
-// идентификатором последним сегментом; размещение блогера — панель на `blg/placements`.
+// Маршруты карточек используют единственное число (`adv/order`, `blg/placement`, …)
+// и идентификатор последним сегментом, как в роутере кабинета.
 func Link(n Notice) string {
 	id := n.ObjectID
 	switch n.Role {
 	case RoleAdmin:
 		switch n.ObjectType {
 		case "placement":
-			return "/adm/placements/" + id
+			return "/adm/placement/" + id
 		case "channel":
-			return "/adm/channels/" + id
+			return "/adm/channel/" + id
 		case "order":
-			return "/adm/orders/" + id
+			return "/adm/order/" + id
 		}
 	case RoleAdvertiser:
 		if o := uuidFrom(n.Data[DataOrderID]); o != nil {
-			return "/adv/orders/" + o.String()
+			return "/adv/order/" + o.String()
 		}
 		switch {
 		case n.ObjectType == "order":
-			return "/adv/orders/" + id
+			return "/adv/order/" + id
 		case strings.HasPrefix(n.Template, "balance.") || strings.HasPrefix(n.Template, "closing_acts."):
 			return "/adv/balance"
 		}
 	case RoleBlogger:
 		switch {
 		case n.ObjectType == "placement":
-			return "/blg/placements?placement=" + id
+			return "/blg/placement/" + id
 		case n.ObjectType == "channel":
-			return "/blg/channels/" + id
+			return "/blg/channel/" + id
 		case strings.HasPrefix(n.Template, "payout.") || strings.HasPrefix(n.Template, "rocketwork."):
 			return "/blg/payouts"
 		}

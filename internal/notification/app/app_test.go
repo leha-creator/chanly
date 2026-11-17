@@ -126,7 +126,7 @@ func TestNotifyBloggerAndSend(t *testing.T) {
 		}
 	}
 	msgs, mails := e.delivery.Messages(), e.delivery.Mails()
-	if len(msgs) != 1 || msgs[0].MaxUser != 4242 || !strings.Contains(msgs[0].Text, "https://cabinet.test/blg/placements?placement=") {
+	if len(msgs) != 1 || msgs[0].MaxUser != 4242 || !strings.Contains(msgs[0].Text, "https://cabinet.test/blg/placement/") {
 		t.Fatalf("max messages: %+v", msgs)
 	}
 	if len(mails) != 1 || !strings.HasSuffix(mails[0].To, "@notify.test") || mails[0].Subject != page.Items[0].Title {
@@ -239,7 +239,7 @@ func TestAdminCabinetAndReadAll(t *testing.T) {
 	if err != nil || len(page.Items) != 2 || page.NextCursor == "" || page.Total != 3 {
 		t.Fatalf("page: %v %+v", err, page)
 	}
-	if !strings.HasPrefix(page.Items[0].Link(), "/adm/placements/") {
+	if !strings.HasPrefix(page.Items[0].Link(), "/adm/placement/") {
 		t.Fatalf("admin link %q", page.Items[0].Link())
 	}
 	if _, err := e.svc.List(ctx, admin, false, "broken", 2); !apperr.Is(err, apperr.CodeValidationFailed) {

@@ -119,6 +119,8 @@ func (s *Service) Notify(ctx context.Context, n domain.Notice) error {
 				logx.KeyOrganizationID, n.OrganizationID, "reason", "no_recipients")
 			return nil
 		}
+		s.log.DebugContext(ctx, "[FIX] notification links planned", logx.KeyOp, op, KeyTemplate, n.Template,
+			"role", n.Role, "object_type", n.ObjectType, "object_id", n.ObjectID, "link", rows[0].Link())
 		inserted, err := s.Repo.Insert(ctx, rows)
 		if err != nil {
 			return err

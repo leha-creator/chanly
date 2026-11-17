@@ -419,8 +419,8 @@ func Load(d *store.Data, now time.Time) {
 		}
 		d.Notifications = append(d.Notifications, n)
 	}
-	advOrder := func(o uuid.UUID) string { return "/adv/orders/" + o.String() }
-	blgPlacement := func(p uuid.UUID) string { return "/blg/placements?placement=" + p.String() }
+	advOrder := func(o uuid.UUID) string { return "/adv/order/" + o.String() }
+	blgPlacement := func(p uuid.UUID) string { return "/blg/placement/" + p.String() }
 	note(UserAdvertiser, "placement.removed", "Пост снят из «Тестовый канал о кулинарии»",
 		"Размещение по заказу № 1001 завершено: пост снят из «Тестовый канал о кулинарии».\nПросмотров: 2 400.\nПретензию можно открыть в течение 24 часов, после этого размещение будет принято автоматически.",
 		"placement", p804.ID, ptr(OrderActive), advOrder(OrderActive), 4, false)
@@ -434,12 +434,12 @@ func Load(d *store.Data, now time.Time) {
 		"Рекламодатель хочет разместить пост в «Выдуманные рецепты», заказ № 1001.\nОтветьте в течение суток, иначе запрос истечёт.",
 		"placement", p801.ID, ptr(OrderActive), blgPlacement(p801.ID), 28, false)
 	note(UserBlogger, "channel.approved", "Канал «Выдуманные рецепты» прошёл модерацию",
-		"Канал «Выдуманные рецепты» опубликован в каталоге.", "channel", ChannelBlogger1, nil, "/blg/channels/"+ChannelBlogger1.String(), 200, true)
+		"Канал «Выдуманные рецепты» опубликован в каталоге.", "channel", ChannelBlogger1, nil, "/blg/channel/"+ChannelBlogger1.String(), 200, true)
 	note(UserBlogger, "placement.disputed", "Претензия по размещению в «Выдуманные рецепты»",
 		"Рекламодатель открыл претензию по заказу № 1002. Платформа рассмотрит её и сообщит решение.",
 		"placement", p805.ID, ptr(OrderPast), blgPlacement(p805.ID), 90, true)
 	note(UserBlogger, "payout.succeeded", "Выплата получена",
 		"Деньги за размещение в «Выдуманные рецепты», заказ № 1002, выплачены.", "placement", p806.ID, ptr(OrderPast), blgPlacement(p806.ID), 60, true)
 	note(UserAdmin, "placement.disputed", "Претензия по размещению",
-		"Рекламодатель открыл претензию по заказу № 1002. Нужно решение администратора.", "placement", p805.ID, ptr(OrderPast), "/adm/placements/"+p805.ID.String(), 90, false)
+		"Рекламодатель открыл претензию по заказу № 1002. Нужно решение администратора.", "placement", p805.ID, ptr(OrderPast), "/adm/placement/"+p805.ID.String(), 90, false)
 }

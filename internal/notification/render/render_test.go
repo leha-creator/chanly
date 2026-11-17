@@ -19,7 +19,7 @@ func sample() map[string]any {
 		"claim_deadline_at": at.Add(48 * time.Hour), "publication_url": "https://max.ru/c/1/mid_1", "views": 12345,
 		"amount": int64(1150000), "invoice_number": "MX-000101", "number": "А-000001", "period": "2026-10",
 		"reason": "Мало подписчиков", "refund_amount": int64(287500), "receipt_url": "https://lknpd.nalog.ru/x",
-		domain.DataLink: "/adv/orders/1",
+		domain.DataLink: "/adv/order/1",
 	}
 }
 
@@ -101,7 +101,7 @@ func TestMAXMarkdownEscapingAndLink(t *testing.T) {
 	if !strings.HasPrefix(msg, "**Пост опубликован в «Кухня\\_у\\_Маши»**") {
 		t.Fatalf("title not escaped: %q", msg)
 	}
-	if !strings.Contains(msg, "https://max.ru/c/1/mid_1") || !strings.HasSuffix(msg, "[Открыть в кабинете](https://cabinet.example.ru/adv/orders/1)") {
+	if !strings.Contains(msg, "https://max.ru/c/1/mid_1") || !strings.HasSuffix(msg, "[Открыть в кабинете](https://cabinet.example.ru/adv/order/1)") {
 		t.Fatalf("links: %q", msg)
 	}
 }
@@ -137,7 +137,7 @@ func TestEmailEscapesHTML(t *testing.T) {
 
 func TestEmailOptionalAction(t *testing.T) {
 	r := newRenderer(t)
-	for _, link := range []string{"", "/adv/orders/1?tab=details&from=email"} {
+	for _, link := range []string{"", "/adv/order/1?tab=details&from=email"} {
 		data := sample()
 		data[domain.DataLink] = link
 		_, plain, html, err := r.Email(domain.Notification{Template: "channel.rejected", Payload: data})
@@ -153,7 +153,7 @@ func TestEmailOptionalAction(t *testing.T) {
 		if !strings.Contains(plain, "https://cabinet.example.ru"+link) {
 			t.Fatal("plain text lost the original action URL")
 		}
-		if strings.Count(html, `href="https://cabinet.example.ru/adv/orders/1?tab=details&amp;from=email"`) != 2 {
+		if strings.Count(html, `href="https://cabinet.example.ru/adv/order/1?tab=details&amp;from=email"`) != 2 {
 			t.Fatal("button and fallback must preserve the escaped action URL")
 		}
 	}

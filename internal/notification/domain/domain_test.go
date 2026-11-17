@@ -108,7 +108,7 @@ func TestPlanRejectsWrongRoleAndKeepsKey(t *testing.T) {
 		if n.DedupeKey == nil || *n.DedupeKey != "reminder:p:T-01" || n.OrganizationID != nil {
 			t.Fatalf("key/org: %+v", n)
 		}
-		if n.Link() != "/blg/placements?placement=p" {
+		if n.Link() != "/blg/placement/p" {
 			t.Fatalf("link %q", n.Link())
 		}
 	}
@@ -120,18 +120,50 @@ func TestLink(t *testing.T) {
 		n    Notice
 		want string
 	}{
-		{Notice{Template: "placement.published", Role: RoleAdvertiser, ObjectType: "placement", ObjectID: "p", Data: map[string]any{DataOrderID: order}}, "/adv/orders/" + order.String()},
-		{Notice{Template: "placement.published", Role: RoleAdvertiser, ObjectType: "placement", ObjectID: "p", Data: map[string]any{DataOrderID: order.String()}}, "/adv/orders/" + order.String()},
-		{Notice{Template: "order.post_rejected", Role: RoleAdvertiser, ObjectType: "order", ObjectID: "o"}, "/adv/orders/o"},
+		{Notice{Template: "placement.published", Role: RoleAdvertiser, ObjectType: "placement", ObjectID: "p", Data: map[string]any{DataOrderID: order}}, "/adv/order/" + order.String()},
+		{Notice{Template: "placement.published", Role: RoleAdvertiser, ObjectType: "placement", ObjectID: "p", Data: map[string]any{DataOrderID: order.String()}}, "/adv/order/" + order.String()},
+		{Notice{Template: "order.post_rejected", Role: RoleAdvertiser, ObjectType: "order", ObjectID: "o"}, "/adv/order/o"},
 		{Notice{Template: "balance.deposited", Role: RoleAdvertiser}, "/adv/balance"},
-		{Notice{Template: "channel.approved", Role: RoleBlogger, ObjectType: "channel", ObjectID: "c"}, "/blg/channels/c"},
+		{Notice{Template: "channel.approved", Role: RoleBlogger, ObjectType: "channel", ObjectID: "c"}, "/blg/channel/c"},
 		{Notice{Template: "payout.succeeded", Role: RoleBlogger, ObjectType: "payout", ObjectID: "x"}, "/blg/payouts"},
-		{Notice{Template: "placement.failed", Role: RoleAdmin, ObjectType: "placement", ObjectID: "p"}, "/adm/placements/p"},
+		{Notice{Template: "placement.failed", Role: RoleAdmin, ObjectType: "placement", ObjectID: "p"}, "/adm/placement/p"},
+		{Notice{Template: "channel.approved", Role: RoleAdmin, ObjectType: "channel", ObjectID: "c"}, "/adm/channel/c"},
+		{Notice{Template: "order.post_rejected", Role: RoleAdmin, ObjectType: "order", ObjectID: "o"}, "/adm/order/o"},
 	}
 	for _, c := range cases {
 		if got := Link(c.n); got != c.want {
 			t.Errorf("%s/%s: %q, want %q", c.n.Template, c.n.Role, got, c.want)
 		}
+	}
+}
+
+func TestStoredNotificationLinks(t *testing.T) {
+	for _, tc := range []struct{ stored, want string }{
+		{"/adv/orders/o", "/adv/order/o"},
+		{"/blg/channels/c", "/blg/channel/c"},
+		{"/blg/placements?placement=p", "/blg/placement/p"},
+		{"/adm/placements/p", "/adm/placement/p"},
+		{"/adm/channels/c", "/adm/channel/c"},
+		{"/adm/orders/o", "/adm/order/o"},
+		{"/blg/channel/c", "/blg/channel/c"},
+		{"/blg/placement/p", "/blg/placement/p"},
+		{"/adv/order/o", "/adv/order/o"},
+		{"/adv/balance", "/adv/balance"},
+		{"/blg/payouts", "/blg/payouts"},
+		{"/adv/orders", "/adv/orders"},
+		{"/blg/channels", "/blg/channels"},
+		{"/blg/placements", "/blg/placements"},
+		{"", ""},
+	} {
+		t.Run(tc.stored, func(t *testing.T) {
+			n := Notification{Payload: map[string]any{DataLink: tc.stored}}
+			if got := n.Link(); got != tc.want {
+				t.Fatalf("link %q, want %q", got, tc.want)
+			}
+			if n.Payload[DataLink] != tc.stored {
+				t.Fatal("reading the link mutated the stored payload")
+			}
+		})
 	}
 }
 

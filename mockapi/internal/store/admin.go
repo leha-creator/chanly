@@ -372,11 +372,11 @@ func (tx *Tx) PostDisputeMessage(p *Placement, authorType string, authorID uuid.
 	orderID := o.ID
 	notifyAdv := func() {
 		tx.Notify(o.OrgID, "dispute.message", fmt.Sprintf("Сообщение по спору, заказ № %d", o.Number),
-			"Администратор просит пояснение по спору. Ответьте в карточке размещения.", "placement", p.ID, &orderID, "/adv/orders/"+o.ID.String())
+			"Администратор просит пояснение по спору. Ответьте в карточке размещения.", "placement", p.ID, &orderID, "/adv/order/"+o.ID.String())
 	}
 	notifyBlg := func() {
 		tx.Notify(p.BloggerOrgID, "dispute.message", fmt.Sprintf("Сообщение по спору, заказ № %d", o.Number),
-			"Администратор просит пояснение по спору. Ответьте в карточке размещения.", "placement", p.ID, &orderID, "/blg/placements?placement="+p.ID.String())
+			"Администратор просит пояснение по спору. Ответьте в карточке размещения.", "placement", p.ID, &orderID, "/blg/placement/"+p.ID.String())
 	}
 	switch {
 	case authorType == "admin" && recipient == "advertiser":
@@ -418,7 +418,7 @@ func (tx *Tx) BlockChannel(adminID uuid.UUID, c *Channel, reason string) error {
 	if c.OrgID != nil {
 		tx.Notify(*c.OrgID, "channel.blocked", "Канал «"+c.Title+"» заблокирован",
 			"Канал заблокирован администратором: "+reason+"\nНовые размещения невозможны, начатые продолжаются.",
-			"channel", c.ID, nil, "/blg/channels/"+c.ID.String())
+			"channel", c.ID, nil, "/blg/channel/"+c.ID.String())
 	}
 	return nil
 }

@@ -32,7 +32,7 @@ func TestNotificationsEndToEnd(t *testing.T) {
 	if !hasTemplate(blgPage, "placement.request") {
 		t.Fatalf("blogger notifications: %+v", blgPage.Items)
 	}
-	link := devCabinetBaseURL + "/blg/placements?placement=" + pid
+	link := devCabinetBaseURL + "/blg/placement/" + pid
 	var botMsg bool
 	for _, m := range a.maxFake().Sent() {
 		if m.UserID == 7 && strings.Contains(m.Text, link) {
@@ -60,13 +60,13 @@ func TestNotificationsEndToEnd(t *testing.T) {
 			orderID = n.OrderID
 		}
 	}
-	if orderID == "" || !mailedWith(a, advEmail, devCabinetBaseURL+"/adv/orders/"+orderID) {
+	if orderID == "" || !mailedWith(a, advEmail, devCabinetBaseURL+"/adv/order/"+orderID) {
 		t.Fatalf("no published email for order %q", orderID)
 	}
 
 	var advertiserBotMessage bool
 	for _, m := range a.maxFake().Sent() {
-		if m.UserID == 8 && strings.Contains(m.Text, devCabinetBaseURL+"/adv/orders/"+orderID) {
+		if m.UserID == 8 && strings.Contains(m.Text, devCabinetBaseURL+"/adv/order/"+orderID) {
 			advertiserBotMessage = true
 		}
 	}

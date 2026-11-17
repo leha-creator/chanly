@@ -94,6 +94,20 @@ func (n Notification) OrderID() *uuid.UUID {
 // Link — относительный путь в кабинете (R-6); пусто, если нет.
 func (n Notification) Link() string {
 	s, _ := n.Payload[DataLink].(string)
+	// Older notifications persisted list routes as detail links. Repair them on read
+	// for cabinet history and queued deliveries without resending sent messages.
+	for _, route := range [][2]string{
+		{"/adv/orders/", "/adv/order/"},
+		{"/blg/channels/", "/blg/channel/"},
+		{"/blg/placements?placement=", "/blg/placement/"},
+		{"/adm/placements/", "/adm/placement/"},
+		{"/adm/channels/", "/adm/channel/"},
+		{"/adm/orders/", "/adm/order/"},
+	} {
+		if id, ok := strings.CutPrefix(s, route[0]); ok && id != "" {
+			return route[1] + id
+		}
+	}
 	return s
 }
 
