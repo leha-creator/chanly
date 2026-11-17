@@ -310,7 +310,7 @@ QR-сервиса. После открытия диалога пользоват
 
 ```dotenv
 TELEGRAM_ENABLED=true
-TELEGRAM_BOT_NAME=@LordChanlyBot
+TELEGRAM_BOT_NAME=@LordChanlyDevBot
 TELEGRAM_BOT_TOKEN=<секрет из BotFather>
 TELEGRAM_WEBHOOK_SECRET=<случайная строка 32–256 символов A-Z a-z 0-9 _ ->
 TELEGRAM_WEBHOOK_URL=https://dev.chanly.ru/api/v1/webhooks/telegram
@@ -323,3 +323,11 @@ TELEGRAM_WEBHOOK_URL=https://dev.chanly.ru/api/v1/webhooks/telegram
 
 Протокол: [ссылки запуска бота](https://core.telegram.org/bots/features#deep-linking),
 [Webhook и sendMessage](https://core.telegram.org/bots/api).
+
+CI берёт токен из секрета GitHub Environment `TELEGRAM_BOT_TOKEN`, а имя — из
+переменной `TELEGRAM_BOT_NAME` того же окружения. При выпуске они атомарно
+обновляют только Telegram-поля в серверном `app.env`; секрет Webhook генерируется
+на сервере и сохраняется между выпусками. В dev используется `@LordChanlyDevBot`,
+в production — `@LordChanlyBot`. Для уже выпущенного dev можно применить настройки
+через Actions → ops → `configure_telegram_dev=true`, без сборки новой версии.
+Production-секрет применяется только при production-деплое из разрешённой ветки.
