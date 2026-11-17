@@ -299,6 +299,27 @@ if ((NO_EDGE == 0)); then
   if [[ -n $EDGE_DIR ]]; then
     step_start edge
     site="$EDGE_DIR/sites/$PREFIX.caddy"
+    # A manual root update can leave the shared dev site readable but unwritable
+    # by deploy. Repair only this canonical, non-secret dev file; the helper
+    # sees no other host paths and uses the already installed trusted image.
+    if [[ $APP_DIR == /opt/maxim-dev && $PROJECT == maxim-dev &&
+          $site == /opt/edge/sites/maxim-dev.caddy && -f $site && ! -w $site ]]; then
+      [[ ! -L $site && $(readlink -f "$site") == "$site" ]] || {
+        log error invalid_dev_edge_site; exit 1;
+      }
+      site_owner=$(stat -c '%u:%g' "$STACK_ENV")
+      [[ ${site_owner%%:*} == "$(id -u)" ]] || { log error unexpected_stack_owner; exit 1; }
+      site_image=$(value_of "$STACK_ENV" MAXIM_POSTGRES_IMAGE)
+      [[ -n $site_image ]] || { log error missing_postgres_image; exit 1; }
+      log warn dev_edge_permissions_repair file="$site" owner="$site_owner"
+      docker run --rm --pull never --network none --read-only --user 0 \
+        --cap-drop ALL --cap-add CHOWN --cap-add FOWNER \
+        --security-opt no-new-privileges:true \
+        --mount "type=bind,src=$site,dst=/site.caddy" \
+        --entrypoint /bin/sh "$site_image" -ec \
+        'chown "$1" /site.caddy; chmod 644 /site.caddy' sh "$site_owner"
+      [[ -w $site ]] || { log error dev_edge_site_unwritable; exit 1; }
+    fi
     template="$APP_DIR/maxim-app.caddy"
     if [[ $PROJECT == maxim-dev ]]; then
       template="$APP_DIR/maxim-dev.caddy"
