@@ -49,7 +49,7 @@ func (r Record) allowed(p *httpx.Principal, admin bool) bool {
 	switch r.Scope {
 	case "user":
 		return r.AudienceID != nil && *r.AudienceID == p.UserID &&
-			(!admin || r.Event.Topic == "session.changed" || r.Event.Topic == "notification.changed" || r.Event.Topic == "notification.created" || r.Event.Topic == "settings.changed")
+			(!admin || r.Event.Topic == "session.changed" || r.Event.Topic == "notification.changed" || r.Event.Topic == "notification.created" || r.Event.Topic == "settings.changed" || r.Event.Topic == "admin.support.read")
 	case "organization":
 		return !admin && p.OrganizationID != nil && r.AudienceID != nil && *p.OrganizationID == *r.AudienceID
 	case "admin":

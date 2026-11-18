@@ -43,6 +43,7 @@ func New(c *clock.Clock, log *slog.Logger, seed SeedFunc) *Store {
 func (s *Store) load(ctx context.Context) {
 	d := NewData()
 	s.seed(d, s.clock.Now())
+	d.Support = NewSupport(s.clock.Now())
 	s.data = d
 	logx.From(ctx, s.log).Info("seed loaded", "op", "Store.Load",
 		"users", len(d.Users), "organizations", len(d.Orgs), "channels", len(d.Channels),

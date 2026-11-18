@@ -258,6 +258,46 @@ func (unimplemented) StartAdminRocketworkCheck(context.Context, apigen.StartAdmi
 	return nil, apperr.NotImplemented("startAdminRocketworkCheck")
 }
 
+func (unimplemented) UploadSupportAttachment(context.Context, apigen.UploadSupportAttachmentRequestObject) (apigen.UploadSupportAttachmentResponseObject, error) {
+	return nil, apperr.NotImplemented("uploadSupportAttachment")
+}
+
+func (unimplemented) GetSupportAttachment(context.Context, apigen.GetSupportAttachmentRequestObject) (apigen.GetSupportAttachmentResponseObject, error) {
+	return nil, apperr.NotImplemented("getSupportAttachment")
+}
+
+func (unimplemented) GetSupportAttachmentMetadata(context.Context, apigen.GetSupportAttachmentMetadataRequestObject) (apigen.GetSupportAttachmentMetadataResponseObject, error) {
+	return nil, apperr.NotImplemented("getSupportAttachmentMetadata")
+}
+
+func (unimplemented) ListSupportConversations(context.Context, apigen.ListSupportConversationsRequestObject) (apigen.ListSupportConversationsResponseObject, error) {
+	return nil, apperr.NotImplemented("listSupportConversations")
+}
+
+func (unimplemented) GetSupportConversation(context.Context, apigen.GetSupportConversationRequestObject) (apigen.GetSupportConversationResponseObject, error) {
+	return nil, apperr.NotImplemented("getSupportConversation")
+}
+
+func (unimplemented) UpdateSupportConversation(context.Context, apigen.UpdateSupportConversationRequestObject) (apigen.UpdateSupportConversationResponseObject, error) {
+	return nil, apperr.NotImplemented("updateSupportConversation")
+}
+
+func (unimplemented) ListSupportMessages(context.Context, apigen.ListSupportMessagesRequestObject) (apigen.ListSupportMessagesResponseObject, error) {
+	return nil, apperr.NotImplemented("listSupportMessages")
+}
+
+func (unimplemented) SendSupportMessage(context.Context, apigen.SendSupportMessageRequestObject) (apigen.SendSupportMessageResponseObject, error) {
+	return nil, apperr.NotImplemented("sendSupportMessage")
+}
+
+func (unimplemented) ReadSupportConversation(context.Context, apigen.ReadSupportConversationRequestObject) (apigen.ReadSupportConversationResponseObject, error) {
+	return nil, apperr.NotImplemented("readSupportConversation")
+}
+
+func (unimplemented) RetrySupportMessage(context.Context, apigen.RetrySupportMessageRequestObject) (apigen.RetrySupportMessageResponseObject, error) {
+	return nil, apperr.NotImplemented("retrySupportMessage")
+}
+
 func (unimplemented) BlockUser(context.Context, apigen.BlockUserRequestObject) (apigen.BlockUserResponseObject, error) {
 	return nil, apperr.NotImplemented("blockUser")
 }
@@ -640,6 +680,10 @@ func (unimplemented) ListPlacementDisputeMessages(context.Context, apigen.ListPl
 
 func (unimplemented) CreatePlacementDisputeMessage(context.Context, apigen.CreatePlacementDisputeMessageRequestObject) (apigen.CreatePlacementDisputeMessageResponseObject, error) {
 	return nil, apperr.NotImplemented("createPlacementDisputeMessage")
+}
+
+func (unimplemented) SupportMaxWebhook(context.Context, apigen.SupportMaxWebhookRequestObject) (apigen.SupportMaxWebhookResponseObject, error) {
+	return nil, apperr.NotImplemented("supportMaxWebhook")
 }
 
 func (unimplemented) MaxWebhook(context.Context, apigen.MaxWebhookRequestObject) (apigen.MaxWebhookResponseObject, error) {

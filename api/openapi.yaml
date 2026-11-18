@@ -4201,6 +4201,636 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
 
+  /admin/support/conversations:
+    {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "operationId": "listSupportConversations",
+        "summary": "listSupportConversations",
+        "description": "Роль: moderator, senior. Переписка отдельного бота поддержки; доступ только администраторам.",
+        "parameters": [
+          {
+            "name": "query",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "maxLength": 200
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "open",
+                "closed"
+              ],
+              "x-enum-varnames": [
+                "Supportadminsupportconversationsgetparameters1schemaOpen",
+                "Supportadminsupportconversationsgetparameters1schemaClosed"
+              ]
+            }
+          },
+          {
+            "name": "mine",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "needs_reply",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Результат",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SupportConversationList"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationFailed"
+          }
+        }
+      }
+    }
+
+  /admin/support/conversations/{id}:
+    {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "operationId": "getSupportConversation",
+        "summary": "getSupportConversation",
+        "description": "Роль: moderator, senior. Переписка отдельного бота поддержки; доступ только администраторам.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Результат",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SupportConversation"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationFailed"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "admin"
+        ],
+        "operationId": "updateSupportConversation",
+        "summary": "updateSupportConversation",
+        "description": "Роль: moderator, senior. Переписка отдельного бота поддержки; доступ только администраторам.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SupportUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Результат",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SupportConversation"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationFailed"
+          }
+        }
+      }
+    }
+
+  /admin/support/conversations/{id}/messages:
+    {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "operationId": "listSupportMessages",
+        "summary": "listSupportMessages",
+        "description": "Роль: moderator, senior. Переписка отдельного бота поддержки; доступ только администраторам.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Uuid"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Результат",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SupportMessageList"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationFailed"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "operationId": "sendSupportMessage",
+        "summary": "sendSupportMessage",
+        "description": "Роль: moderator, senior. Переписка отдельного бота поддержки; доступ только администраторам.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SupportReply"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Результат",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SupportMessage"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationFailed"
+          }
+        }
+      }
+    }
+
+  /admin/support/conversations/{id}/read:
+    {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "operationId": "readSupportConversation",
+        "summary": "readSupportConversation",
+        "description": "Роль: moderator, senior. Переписка отдельного бота поддержки; доступ только администраторам.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SupportRead"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Выполнено"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationFailed"
+          }
+        }
+      }
+    }
+
+  /admin/support/messages/{id}/retry:
+    {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "operationId": "retrySupportMessage",
+        "summary": "retrySupportMessage",
+        "description": "Роль: moderator, senior. Переписка отдельного бота поддержки; доступ только администраторам.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Uuid"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Результат",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SupportMessage"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationFailed"
+          }
+        }
+      }
+    }
+
+  /admin/support/attachments:
+    {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "operationId": "uploadSupportAttachment",
+        "summary": "uploadSupportAttachment",
+        "description": "Роль: moderator, senior. Переписка отдельного бота поддержки; доступ только администраторам.",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "Результат",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SupportAttachment"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationFailed"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "file",
+                  "type"
+                ],
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  },
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "image",
+                      "video",
+                      "audio",
+                      "file"
+                    ],
+                    "x-enum-varnames": [
+                      "SupportadminsupportattachmentspostrequestBodycontentmultipartformdataschemapropertiestypeImage",
+                      "SupportadminsupportattachmentspostrequestBodycontentmultipartformdataschemapropertiestypeVideo",
+                      "SupportadminsupportattachmentspostrequestBodycontentmultipartformdataschemapropertiestypeAudio",
+                      "SupportadminsupportattachmentspostrequestBodycontentmultipartformdataschemapropertiestypeFile"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+  /admin/support/attachments/{id}/metadata:
+    {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "operationId": "getSupportAttachmentMetadata",
+        "summary": "getSupportAttachmentMetadata",
+        "description": "Роль: moderator, senior. Переписка отдельного бота поддержки; доступ только администраторам.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Результат",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SupportAttachment"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationFailed"
+          }
+        }
+      }
+    }
+
+  /admin/support/attachments/{id}:
+    {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "operationId": "getSupportAttachment",
+        "summary": "getSupportAttachment",
+        "description": "Роль: moderator, senior. Переписка отдельного бота поддержки; доступ только администраторам.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Uuid"
+            }
+          },
+          {
+            "name": "Range",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Приватный файл",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "206": {
+            "description": "Диапазон файла",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "416": {
+            "description": "Некорректный диапазон"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationFailed"
+          }
+        }
+      }
+    }
+
+  /webhooks/max-support/{secret}:
+    {
+      "post": {
+        "operationId": "supportMaxWebhook",
+        "tags": [
+          "webhooks"
+        ],
+        "summary": "События отдельного MAX-бота поддержки",
+        "security": [],
+        "parameters": [
+          {
+            "name": "secret",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WebhookPayload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Сохранено"
+          },
+          "401": {
+            "description": "Неверный секрет"
+          },
+          "413": {
+            "description": "Слишком большое тело"
+          },
+          "500": {
+            "description": "Ошибка записи"
+          }
+        }
+      }
+    }
+
   # ---------------------------------------------------------------- webhooks
   /webhooks/max/{secret}:
     post:
@@ -4701,7 +5331,7 @@ components:
             order.changed, placement.changed, campaign.changed, post.changed, channel.changed, channel.metrics.changed,
             cart.changed, media.changed, payout.changed, rocketwork.changed, organization.changed, category.changed, format.changed,
             admin.channel.changed, admin.order.changed, admin.placement.changed, admin.dispute.changed, admin.finance.changed,
-            admin.ord.changed, admin.organization.changed, admin.audit.changed, admin.counters.changed]
+            admin.ord.changed, admin.organization.changed, admin.audit.changed, admin.counters.changed, admin.support.changed, admin.support.read]
         object_id: { type: string, format: uuid }
         order_id: { type: string, format: uuid }
         campaign_id: { type: string, format: uuid }
@@ -5981,13 +6611,433 @@ components:
         created_at: { type: string, format: date-time }
         expires_at: { type: string, format: date-time }
         decided_at: { type: string, format: date-time }
+    SupportLimits:
+      {
+        "type": "object",
+        "required": [
+          "image",
+          "video",
+          "audio",
+          "file",
+          "max_attachments",
+          "voice_seconds"
+        ],
+        "properties": {
+          "image": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "video": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "audio": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "file": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "max_attachments": {
+            "type": "integer"
+          },
+          "voice_seconds": {
+            "type": "integer"
+          }
+        }
+      }
+
+    SupportConversation:
+      {
+        "type": "object",
+        "required": [
+          "id",
+          "bot_id",
+          "max_user_id",
+          "name",
+          "username",
+          "status",
+          "version",
+          "last_sequence",
+          "last_incoming",
+          "answered_through",
+          "unread",
+          "needs_reply",
+          "preview",
+          "created_at",
+          "updated_at"
+        ],
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Uuid"
+          },
+          "bot_id": {
+            "type": "string"
+          },
+          "max_user_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "open",
+              "closed"
+            ],
+            "x-enum-varnames": [
+              "SupportConversationpropertiesstatusOpen",
+              "SupportConversationpropertiesstatusClosed"
+            ]
+          },
+          "assignee_id": {
+            "$ref": "#/components/schemas/Uuid"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "last_sequence": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "last_incoming": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "answered_through": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "unread": {
+            "type": "integer"
+          },
+          "needs_reply": {
+            "type": "boolean"
+          },
+          "preview": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      }
+
+    SupportAttachment:
+      {
+        "type": "object",
+        "required": [
+          "id",
+          "type",
+          "mime",
+          "size",
+          "name",
+          "status",
+          "duration",
+          "width",
+          "height"
+        ],
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Uuid"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "image",
+              "video",
+              "audio",
+              "file",
+              "unsupported"
+            ],
+            "x-enum-varnames": [
+              "SupportAttachmentpropertiestypeImage",
+              "SupportAttachmentpropertiestypeVideo",
+              "SupportAttachmentpropertiestypeAudio",
+              "SupportAttachmentpropertiestypeFile",
+              "SupportAttachmentpropertiestypeUnsupported"
+            ]
+          },
+          "mime": {
+            "type": "string"
+          },
+          "size": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "name": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "processing",
+              "ready",
+              "failed",
+              "too_large",
+              "unsupported"
+            ],
+            "x-enum-varnames": [
+              "SupportAttachmentpropertiesstatusPending",
+              "SupportAttachmentpropertiesstatusProcessing",
+              "SupportAttachmentpropertiesstatusReady",
+              "SupportAttachmentpropertiesstatusFailed",
+              "SupportAttachmentpropertiesstatusTooLarge",
+              "SupportAttachmentpropertiesstatusUnsupported"
+            ]
+          },
+          "duration": {
+            "type": "number"
+          },
+          "width": {
+            "type": "integer"
+          },
+          "height": {
+            "type": "integer"
+          }
+        }
+      }
+
+    SupportMessage:
+      {
+        "type": "object",
+        "required": [
+          "id",
+          "conversation_id",
+          "sequence",
+          "direction",
+          "text",
+          "status",
+          "reason",
+          "external_id",
+          "reply_to_sequence",
+          "edited",
+          "deleted",
+          "created_at",
+          "attachments"
+        ],
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Uuid"
+          },
+          "conversation_id": {
+            "$ref": "#/components/schemas/Uuid"
+          },
+          "sequence": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "direction": {
+            "type": "string",
+            "enum": [
+              "inbound",
+              "outbound"
+            ],
+            "x-enum-varnames": [
+              "SupportMessagepropertiesdirectionInbound",
+              "SupportMessagepropertiesdirectionOutbound"
+            ]
+          },
+          "text": {
+            "type": "string"
+          },
+          "actor_id": {
+            "$ref": "#/components/schemas/Uuid"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "sending",
+              "sent",
+              "failed",
+              "unknown"
+            ],
+            "x-enum-varnames": [
+              "SupportMessagepropertiesstatusQueued",
+              "SupportMessagepropertiesstatusSending",
+              "SupportMessagepropertiesstatusSent",
+              "SupportMessagepropertiesstatusFailed",
+              "SupportMessagepropertiesstatusUnknown"
+            ]
+          },
+          "reason": {
+            "type": "string"
+          },
+          "external_id": {
+            "type": "string"
+          },
+          "reply_to_sequence": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "edited": {
+            "type": "boolean"
+          },
+          "deleted": {
+            "type": "boolean"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "attachments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SupportAttachment"
+            }
+          }
+        }
+      }
+
+    SupportReply:
+      {
+        "type": "object",
+        "required": [
+          "text",
+          "attachments",
+          "client_key",
+          "reply_to_sequence"
+        ],
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 4000
+          },
+          "attachments": {
+            "type": "array",
+            "maxItems": 5,
+            "items": {
+              "$ref": "#/components/schemas/Uuid"
+            }
+          },
+          "client_key": {
+            "$ref": "#/components/schemas/Uuid"
+          },
+          "reply_to_sequence": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          }
+        }
+      }
+
+    SupportConversationList:
+      {
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "enabled",
+          "limits"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SupportConversation"
+            }
+          },
+          "total": {
+            "type": "integer"
+          },
+          "next_cursor": {
+            "type": "string"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "limits": {
+            "$ref": "#/components/schemas/SupportLimits"
+          }
+        }
+      }
+
+    SupportMessageList:
+      {
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SupportMessage"
+            }
+          },
+          "next_cursor": {
+            "type": "string"
+          }
+        }
+      }
+
+    SupportRead:
+      {
+        "type": "object",
+        "required": [
+          "sequence"
+        ],
+        "properties": {
+          "sequence": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          }
+        }
+      }
+
+    SupportUpdate:
+      {
+        "type": "object",
+        "required": [
+          "version",
+          "status"
+        ],
+        "properties": {
+          "version": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "open",
+              "closed"
+            ],
+            "x-enum-varnames": [
+              "SupportUpdatepropertiesstatusOpen",
+              "SupportUpdatepropertiesstatusClosed"
+            ]
+          },
+          "assignee_id": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          }
+        }
+      }
+
     AdminCounters:
       type: object
       description: |
         Счётчики меню. У `moderator` очереди только для `senior` (`bank_transactions_unmatched`,
         `payouts_failed`, `approvals_pending`) всегда 0.
-      required: [channels_moderation, orders_moderation, disputes_open, disputes_overdue, ord_errors, bank_transactions_unmatched, payouts_failed, approvals_pending, ord_report_pending]
+      required: [channels_moderation, orders_moderation, disputes_open, disputes_overdue, ord_errors, bank_transactions_unmatched, payouts_failed, approvals_pending, ord_report_pending, support_waiting]
       properties:
+        support_waiting: { type: integer, minimum: 0 }
         channels_moderation: { type: integer, minimum: 0 }
         orders_moderation: { type: integer, minimum: 0 }
         disputes_open: { type: integer, minimum: 0 }

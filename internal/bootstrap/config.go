@@ -81,6 +81,7 @@ type Config struct {
 	ORD        ORDConfig
 	RocketWork RocketWorkConfig
 	MAX        MAXConfig
+	SupportMAX SupportMAXConfig
 	Telegram   TelegramConfig
 	Alert      AlertConfig
 	Scheduler  SchedulerConfig
@@ -446,6 +447,7 @@ func (c Config) Validate(mode string) error {
 		c.validateTBank(add)
 		c.validateNotification(add)
 		c.validateTelegram(add)
+		c.validateSupport(add)
 	}
 	if mode == ModeWorker {
 		c.validateWorker(add)

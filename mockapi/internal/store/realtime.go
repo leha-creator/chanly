@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"reflect"
 	"sort"
+	"strings"
 
 	"github.com/google/uuid"
 )
@@ -138,6 +139,19 @@ func (s *Store) realtimeSnapshot() map[string]streamSnapshot {
 	}
 	admin := func(topic string, source any) { add("admin", uuid.Nil, topic, nil, nil, nil, nil, source, "") }
 	d := s.data
+	if d.Support != nil {
+		for id, c := range d.Support.Conversations {
+			copyID := id
+			add("admin", uuid.Nil, "admin.support.changed", &copyID, nil, nil, nil, []any{c, d.Support.Messages[id]}, id.String())
+		}
+		admin("admin.counters.changed", d.Support.Conversations)
+		for id, markers := range d.Support.Reads {
+			for actor, seq := range markers {
+				copyID := id
+				add("user", actor, "admin.support.read", &copyID, nil, nil, nil, seq, id.String())
+			}
+		}
+	}
 	for id, settings := range d.Settings {
 		add("user", id, "settings.changed", nil, nil, nil, nil, settings, "")
 	}
@@ -242,7 +256,7 @@ func (s *Store) publishChanges(before map[string]streamSnapshot) {
 			allowed := false
 			switch e.Scope {
 			case "user":
-				allowed = e.Audience == st.identity.User && (!st.admin || e.Event.Topic == "session.changed" || e.Event.Topic == "notification.changed" || e.Event.Topic == "notification.created" || e.Event.Topic == "settings.changed")
+				allowed = e.Audience == st.identity.User && (!st.admin || e.Event.Topic == "session.changed" || e.Event.Topic == "notification.changed" || e.Event.Topic == "notification.created" || e.Event.Topic == "settings.changed" || e.Event.Topic == "admin.support.read") && (!strings.HasPrefix(e.Event.Topic, "admin.") || st.admin)
 			case "organization":
 				allowed = !st.admin && st.identity.Org != nil && *st.identity.Org == e.Audience
 			case "catalog":

@@ -158,3 +158,7 @@ SHA-256: `D26D2D0231B7C39F92CC738512BA54103519E4405D68B5BD703E9788CA8ECF31`.
 Пока отсутствует `frontend/landing/current/index.html`, корень обслуживает прежняя SPA. После атомарной активации лендинга точный GET/HEAD `/` за Basic Auth вызывает внутренний GET /api/v1/me с cookie. При 200 Caddy отдаёт frontend/current/index.html, при 401 — landing/current/index.html. Остальные ответы и ошибки соединения требуют повтора. Корень с выбором по сессии возвращает private, no-store. Пути /auth/login и /assets/ обслуживает SPA. Хешированные /landing-assets/ читаются из frontend/landing/shared внутри существующего тома.
 
 Перед включением переходов фронтенда проверьте curl с /opt/maxim-dev/basic-auth.curl для гостя, затем вход и оба кабинета. Под общей блокировкой сохраните действующий /opt/edge/sites/maxim-dev.caddy до изменения. Проверьте caddy validate и выполните caddy reload внутри контейнера edge. Для полного отката сначала верните переходы фронтенда, затем восстановите сохранённый файл, повторите validate, reload и проверьте корень и API. Релиз лендинга переключает только landing/current.
+
+## MAX-поддержка в админке
+
+Настройки отдельного бота SUPPORT_MAX_* и порядок включения описаны в [docs/support.md](../../docs/support.md). Обновлённый maxim-dev.caddy пропускает POST support webhook до Basic Auth, исключает секретный путь из access log и допускает видео до 250 МиБ. Перед включением обновить edge, применить миграции и выпустить оба репозитория независимо.

@@ -459,6 +459,7 @@ func (h *Handlers) GetAdminCounters(ctx context.Context, req api.GetAdminCounter
 	}
 	tx.ExpireApprovals()
 	out := api.GetAdminCounters200JSONResponse{}
+	out.SupportWaiting = tx.D.Support.Waiting()
 	for _, c := range tx.D.Channels {
 		if c.Status == "moderation" {
 			out.ChannelsModeration++

@@ -395,6 +395,7 @@ type TelegramBotConnection struct {
 }
 
 type Data struct {
+	Support                *SupportState
 	MaxBotBindings         map[uuid.UUID]int64
 	TelegramBotBindings    map[uuid.UUID]int64
 	TelegramBotConnections []*TelegramBotConnection

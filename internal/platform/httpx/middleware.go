@@ -191,7 +191,7 @@ func BodyLimit(limitFor func(r *http.Request) int64) Middleware {
 
 // secretPathPrefixes — пути, у которых следующий сегмент секретный (адрес Webhook
 // MAX, Q-35). В журнал и метрики сегмент не попадает.
-var secretPathPrefixes = []string{"/webhooks/max/"}
+var secretPathPrefixes = []string{"/webhooks/max/", "/webhooks/max-support/"}
 
 // RedactPath заменяет секретный сегмент пути на "***".
 func RedactPath(p string) string {

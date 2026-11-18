@@ -1,5 +1,16 @@
 # Architecture: Explicit Architecture (модульный монолит, по слоям)
 
+Поддержка MAX (2026-11-18): `internal/support/{domain,app,postgres,httpapi,jobs,media}` —
+самостоятельный модуль. `max_support` имеет отдельные webhook, секреты, circuit и
+лимиты диалога при общем MAX rps-потолке. Bootstrap/bridge адаптирует тонкий MAX-клиент
+к support-портам; HTTP создаёт исходящее сообщение и job атомарно, сеть вызывает только
+worker после durable intent. Неизвестный исход POST не повторяется автоматически.
+Вложения приватны; FFmpeg/ffprobe работают в ограниченном worker-процессе, голос
+MediaRecorder без duration проверяется после нормализации. Seekable S3-reader
+обслуживает HTTP Range; SSE передаёт только admin.support.changed и персональные
+admin.support.read. Очистка фиксирует удаление записей и `support_blob_gc`, затем
+удаляет объекты вне транзакции. Эксплуатация: [docs/support.md](../docs/support.md).
+
 С 2026-11-12 обычный business workflow RocketWork допускается на dev только
 при одновременном явном dev/live-допуске и полном договорном конфиге
 (`ROCKETWORK_DEV_LIVE_APPROVED`, `ROCKETWORK_PRODUCTION_APPROVED`). Он использует

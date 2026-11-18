@@ -4,10 +4,10 @@ __DOMAIN__ {
     # secret path and X-Max-Bot-Api-Secret before recording an event.
     @max_webhook {
         method POST
-        path_regexp max_webhook ^/api/v1/webhooks/max/[A-Za-z0-9_-]+$
+        path_regexp max_webhook ^/api/v1/webhooks/(max|max-support)/[A-Za-z0-9_-]+$
     }
     # The callback URL and header are secrets; do not put them in access logs.
-    @max_webhook_log path /api/v1/webhooks/max/*
+    @max_webhook_log path /api/v1/webhooks/max/* /api/v1/webhooks/max-support/*
     log_skip @max_webhook_log
     # RocketWork authenticates callbacks with its own application Bearer secret.
     @rocketwork_webhook {
@@ -34,7 +34,12 @@ __DOMAIN__ {
         output stdout
         format json
     }
-    request_body {
+    @support_upload path /api/v1/admin/support/attachments
+    request_body @support_upload {
+        max_size 263MB
+    }
+    @regular_body not path /api/v1/admin/support/attachments
+    request_body @regular_body {
         max_size 52MB
     }
     route {
