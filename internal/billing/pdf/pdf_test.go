@@ -124,6 +124,30 @@ func TestLongNameWraps(t *testing.T) {
 	}
 }
 
+func TestInvoiceSignatureMatchesIssuer(t *testing.T) {
+	doc := invoiceDoc()
+	unsigned, err := renderer().Invoice(doc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	doc.Supplier.Name = "ИП Каргин Данил Михайлович"
+	doc.Supplier.INN = "730204905616"
+	signed, err := renderer().Invoice(doc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if bytes.Count(signed, []byte("/Subtype /Image")) <= bytes.Count(unsigned, []byte("/Subtype /Image")) {
+		t.Fatal("issuer's signature image is missing")
+	}
+	again, err := renderer().Invoice(doc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(signed, again) {
+		t.Fatal("signed invoice is not deterministic")
+	}
+}
+
 func TestDeterministic(t *testing.T) {
 	a, err := pdf.New(clock.NewManual(issued), nil).Invoice(invoiceDoc())
 	if err != nil {

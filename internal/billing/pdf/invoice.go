@@ -2,6 +2,7 @@ package pdf
 
 import (
 	"bytes"
+	_ "embed"
 	"fmt"
 	"strings"
 
@@ -11,6 +12,12 @@ import (
 
 	"github.com/leha-creator/chanly/internal/billing/domain"
 )
+
+// The supplied signature belongs only to this issuer.
+const invoiceSignerINN = "730204905616"
+
+//go:embed assets/kargin-signature.png
+var invoiceSignaturePNG []byte
 
 // Invoice renders our A4 invoice without the recipient's registration address.
 func (r Renderer) Invoice(doc domain.InvoiceDoc) ([]byte, error) {
@@ -112,12 +119,23 @@ func (r Renderer) Invoice(doc domain.InvoiceDoc) ([]byte, error) {
 	d.SetFont(family, "", 8)
 	d.paragraph("В платёжном поручении укажите назначение из таблицы полностью. Зачисление на баланс - после поступления и сопоставления платежа по выписке.")
 
-	d.invoiceSpace(43)
+	signed := s.INN == invoiceSignerINN
+	footerHeight := 43.0
+	if signed {
+		footerHeight += 22
+	}
+	d.invoiceSpace(footerHeight)
 	d.Ln(7)
 	d.SetFont(family, "", 10)
 	d.paragraph("Индивидуальный предприниматель")
 	d.paragraph(strings.TrimPrefix(s.Name, "ИП "))
 	d.Ln(2)
+	if signed {
+		options := fpdf.ImageOptions{ImageType: "PNG"}
+		d.RegisterImageOptionsReader("invoice-signature", options, bytes.NewReader(invoiceSignaturePNG))
+		d.ImageOptions("invoice-signature", margin+15, d.GetY(), 42, 0, false, options, 0, "")
+		d.Ln(22)
+	}
 	d.CellFormat(120, 6, "Подпись: ____________________", "", 0, "L", false, 0, "")
 	d.CellFormat(contentWidth-120, 6, "М.П. (при наличии)", "", 1, "R", false, 0, "")
 	d.Ln(5)
