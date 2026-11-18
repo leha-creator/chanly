@@ -37,8 +37,11 @@ const busyRetry = 30 * time.Second
 
 // Options — подключение к MAX.
 type Options struct {
-	BaseURL string
-	Token   string
+	MediaHosts []string
+	// Namespace isolates per-bot dialog limits; the global MAX ceiling remains shared.
+	Namespace string
+	BaseURL   string
+	Token     string
 	// GlobalRate — запросов в секунду на все экземпляры (05 §2.8: 25 из 30).
 	GlobalRate float64
 	// ChatRate — сообщений в секунду в один чат (05 §2.8: 1 из 2).
@@ -121,7 +124,11 @@ func (c *Client) globalBucket() ratelimit.Bucket {
 
 // chatBucket — лимит сообщений в один чат или пользователю.
 func (c *Client) chatBucket(kind string, id int64) ratelimit.Bucket {
-	return ratelimit.Bucket{Key: "max:" + kind + ":" + strconv.FormatInt(id, 10), Rate: c.opts.ChatRate, Burst: 1}
+	namespace := c.opts.Namespace
+	if namespace == "" {
+		namespace = "max"
+	}
+	return ratelimit.Bucket{Key: namespace + ":" + kind + ":" + strconv.FormatInt(id, 10), Rate: c.opts.ChatRate, Burst: 1}
 }
 
 // request — запрос к MAX: ожидание токенов, затем outbound.

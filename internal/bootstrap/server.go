@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/getkin/kin-openapi/openapi3filter"
@@ -161,6 +162,9 @@ func newHandler(d serverDeps) (http.Handler, error) {
 		httpx.Recover(log),
 		httpx.SecurityHeaders(BaseURL),
 		httpx.BodyLimit(func(r *http.Request) int64 {
+			if r.Method == http.MethodPost && r.URL.Path == BaseURL+"/admin/support/attachments" {
+				return 251 << 20
+			}
 			// Выписка банка — до STATEMENT_MAX_BYTES (10 МБ) и заголовки multipart.
 			if r.Method == http.MethodPost && r.URL.Path == BaseURL+"/admin/bank-statements" {
 				return bodyLimitStatement
@@ -180,6 +184,11 @@ func newHandler(d serverDeps) (http.Handler, error) {
 func routeMiddleware(f apigen.StrictHandlerFunc, operationID string) apigen.StrictHandlerFunc {
 	route := strings.ToLower(operationID[:1]) + operationID[1:]
 	return func(ctx context.Context, w http.ResponseWriter, r *http.Request, request any) (any, error) {
+		if operationID == "UploadSupportAttachment" || operationID == "GetSupportAttachment" {
+			controller := http.NewResponseController(w)
+			_ = controller.SetReadDeadline(time.Now().Add(5 * time.Minute))
+			_ = controller.SetWriteDeadline(time.Now().Add(5 * time.Minute))
+		}
 		httpx.SetRoute(ctx, route)
 		return f(ctx, w, r, request)
 	}

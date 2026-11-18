@@ -3,6 +3,10 @@ package bootstrap
 import (
 	"context"
 	"fmt"
+	"github.com/leha-creator/chanly/internal/integration/max"
+	supportapp "github.com/leha-creator/chanly/internal/support/app"
+	supporthttp "github.com/leha-creator/chanly/internal/support/httpapi"
+	supportjobs "github.com/leha-creator/chanly/internal/support/jobs"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -71,12 +75,13 @@ import (
 // infra — общие ресурсы процесса: база, часы, журнал и адаптеры внешних систем.
 // В APP_ENV=test адаптеры поддельные; в разработке Mailpit и MinIO — настоящие SMTP и S3.
 type infra struct {
-	pool    *pgxpool.Pool
-	clock   clock.Clock
-	log     *slog.Logger
-	storage storage.ObjectStorage
-	mail    mailer
-	max     maxAPI
+	pool       *pgxpool.Pool
+	clock      clock.Clock
+	log        *slog.Logger
+	storage    storage.ObjectStorage
+	mail       mailer
+	max        maxAPI
+	supportMAX *max.Client
 	// ord — Яндекс ОРД (integration/ord, ordfake); только worker, nil при ORD_ENABLED=false.
 	ord     bridge.OrdClient
 	alerter *alert.Alerter
@@ -145,6 +150,9 @@ func newInfra(ctx context.Context, cfg Config, mode string, pool *pgxpool.Pool, 
 		if err := in.connectMAX(cfg); err != nil {
 			return nil, err
 		}
+		if err := in.connectSupportMAX(cfg); err != nil {
+			return nil, err
+		}
 		in.connectORD(ctx, cfg)
 	}
 	// Рокет Ворк: подпись вебхука (api), задания (worker), сверка депозита и команды (admin, dev).
@@ -165,6 +173,8 @@ func newInfra(ctx context.Context, cfg Config, mode string, pool *pgxpool.Pool, 
 
 // modules — собранные модули приложения.
 type modules struct {
+	support     *supportapp.Service
+	supportHTTP *supporthttp.Handlers
 	cfg         Config
 	in          *infra
 	account     *accountapp.Service
@@ -291,6 +301,7 @@ func newModules(cfg Config, in *infra) *modules {
 		txRunner:          txRunner,
 		queue:             queue,
 	}
+	m.wireSupport()
 	m.wireAdmin()
 	if cfg.ORD.Enabled {
 		m.wireMarking()
@@ -305,6 +316,8 @@ func (m *modules) registerJobs(w *job.Worker) {
 	channeljobs.Register(w, m.platform.dispatcher, m.channel)
 	m.registerMAXBotStarted()
 	m.registerTelegram()
+	m.registerSupportInbound()
+	supportjobs.Register(w, m.support)
 	postjobs.Register(w, m.post)
 	placementjobs.Register(w, m.placement, placementjobs.Options{
 		PublishRetryWindow: m.cfg.Placement.Control.PublishRetryWindow,
@@ -327,6 +340,7 @@ func (m *modules) registerJobs(w *job.Worker) {
 
 // apiImpl — реализация всех операций: обработчики модулей поверх заглушек 501.
 type apiImpl struct {
+	*supportHandlers
 	fallback
 	*rwCheckProxy
 	*accounthttp.Handlers
@@ -354,15 +368,16 @@ func apiHandler(ctx context.Context, cfg Config, in *infra, m *modules, reg *met
 		Log:     in.log,
 		Clock:   in.clock,
 		Metrics: reg,
-		Impl: apiImpl{rwCheckProxy: &rwCheckProxy{cfg: cfg, log: log, audit: m.admin.Audit}, Handlers: m.accountHTTP, channelHandlers: m.channelHTTP, postHandlers: m.postHTTP,
+		Impl: apiImpl{supportHandlers: m.supportHTTP, rwCheckProxy: &rwCheckProxy{cfg: cfg, log: log, audit: m.admin.Audit}, Handlers: m.accountHTTP, channelHandlers: m.channelHTTP, postHandlers: m.postHTTP,
 			placementHandlers: m.placementHTTP, billingHandlers: m.billingHTTP, ledgerHandlers: m.ledgerHTTP,
 			payoutHandlers: m.payoutHTTP, notificationHandlers: m.notificationHTTP, adminHandlers: m.adminHTTP,
 			markingHandlers: m.markingHTTP},
 		// Webhook MAX — сырое тело и заголовок секрета, вне strict server (R-4).
 		Routes: map[string]http.Handler{
-			telegramWebhookPattern:   newTelegramWebhook(cfg, in, m.txRunner, m.queue),
-			maxWebhookPattern:        newMAXWebhook(cfg, in, m.txRunner, m.queue, httpx.ClientInfo(trusted)),
-			rocketworkWebhookPattern: newRocketWorkWebhook(in, m.payout, m.txRunner, m.queue, httpx.ClientInfo(trusted)),
+			"POST " + BaseURL + "/webhooks/max-support/{secret}": m.supportWebhook(),
+			telegramWebhookPattern:                               newTelegramWebhook(cfg, in, m.txRunner, m.queue),
+			maxWebhookPattern:                                    newMAXWebhook(cfg, in, m.txRunner, m.queue, httpx.ClientInfo(trusted)),
+			rocketworkWebhookPattern:                             newRocketWorkWebhook(in, m.payout, m.txRunner, m.queue, httpx.ClientInfo(trusted)),
 		},
 		Streams: map[string]http.Handler{
 			"GET " + BaseURL + "/events":       realtime.Handler(hub, m.accountHTTP.AuthenticateStream, false, log),

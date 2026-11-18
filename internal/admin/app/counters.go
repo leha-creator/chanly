@@ -9,6 +9,7 @@ import (
 
 // Counters — счётчики меню администратора (R-16).
 type Counters struct {
+	SupportWaiting            int
 	ChannelsModeration        int
 	OrdersModeration          int
 	DisputesOpen              int

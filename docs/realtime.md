@@ -219,3 +219,7 @@ post, вернуть её/ETag в GET и выполнить атомарный `
 - [Контракт OpenAPI](../api/openapi.yaml)
 - [Эксплуатация и proxy](../deploy/app/README.md)
 - [Mockapi](../mockapi/README.md)
+
+## Переписка поддержки
+
+admin.support.changed инвалидирует диалог и очередь только в admin-stream. admin.support.read адресован конкретному оператору через user audience и не выдаётся в обычный пользовательский stream. Изменение очереди инвалидирует admin.counters.changed; payload остаётся без текста и файлов. Подробнее: [поддержка](support.md).

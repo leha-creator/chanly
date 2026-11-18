@@ -1200,6 +1200,81 @@ type Session struct {
 	UpdatedAt pgtype.Timestamptz
 }
 
+type SupportAttachment struct {
+	ID            pgtype.UUID
+	MessageID     pgtype.UUID
+	ActorID       pgtype.UUID
+	Type          string
+	Mime          string
+	Size          int64
+	Name          string
+	Status        string
+	Duration      float64
+	Width         int32
+	Height        int32
+	StorageKey    string
+	OriginalKey   string
+	ProviderToken string
+	ProviderUrl   string
+	ProcessingAt  pgtype.Timestamptz
+	CreatedAt     pgtype.Timestamptz
+}
+
+type SupportBlobGc struct {
+	StorageKey string
+}
+
+type SupportConversation struct {
+	ID              pgtype.UUID
+	BotID           string
+	MaxUserID       string
+	Name            string
+	Username        string
+	Status          string
+	AssigneeID      pgtype.UUID
+	Version         int64
+	LastSequence    int64
+	LastIncoming    int64
+	AnsweredThrough int64
+	CreatedAt       pgtype.Timestamptz
+	UpdatedAt       pgtype.Timestamptz
+}
+
+type SupportMessage struct {
+	ID              pgtype.UUID
+	ConversationID  pgtype.UUID
+	Sequence        int64
+	Direction       string
+	Text            string
+	ActorID         pgtype.UUID
+	Status          string
+	Reason          string
+	BotID           string
+	ExternalID      string
+	ClientKey       pgtype.UUID
+	RequestHash     string
+	ReplyToSequence int64
+	Edited          bool
+	Deleted         bool
+	EventAt         pgtype.Timestamptz
+	CreatedAt       pgtype.Timestamptz
+	UpdatedAt       pgtype.Timestamptz
+}
+
+type SupportReadMarker struct {
+	ConversationID pgtype.UUID
+	ActorID        pgtype.UUID
+	Sequence       int64
+}
+
+type SupportRevision struct {
+	BotID      string
+	ExternalID string
+	Text       string
+	Deleted    bool
+	EventAt    pgtype.Timestamptz
+}
+
 type User struct {
 	ID            pgtype.UUID
 	Email         string

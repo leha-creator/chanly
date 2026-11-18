@@ -150,3 +150,10 @@ sql:
       go:
         <<: *gen
         out: internal/notification/postgres/sqlc
+
+  - <<: *entry
+    queries: internal/support/postgres/queries
+    gen:
+      go:
+        <<: *gen
+        out: internal/support/postgres/sqlc

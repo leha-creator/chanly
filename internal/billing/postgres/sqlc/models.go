@@ -1202,6 +1202,81 @@ type Session struct {
 	UpdatedAt time.Time
 }
 
+type SupportAttachment struct {
+	ID            uuid.UUID
+	MessageID     *uuid.UUID
+	ActorID       *uuid.UUID
+	Type          string
+	Mime          string
+	Size          int64
+	Name          string
+	Status        string
+	Duration      float64
+	Width         int32
+	Height        int32
+	StorageKey    string
+	OriginalKey   string
+	ProviderToken string
+	ProviderUrl   string
+	ProcessingAt  *time.Time
+	CreatedAt     time.Time
+}
+
+type SupportBlobGc struct {
+	StorageKey string
+}
+
+type SupportConversation struct {
+	ID              uuid.UUID
+	BotID           string
+	MaxUserID       string
+	Name            string
+	Username        string
+	Status          string
+	AssigneeID      *uuid.UUID
+	Version         int64
+	LastSequence    int64
+	LastIncoming    int64
+	AnsweredThrough int64
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
+}
+
+type SupportMessage struct {
+	ID              uuid.UUID
+	ConversationID  uuid.UUID
+	Sequence        int64
+	Direction       string
+	Text            string
+	ActorID         *uuid.UUID
+	Status          string
+	Reason          string
+	BotID           string
+	ExternalID      string
+	ClientKey       *uuid.UUID
+	RequestHash     string
+	ReplyToSequence int64
+	Edited          bool
+	Deleted         bool
+	EventAt         time.Time
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
+}
+
+type SupportReadMarker struct {
+	ConversationID uuid.UUID
+	ActorID        uuid.UUID
+	Sequence       int64
+}
+
+type SupportRevision struct {
+	BotID      string
+	ExternalID string
+	Text       string
+	Deleted    bool
+	EventAt    time.Time
+}
+
 type User struct {
 	ID            uuid.UUID
 	Email         string

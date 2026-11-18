@@ -32,6 +32,7 @@ func (m *modules) wireAdmin() {
 	deps := adminapp.Deps{Store: store, Audits: store, Audit: audit.New(m.in.pool, m.in.clock, log), Tx: m.txRunner,
 		Clock: m.in.clock, Log: m.in.log, TTL: m.cfg.Billing.ApprovalTTL,
 		Counters: []adminapp.Counter{
+			bridge.SupportCounter{Store: m.support.Repo, Enabled: m.cfg.SupportMAX.Enabled},
 			bridge.ChannelCounter(m.channel), bridge.PlacementCounter(m.placement), bridge.BillingCounter(m.billing),
 			bridge.PayoutCounter(m.payoutStore), bridge.MarkingCounter(m.markingStore.Overview()),
 		}}

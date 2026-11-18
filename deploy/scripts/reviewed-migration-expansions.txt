@@ -20,3 +20,10 @@ c466e346671008d7a9b9f3ef757c5f644f05f60d81c995784547954fb8c8007a  migrations/001
 # unknown inbound events; Telegram remains disabled until after the rollout.
 # Covered by PostgreSQL binding lifecycle and queued-disconnect delivery tests.
 e1fb2edde419e7932c0a4d8e4bc0c2283254145f84a9f22efe3f116b070afe7f  migrations/00111_telegram_notifications.sql
+
+# 00112 transactionally adds max_support to inbound/outbound CHECKs. All prior
+# values remain valid; the new tables are additive. Old workers ignore the new
+# source. Support stays disabled during rollout; Down preserves shared CHECK
+# values so retained integration records remain valid. Covered by support
+# PostgreSQL workflow, webhook isolation and migration-backed bootstrap tests.
+5e45bbc592b3a98dee2e410496f1ff407e40642370304e0409cf2e2ef8da0f2a  migrations/00112_support.sql

@@ -217,7 +217,7 @@ func (h *Handlers) GetAdminCounters(ctx context.Context, _ apigen.GetAdminCounte
 		// Очереди только senior (выписка, выплаты, подтверждения) модератору не показываются.
 		c.BankTransactionsUnmatched, c.PayoutsFailed, c.ApprovalsPending = 0, 0, 0
 	}
-	return apigen.GetAdminCounters200JSONResponse{ChannelsModeration: c.ChannelsModeration, OrdersModeration: c.OrdersModeration,
+	return apigen.GetAdminCounters200JSONResponse{SupportWaiting: c.SupportWaiting, ChannelsModeration: c.ChannelsModeration, OrdersModeration: c.OrdersModeration,
 		DisputesOpen: c.DisputesOpen, DisputesOverdue: c.DisputesOverdue, OrdErrors: c.OrdErrors,
 		BankTransactionsUnmatched: c.BankTransactionsUnmatched, PayoutsFailed: c.PayoutsFailed,
 		ApprovalsPending: c.ApprovalsPending, OrdReportPending: c.OrdReportPending}, nil

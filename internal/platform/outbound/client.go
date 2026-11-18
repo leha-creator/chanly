@@ -132,8 +132,12 @@ type Call struct {
 	URL       string
 	Header    http.Header
 	// Body сериализуется в JSON; RawBody — тело как есть (с ContentType).
-	Body        any
-	RawBody     []byte
+	Body    any
+	RawBody []byte
+	// BodyReader streams private uploads. It requires Sensitive and NoRetry;
+	// a consumed stream must never be replayed or persisted.
+	BodyReader  io.Reader
+	BodySize    int64
 	ContentType string
 	// IdempotencyKey передаётся всегда, если задан (05 §1), в заголовке IdempotencyHeader.
 	IdempotencyKey    string
@@ -336,9 +340,18 @@ func (c *Client) build(ctx context.Context, call Call) (*http.Request, []byte, e
 	if body != nil {
 		reader = bytes.NewReader(body)
 	}
+	if call.BodyReader != nil {
+		if !call.Sensitive || !call.NoRetry {
+			return nil, nil, errors.New("streaming upload requires sensitive no-retry call")
+		}
+		reader = call.BodyReader
+	}
 	req, err := http.NewRequestWithContext(ctx, call.Method, call.URL, reader)
 	if err != nil {
 		return nil, nil, err
+	}
+	if call.BodyReader != nil {
+		req.ContentLength = call.BodySize
 	}
 	for k, v := range call.Header {
 		req.Header[k] = append([]string(nil), v...)
